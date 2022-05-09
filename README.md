@@ -41,7 +41,7 @@ The object `LefschetzFamily` can be called with several options:
 - `nbits` (`400` by default): the number of bits of precision used as input for the computations. If a computation fails to recover the integral  monodromy matrices, you should try to increase this precision. The output precision seems to be roughly linear with respect to the input precision.
 
 ## Contact
-For any questions, bugs, remarks, please contact [eric.pichon@polytechnique.edu](mailto:eric.pichon@polytechnique.edu).
+For any question, bug or remark, please contact [eric.pichon@polytechnique.edu](mailto:eric.pichon@polytechnique.edu).
 
 ## Roadmap
 Future goals include:
