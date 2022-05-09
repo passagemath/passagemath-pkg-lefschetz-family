@@ -2,11 +2,13 @@
 
 
 ## Description
-This Sage package provides a means of efficiently computing periods of complex projective hypersurfaces with certified rigorous precision bounds.
-
-
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
+This Sage package provides a means of efficiently computing periods of complex projective hypersurfaces with certified rigorous precision bounds. Here is a runtime benchmark for various examples:
+| Variety (generic) 	| Time (on 4 M1 cores) 	|
+|-------------------	|----------------------	|
+| Elliptic curve    	| 7 seconds            	|
+| Quartic curve     	| 4 minutes            	|
+| Cubic surface     	| 4 minutes 20         	|
+| Quartic surface   	| est. 20 hours        	|
 
 ## Requirements
 Sagee 9.0 is recommended. Furthermore, this project relies on the following packages:
@@ -14,7 +16,6 @@ Sagee 9.0 is recommended. Furthermore, this project relies on the following pack
 - [Ore Algebra](https://github.com/mkauers/ore_algebra). For better performance, I recommend using the [fastalgexp branch in Marc Mezzarobba's fork](https://github.com/mezzarobba/ore_algebra/tree/fastalgexp).
 - [numperiods](https://gitlab.inria.fr/lairez/numperiods) TODO: push `Family.coordinates` to a branch of numperiods -- need permissions.
 - The [delaunay-triangulation](https://pypi.org/project/delaunay-triangulation/) package from PyPI.
-
 
 ## Usage
 The first step is to defined the polynomial defining the projective hypersurface. For instance, the following gives the Fermat elliptic curve:
