@@ -12,7 +12,7 @@ Within a particular ecosystem, there may be a common way of installing things, s
 Sagee 9.0 is recommended. Furthermore, this project relies on the following packages:
 
 - [Ore Algebra](https://github.com/mkauers/ore_algebra). For better performance, I recommend using the [fastalgexp branch in Marc Mezzarobba's fork](https://github.com/mezzarobba/ore_algebra/tree/fastalgexp).
-- [numperiods](https://gitlab.inria.fr/lairez/numperiods) TODO: push coordinates function to a branch of numperiods -- need permissions.
+- [numperiods](https://gitlab.inria.fr/lairez/numperiods) TODO: push `Family.coordinates` to a branch of numperiods -- need permissions.
 - The [delaunay-triangulation](https://pypi.org/project/delaunay-triangulation/) package from PyPI.
 
 
@@ -40,7 +40,7 @@ The object `LefschetzFamily` can be called with several options:
 - `nbits` (`400` by default): the number of bits of precision used as input for the computations. If a computation fails to recover the integral  monodromy matrices, you should try to increase this precision. The output precision seems to be roughly linear with respect to the input precision.
 
 ## Contact
-For any questions, bugs, remarks, please contact [eric.pichon@polytechnique.edu](mailto:eric.pichon@polytechnique.edu)
+For any questions, bugs, remarks, please contact [eric.pichon@polytechnique.edu](mailto:eric.pichon@polytechnique.edu).
 
 ## Roadmap
 Future goals include:
