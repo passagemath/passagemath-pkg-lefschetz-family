@@ -13,8 +13,8 @@ This Sage package provides a means of efficiently computing periods of complex p
 ## Requirements
 Sagee 9.0 is recommended. Furthermore, this project relies on the following packages:
 
-- [Ore Algebra](https://github.com/mkauers/ore_algebra). For better performance, I recommend using the [fastalgexp branch in Marc Mezzarobba's fork](https://github.com/mezzarobba/ore_algebra/tree/fastalgexp).
-- [numperiods](https://gitlab.inria.fr/lairez/numperiods) TODO: push `Family.coordinates` to a branch of numperiods -- need permissions.
+- [Ore Algebra](https://github.com/mkauers/ore_algebra). For better performance, I recommend using the [`fastalgexp` branch in Marc Mezzarobba's fork](https://github.com/mezzarobba/ore_algebra/tree/fastalgexp).
+- [The branch `coordinates` in my fork of numperiods](https://gitlab.inria.fr/epichonp/numperiods/-/tree/coordinates).
 - The [delaunay-triangulation](https://pypi.org/project/delaunay-triangulation/) package from PyPI.
 
 ## Usage
