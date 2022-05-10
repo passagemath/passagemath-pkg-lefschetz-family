@@ -94,15 +94,16 @@ class LefschetzFamily(object):
             for (d, l, M) in list_thimbles:
                 self.thimbles+=[(d, l)]
                 self.perm_cycles += [d]
-                self.vanishing_cycles+=[(M-1)*d / gcd((M-1)*d)]
+                if not self.ctx.debug:
+                    self.vanishing_cycles+=[(M-1)*d / gcd((M-1)*d)]
                 self.monodromy_matrices += [M]
             
             # homology cycles are given as a vector corresponding to coordinates of thimbles
-            self.homology = self._compute_homology()
-            self.intersection_product=self._compute_intersection_product()
-            if self.ctx.compute_periods:
-                self.period_matrix = self._compute_periods()
-        print(self.period_matrix.parent())
+            if not self.ctx.debug:
+                self.homology = self._compute_homology()
+                self.intersection_product=self._compute_intersection_product()
+                if self.ctx.compute_periods:
+                    self.period_matrix = self._compute_periods()
         logger.info("Computation of homology of variety of dimension %d completed." % self.dim)
     
     def _compute_fibration(self):
@@ -155,6 +156,8 @@ class LefschetzFamily(object):
         omega = vector([0]*(len(self.family.basis)-1)+[1]) # choice of cyclic vector
         L = self.family.picard_fuchs_equation(omega)
         assert L.order()== len(self.family.basis)
+
+        self.L = L
         
         paths = self._compute_paths()
 
@@ -186,15 +189,17 @@ class LefschetzFamily(object):
         
         logger.info("Computing monodromy matrices")
 
-        Mtot=1 # TODO: delete this line
+        Mtot=1 # TODO: delete these lines
         for M in transition_matrices:
             Mtot=M*Mtot
 
-        Ms=[(initial_conditions**(-1)*M*initial_conditions).change_ring(ZZ) for M in transition_matrices]
+        Ms = [(initial_conditions**(-1)*M*initial_conditions) for M in transition_matrices]
+        if not self.ctx.debug:
+            Ms = [M.change_ring(ZZ) for M in Ms]
 
         for i in range(r):
             M=Ms[i]
-            if not self.ctx.singular:
+            if not self.ctx.singular and not self.ctx.debug:
                 assert (M-1).rank()==1, "If M is a monodromy matrix around a single critical point, M-I should have rank 1"
             if self.dim%2==1:
                 prod= invariant_vector*self.fiber.intersection_product*(lift*M*proj-identity_matrix(n))*lift/n
@@ -210,11 +215,11 @@ class LefschetzFamily(object):
         
         logger.info("Found %d thimbles in dimension %d." % (r, self.dim))
 
-
-        Mtot = 1
-        for M in Ms:
-            Mtot = M*Mtot
-        assert Mtot == identity_matrix(len(self.fiber.homology)), "Monodromy around infinity is nontrivial, most likely due to a mistake while computing a basis of homotopy."
+        if not self.ctx.debug:
+            Mtot = 1
+            for M in Ms:
+                Mtot = M*Mtot
+            assert Mtot == identity_matrix(len(self.fiber.homology)), "Monodromy around infinity is nontrivial, most likely due to a mistake while computing a basis of homotopy."
                
         return [(vs[i], paths[i], Ms[i]) for i in range(r)]
                
@@ -275,9 +280,9 @@ class LefschetzFamily(object):
             ntms = [[r[0][0][1], r[1]] for r in list(LefschetzFamily._compute_transition_matrix_voronoi([(L,[e[0], e[1]], self.ctx.nbits) for e in self.edges]))]
             transition_matrices = []
             for j in range(len(self.critical_points)):
-                M = self._reconstruct_path_voronoi(self._sps[j], ntms, L)
-                M2 = self._reconstruct_path_voronoi(self._loops[j] + [self._loops[j][0]], ntms, L)
-                transition_matrices+=[M**-1*M2*M]
+                path =  self._sps[j] + self._loops[j] +list(reversed(self._sps[j]))
+                M = self._reconstruct_path_voronoi(Util.simplify_path(path), ntms, L)
+                transition_matrices+=[M]
         return transition_matrices
 
     def _reconstruct_path_delaunay(self, sp, ntms, L, values):
@@ -302,6 +307,7 @@ class LefschetzFamily(object):
         print(e)
         raise Exception("unknown edge") 
 
+    @classmethod
     def _reconstruct_path_voronoi(self, sp, ntms, L):
         if len(sp)<=1:
             return 1
@@ -373,8 +379,9 @@ class LefschetzFamily(object):
             for k in range(n-1 if self.dim%2==0 else n-2):
                 derivatives += [self._derivative(derivatives[-1], self._RtoS(self.P))] 
             derivatives_coordinates, denom = self.family.coordinates(derivatives) # this is not optimal - it would be better to compute all coordinates together
+            # maybe it fails ?
             
-            integration_correction = diagonal_matrix([1/factorial(k) for k in range(n+1 if self.dim%2==0 else n)]).change_ring(self.ctx.CBF)
+            integration_correction = diagonal_matrix([1/ZZ(factorial(k)) for k in range(n+1 if self.dim%2==0 else n)])
             initial_conditions = integration_correction* derivatives_coordinates(self.basepoint)/denom(self.basepoint)*self.fiber.period_matrix
             
             transition_matrices = self.integrate(L)

@@ -49,3 +49,21 @@ class Util(object):
     @classmethod
     def invert_permutation(cls, l):
         return [l.index(x) for x in range(len(l))]
+
+    @classmethod
+    def simplify_path(cls, p):
+        i=1
+        res = list(p)
+        while i<len(res)-1:
+            p = res[i-1]
+            a = res[i]
+            n = res[i+1] 
+            if p==a:
+                res = res[:i]+res[i+1:]
+            elif p==n:
+                res = res[:i]+res[i+2:]
+                if i!=0:
+                    i=i-1
+            else:
+                i=i+1
+        return res
