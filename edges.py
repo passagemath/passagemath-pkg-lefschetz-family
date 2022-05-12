@@ -313,6 +313,19 @@ class Edges(object):
                 else:
                     i+=1
 
+        # remove consecutive doubles
+        for j in range(len(loops)):
+            loop = loops[j]
+            i=0
+            while i<len(loop)-1:
+                if loop[i]==loop[i+1]:
+                    loop = loop[:i+1]+loop[i+2:]
+                else:
+                    i+=1
+            loops[j]=loop
+
+
+
         # this ensures the loops are trigonometric-wise around the critical points
         for loop in loops:
             y = loop[0]
@@ -386,7 +399,8 @@ class Edges(object):
         for i in range(len(loops)):
             if loops[i][0] == actual and (previous == n or cls.angle(previous, actual, n) < cls.angle(previous, actual, loops[i][1]) or cls.angle_zero(previous, actual, loops[i][1])):
                 order+=[i]
-        order.sort(key = lambda i: -cls.angle(loops[i][1], actual, previous))
+        order.sort(key = lambda i: -cls.angle(previous, actual,loops[i][1]))
+
         
         return order+ cls.voronoi_circuit_rec(neighbors, basepoint, loops, n, actual)
 
@@ -409,6 +423,7 @@ class Edges(object):
         for v in T.vertices():
             neighbors[v] = cls.sort_neighbors_voronoi(v, T.neighbors(v))
         order=cls.voronoi_circuit_rec(neighbors, basepoint, loops, basepoint, start=True) 
+
         return order
 
 

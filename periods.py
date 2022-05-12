@@ -34,6 +34,7 @@ from Util import Util
 from Context import Context
 
 import logging
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -157,8 +158,6 @@ class LefschetzFamily(object):
         L = self.family.picard_fuchs_equation(omega)
         assert L.order()== len(self.family.basis)
 
-        self.L = L
-        
         paths = self._compute_paths()
 
         transition_matrices= self.integrate(L)
@@ -276,8 +275,9 @@ class LefschetzFamily(object):
                 M = self._reconstruct_path_delaunay(sps[j], ntms, L, values).change_ring(self.ctx.CBF)
                 transition_matrices+=[M**-1*formal_monodromy(L, self.critical_points[j], ring=self.ctx.CBF)*M]
         elif self.ctx.method == "voronoi":
-            logger.info("Computing numerical transition matrices along edges (%d edges total)."% len(self.edges))
-            ntms = [[r[0][0][1], r[1]] for r in list(LefschetzFamily._compute_transition_matrix_voronoi([(L,[e[0], e[1]], self.ctx.nbits) for e in self.edges]))]
+            N = len(self.edges)
+            logger.info("Computing numerical transition matrices along edges (%d edges total)."% N)
+            ntms = [[r[0][0][2], r[1]] for r in list(LefschetzFamily._compute_transition_matrix_voronoi([([i,N],L,[e[0], e[1]], self.ctx.nbits) for i, e in list(enumerate(self.edges))]))]
             transition_matrices = []
             for j in range(len(self.critical_points)):
                 path =  self._sps[j] + self._loops[j] +list(reversed(self._sps[j]))
@@ -369,6 +369,7 @@ class LefschetzFamily(object):
         r=len(self.thimbles)
         
         Ls = self._compute_picard_fuchs()
+        # self._Ls = [L*L.parent().gens()[0] for L in Ls]
 
         for i in range(N):
             logger.info("Computing integral of form along thimbles [%d/%d]"% (i+1, N))
@@ -379,7 +380,6 @@ class LefschetzFamily(object):
             for k in range(n-1 if self.dim%2==0 else n-2):
                 derivatives += [self._derivative(derivatives[-1], self._RtoS(self.P))] 
             derivatives_coordinates, denom = self.family.coordinates(derivatives) # this is not optimal - it would be better to compute all coordinates together
-            # maybe it fails ?
             
             integration_correction = diagonal_matrix([1/ZZ(factorial(k)) for k in range(n+1 if self.dim%2==0 else n)])
             initial_conditions = integration_correction* derivatives_coordinates(self.basepoint)/denom(self.basepoint)*self.fiber.period_matrix
@@ -440,10 +440,12 @@ class LefschetzFamily(object):
 
     @parallel(4)
     @classmethod
-    def _compute_transition_matrix_voronoi(cls, L, l, nbits=300):
+    def _compute_transition_matrix_voronoi(cls, i, L, l, nbits=300):
         """ Returns the numerical transition matrix of L along l, adapted to computations of Voronoi. Accepts l=[]
         """
+        logger.info("[%d] Starting integration along edge [%d/%d]"% (os.getpid(), i[0]+1,i[1]))
         res = L.numerical_transition_matrix(l, eps=2**(-nbits), assume_analytic=True) if l!= [] else identity_matrix(L.order())
+        logger.info("[%d] Finished integration along edge [%d/%d]"% (os.getpid(), i[0]+1,i[1]))
         return res
                
     def _compute_picard_fuchs(self):

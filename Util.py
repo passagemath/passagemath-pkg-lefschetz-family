@@ -60,9 +60,11 @@ class Util(object):
             n = res[i+1] 
             if p==a:
                 res = res[:i]+res[i+1:]
+                if i!=1:
+                    i=i-1
             elif p==n:
                 res = res[:i]+res[i+2:]
-                if i!=0:
+                if i!=1:
                     i=i-1
             else:
                 i=i+1
