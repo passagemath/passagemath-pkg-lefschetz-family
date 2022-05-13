@@ -27,6 +27,7 @@ from sage.matrix.special import block_matrix
 from sage.matrix.special import zero_matrix
 from sage.parallel.decorate import parallel
 from sage.arith.misc import gcd
+from sage.arith.functions import lcm
 from ore_algebra.analytic.monodromy import formal_monodromy
 
 from edges import Edges
@@ -84,6 +85,8 @@ class LefschetzFamily(object):
             self._RtoS = self._R.hom([denom**self.degree*v for v in self._S.base_ring().gens()]+[t*form], self._S)
             self.family = Family(self._RtoS(self.P))
 
+
+            self._Ls = [L*L.parent().gens()[0] for L in self._compute_picard_fuchs()]
 
             # thimbles are given as a list of (p, l) where p is an element of H_{n-1}(X_b) and l a path 
             # in P^1 \ Sigma such that tau_l(p) = Delta is the thimble
@@ -369,7 +372,6 @@ class LefschetzFamily(object):
         r=len(self.thimbles)
         
         Ls = self._compute_picard_fuchs()
-        # self._Ls = [L*L.parent().gens()[0] for L in Ls]
 
         for i in range(N):
             logger.info("Computing integral of form along thimbles [%d/%d]"% (i+1, N))
@@ -444,7 +446,7 @@ class LefschetzFamily(object):
         """ Returns the numerical transition matrix of L along l, adapted to computations of Voronoi. Accepts l=[]
         """
         logger.info("[%d] Starting integration along edge [%d/%d]"% (os.getpid(), i[0]+1,i[1]))
-        res = L.numerical_transition_matrix(l, eps=2**(-nbits), assume_analytic=True) if l!= [] else identity_matrix(L.order())
+        res = L.numerical_transition_matrix(l, eps=2**(-nbits), assume_analytic=True) if l!= [] else identity_matrix(L.order()) #maybe add bounds_prec=128
         logger.info("[%d] Finished integration along edge [%d/%d]"% (os.getpid(), i[0]+1,i[1]))
         return res
                
@@ -454,7 +456,14 @@ class LefschetzFamily(object):
         # It is arguably more efficient to compute all the Picard-Fuchs equations at the same time
         logger.info("Computing Picard-Fuchs equations of %d forms in dimension %d"% (len(self.cohomology.basis()), self.dim))
         coordinates, denom = self.family.coordinates([self._restrict_form(w) for w in self.cohomology.basis()])
-        Ls = [self.family.picard_fuchs_equation(v)*denom for v in coordinates.rows()]
+
+        Ls = []
+        for v in coordinates.rows():
+            v2 = v/denom
+            denom2 = lcm([r.denominator() for r in v2 if r!=0])
+            numerators = denom2 * v2
+            Ls += [self.family.picard_fuchs_equation(numerators)*denom2]
+        print([L.degree() for L in Ls])
         return Ls
    
 
@@ -494,12 +503,16 @@ class LefschetzFamily(object):
     
     def _compute_paths_voronoi(self,singus, shift=1):
 
-        self.basepoint = floor(min([s.real() for s in singus])-shift)
+        reals = [s.real() for s in singus]
+        imags = [s.imag() for s in singus]
+        xmin, xmax, ymin, ymax = min(reals), max(reals), min(imags), max(imags)
+
+        self.basepoint = Util.simple_rational(xmin - (xmax-xmin)*shift, (xmax-xmin)/10)
 
         logger.info("Computing homotopy representants of the image of the projection in dimension %d"%  self.dim)
         logger.info("Computing Voronoi Diagram of %d points"% len(singus))
 
-        voronoi = Edges.voronoi(singus, self.basepoint)
+        voronoi = Edges.voronoi(singus, self.basepoint, shift)
 
         sps, loops, order = Edges.voronoi_loops(singus, self.basepoint)
         
@@ -514,7 +527,8 @@ class LefschetzFamily(object):
                 G.add_edge((loop[i], loop[i+1]))
             G.add_edge((loop[-1], loop[0]))
         G.remove_loops()
-        self.edges = G.edges(labels=False)
+        self.edges = [[e[0], e[1]] for e in G.edges(labels=False)]
+        self.edges.sort(key=lambda e: abs(e[0]-e[1]),reverse=True)
         
         return [sps[i] for i in order], [loops[i] for i in order]
 

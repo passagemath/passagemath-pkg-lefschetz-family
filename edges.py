@@ -237,26 +237,26 @@ class Edges(object):
         return sps, loops, order
 
     @classmethod
-    def voronoi(cls, points, basepoint, shift=1):
+    def voronoi(cls, points, basepoint, shift=1, border=5):
 
         CC = cls.CC
 
         r = min([min([ abs(CC(points[i]-points[j])) for j in range(i+1, len(points))]) for i in range(len(points)-1)])/10
 
-        maxx=ceil(max([p.real() for p in points])+shift)
-        minx=floor(min([p.real() for p in points])-shift)
-        maxy=ceil(max([p.imag() for p in points])+shift)
-        miny=floor(min([p.imag() for p in points])-shift)
+        reals = [s.real() for s in points]
+        imags = [s.imag() for s in points]
+        xmin, xmax, ymin, ymax = min(reals), max(reals), min(imags), max(imags)
+        xmin, xmax, ymin, ymax = xmin + shift*(xmin-xmax), xmax + shift*(xmax-xmin), ymin + shift*(ymin-ymax), ymax + shift*(ymax-ymin)
                
         rootapprox = set((QQ(Util.simple_rational(p.real(), r)), QQ(Util.simple_rational(p.imag(), r))) for p in points)
         rootapprox.add((QQ(basepoint.real()), QQ(basepoint.imag())))
-        rootapprox.add((QQ(maxx), QQ(0)))
-        rootapprox.add((QQ(0), QQ(maxy)))
-        rootapprox.add((QQ(0), QQ(miny))) 
-        rootapprox.add((QQ(maxx), QQ(miny))) 
-        rootapprox.add((QQ(maxx), QQ(maxx))) 
-        rootapprox.add((QQ(minx), QQ(minx))) 
-        rootapprox.add((QQ(minx), QQ(maxx))) 
+        
+        for i in range(border):
+            step = i/border
+            rootapprox.add((QQ(xmin + step*(xmax-xmin)), QQ(ymax)))
+            rootapprox.add((QQ(xmax + step*(xmin-xmax)), QQ(ymin)))
+            rootapprox.add((QQ(xmin), QQ(ymin + step*(ymax-ymin))))
+            rootapprox.add((QQ(xmax), QQ(ymax + step*(ymin-ymax))))
 
         return VoronoiDiagram(rootapprox)
 
