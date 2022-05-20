@@ -278,10 +278,12 @@ class Edges(object):
                     gr.add_edge(u, v)
 
             if pt == basepoint:
+                umin=None
                 for v in reg.vertices():
                     u = Util.simple_rational(v[0],r)+I*Util.simple_rational(v[1],r)
-                    gr.add_edge(pt, u, 1.0)
-                    break
+                    if umin==None or abs(pt- u)<abs(pt- umin):
+                        umin = u
+                gr.add_edge(pt, umin, 1.0)
         gr.remove_multiple_edges()
 
 
@@ -327,29 +329,11 @@ class Edges(object):
 
 
         # this ensures the loops are trigonometric-wise around the critical points
-        for loop in loops:
-            y = loop[0]
-            i=0
-            for k in range(len(loop)):
-                x=loop[k]
-                if x.imag()>y.imag() or (x.imag()==y.imag() and x.real()>y.real()):
-                    y=x
-                    i=k
-            if i==0:
-                A=loop[0]
-                B=loop[-1]
-                C=loop[1]
-            elif i==len(loop)-1:
-                A=loop[-1]
-                B=loop[-2]
-                C=loop[0]
-            else:
-                A=loop[i]
-                B=loop[i-1]
-                C=loop[i+1]
+        for j, loop in enumerate(loops):
+            A, B, C = loop[1], loop[0], loop[2]
             if not((B.real()-A.real())*(C.imag()-A.imag())-(B.imag()-A.imag())*(C.real()-A.real())<0):
-                loop = loop.reverse()
-
+                loop.reverse()
+            loops[j]= loop
         return gr, loops    
     
     @classmethod

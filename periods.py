@@ -36,6 +36,7 @@ from Context import Context
 
 import logging
 import os
+import time
 
 logger = logging.getLogger(__name__)
 
@@ -137,6 +138,8 @@ class LefschetzFamily(object):
     def _compute_critical_points(self):
         """Returns a list of the critical points of the projection map, as algebraic complex numbers
         """
+        logger.info("Computing critical points")
+        begin=time.time()
         forms=[v.dot_product(vector(self._vars)) for v in self.fibration]
         f=forms[0]/forms[1]
         S = PolynomialRing(QQ, self._vars+['k','t'])
@@ -145,7 +148,11 @@ class LefschetzFamily(object):
 
         ideal = S.ideal(eqs).elimination_ideal(S.gens()[:-1])
         Qt = PolynomialRing(QQ, 't')
-        return [e[0] for e in Qt(ideal.groebner_basis()[0]).roots(AlgebraicField())]
+
+        res=[e[0] for e in Qt(ideal.groebner_basis()[0]).roots(AlgebraicField())]
+        end = time.time()
+        logger.info("Critical points computed in %s"% time.strftime("%H:%M:%S",time.gmtime(end-begin)))
+        return res
 
                
     def _compute_thimbles(self):
@@ -157,9 +164,10 @@ class LefschetzFamily(object):
         
         logger.info("Computing thimbles of dimension %d ..." % self.dim)
                
-        omega = vector([0]*(len(self.family.basis)-1)+[1]) # choice of cyclic vector
-        L = self.family.picard_fuchs_equation(omega)
-        assert L.order()== len(self.family.basis)
+        w = self.cohomology.basis()[0]
+        L = self._Ls[0]
+        wt = self._restrict_form(w)
+        assert L.order()== len(self.family.basis)+1
 
         paths = self._compute_paths()
 
@@ -179,23 +187,20 @@ class LefschetzFamily(object):
             lift = block_matrix([[identity_matrix(n-1)], [matrix([[0]*(n-1)])]],subdivide=False)
             basis_change = block_matrix([[lift, matrix([-invariant_vector]).transpose()]],subdivide=False)
                
-        derivatives = [omega*vector(self.family.basis)]
+        derivatives = [self._RtoS(0), wt]
         for k in range(n-1 if self.dim%2==0 else n-2):
-            derivatives += [self._derivative(derivatives[-1], self._RtoS(self.P))/(k+1)] 
-        derivatives_coordinates = matrix([self.fiber.cohomology.coordinates(self.evaluate_at_basepoint(d)) for d in derivatives])
+            derivatives += [self._derivative(derivatives[-1], self._RtoS(self.P))] 
+        derivatives_coordinates, denom = self.family.coordinates(derivatives)
         
+        integration_correction = diagonal_matrix([1/ZZ(factorial(k)) for k in range(n+1 if self.dim%2==0 else n)])
+        initial_conditions = integration_correction* derivatives_coordinates(self.basepoint)/denom(self.basepoint)*self.fiber.period_matrix
+
         if self.dim%2==1:
-            initial_conditions = derivatives_coordinates*self.fiber.period_matrix*block_matrix([[identity_matrix(n-1)], [matrix([[0]*(n-1)])]])
-        else:
-            initial_conditions = derivatives_coordinates*self.fiber.period_matrix
+            initial_conditions = initial_conditions*lift
         
         logger.info("Computing monodromy matrices")
 
-        Mtot=1 # TODO: delete these lines
-        for M in transition_matrices:
-            Mtot=M*Mtot
-
-        Ms = [(initial_conditions**(-1)*M*initial_conditions) for M in transition_matrices]
+        Ms = [(initial_conditions.submatrix(1,0)**(-1)*M.submatrix(1,1)*initial_conditions.submatrix(1,0)) for M in transition_matrices]
         if not self.ctx.debug:
             Ms = [M.change_ring(ZZ) for M in Ms]
 
@@ -222,7 +227,10 @@ class LefschetzFamily(object):
             for M in Ms:
                 Mtot = M*Mtot
             assert Mtot == identity_matrix(len(self.fiber.homology)), "Monodromy around infinity is nontrivial, most likely due to a mistake while computing a basis of homotopy."
-               
+
+        initial_conditions = integration_correction* derivatives_coordinates(self.basepoint)/denom(self.basepoint)*self.fiber.period_matrix
+        self._integrated_thimbles = [[(transition_matrices[j]*initial_conditions*vs[j])[0] for j in range(r)]]
+
         return [(vs[i], paths[i], Ms[i]) for i in range(r)]
                
     def _compute_homology(self):
@@ -269,6 +277,7 @@ class LefschetzFamily(object):
     # Integration methods
 
     def integrate(self, L):
+
         if self.ctx.method == "delaunay":
             sps, edges, values = self._break_edges(L)
             logger.info("Computing numerical transition matrices along edges (%d edges total)."% len(edges))
@@ -279,11 +288,22 @@ class LefschetzFamily(object):
                 transition_matrices+=[M**-1*formal_monodromy(L, self.critical_points[j], ring=self.ctx.CBF)*M]
         elif self.ctx.method == "voronoi":
             N = len(self.edges)
-            logger.info("Computing numerical transition matrices along edges (%d edges total)."% N)
-            ntms = [[r[0][0][2], r[1]] for r in list(LefschetzFamily._compute_transition_matrix_voronoi([([i,N],L,[e[0], e[1]], self.ctx.nbits) for i, e in list(enumerate(self.edges))]))]
+            logger.info("Computing numerical transition matrices of operator of order %d and degree %d (%d edges total)."% (L.order(), L.degree(), N))
+            begin = time.time()
+            ntms = [[r[0][0][2], r[1]] for r in list(LefschetzFamily._compute_transition_matrix_voronoi([([i+1,N],L,[e[0], e[1]], self.ctx.nbits) for i, e in list(enumerate(self.edges))]))]
+            end = time.time()
+            duration = end-begin
+            duration_str = time.strftime("%H:%M:%S",time.gmtime(duration))
+            logger.info("Computation of edges finished -- total time: %s."% duration_str)
             transition_matrices = []
             for j in range(len(self.critical_points)):
                 path =  self._sps[j] + self._loops[j] +list(reversed(self._sps[j]))
+                M = self._reconstruct_path_voronoi(Util.simplify_path(path), ntms, L)
+                transition_matrices+=[M]
+            if self.dim==2:
+                p1 = self._sps[29] + self._loops[29] +list(reversed(self._sps[29]))
+                p2 = self._sps[30] + self._loops[30] +list(reversed(self._sps[30]))
+                path = Util.simplify_path(p1+p2)
                 M = self._reconstruct_path_voronoi(Util.simplify_path(path), ntms, L)
                 transition_matrices+=[M]
         return transition_matrices
@@ -373,7 +393,7 @@ class LefschetzFamily(object):
         
         Ls = self._compute_picard_fuchs()
 
-        for i in range(N):
+        for i in range(1, N):
             logger.info("Computing integral of form along thimbles [%d/%d]"% (i+1, N))
             L = Ls[i]*Ls[i].parent().gens()[0]
             w = self.cohomology.basis()[i]
@@ -392,9 +412,10 @@ class LefschetzFamily(object):
         
         logger.info("Integration of forms along thimbles computed in dimension %d." % self.dim)
         
-        self._integrated_thimbles = integrated_thimbles
+        self._integrated_thimbles += integrated_thimbles
+
         
-        return matrix(integrated_thimbles)*matrix(self.homology).transpose()
+        return matrix(self._integrated_thimbles)*matrix(self.homology).transpose()
     
     def _compute_intersection_product(self):
         r=len(self.thimbles)
@@ -442,12 +463,37 @@ class LefschetzFamily(object):
 
     @parallel(4)
     @classmethod
-    def _compute_transition_matrix_voronoi(cls, i, L, l, nbits=300):
+    def _compute_transition_matrix_voronoi(cls, i, L, l, nbits=300, maxtries=5):
         """ Returns the numerical transition matrix of L along l, adapted to computations of Voronoi. Accepts l=[]
         """
-        logger.info("[%d] Starting integration along edge [%d/%d]"% (os.getpid(), i[0]+1,i[1]))
-        res = L.numerical_transition_matrix(l, eps=2**(-nbits), assume_analytic=True) if l!= [] else identity_matrix(L.order()) #maybe add bounds_prec=128
-        logger.info("[%d] Finished integration along edge [%d/%d]"% (os.getpid(), i[0]+1,i[1]))
+        logger.info("[%d] Starting integration along edge [%d/%d]"% (os.getpid(), i[0],i[1]))
+        done = False
+        tries = 1
+        bounds_prec=256
+        begin = time.time()
+        while not done and tries < maxtries:
+            try:
+                res = L.numerical_transition_matrix(l, eps=2**(-nbits), assume_analytic=True, bounds_prec=bounds_prec) if l!= [] else identity_matrix(L.order()) 
+                resinv = res**-1 # checking the matrix is precise enough to be inverted
+            # except (ValueError, ZeroDivisionError) as e:
+            except Exception as e: #temporary fix : what exceptions do we expect ?
+                tries+=1
+                if tries<maxtries:
+                    bounds_prec *=2
+                    nbits*=2
+                    logger.info("[%d] Precision error when integrating edge [%d/%d]. Trying again with double bounds_prec (%d) and nbits (%d)."% (os.getpid(), i[0], i[1], bounds_prec, nbits))
+                else:
+                    logger.info("[%d] Too many ValueErrors when integrating edge [%d/%d]. Stopping computation here"% (os.getpid(), i[0], i[1]))
+                    raise e
+            # except Exception as e:
+            #     logger.info("[%d] Unexpected exception occured while integrated ")
+            #     raise e
+            else:
+                done=True
+        end = time.time()
+        duration = end-begin
+        duration_str = time.strftime("%H:%M:%S",time.gmtime(duration))
+        logger.info("[%d] Finished integration along edge [%d/%d] in %s"% (os.getpid(), i[0],i[1], duration_str))
         return res
                
     def _compute_picard_fuchs(self):
@@ -458,12 +504,12 @@ class LefschetzFamily(object):
         coordinates, denom = self.family.coordinates([self._restrict_form(w) for w in self.cohomology.basis()])
 
         Ls = []
-        for v in coordinates.rows():
+        for i, v in enumerate(coordinates.rows()):
             v2 = v/denom
             denom2 = lcm([r.denominator() for r in v2 if r!=0])
             numerators = denom2 * v2
             Ls += [self.family.picard_fuchs_equation(numerators)*denom2]
-        print([L.degree() for L in Ls])
+            logger.info("Operator [%d/%d] has order %d and degree %d for form with numerator of degree %d"% (i+1, len(self.cohomology.basis()), Ls[-1].order(), Ls[-1].degree(), self.cohomology.basis()[i].degree()))
         return Ls
    
 
@@ -527,7 +573,10 @@ class LefschetzFamily(object):
                 G.add_edge((loop[i], loop[i+1]))
             G.add_edge((loop[-1], loop[0]))
         G.remove_loops()
-        self.edges = [[e[0], e[1]] for e in G.edges(labels=False)]
+
+        # this is a temp fix to make sure that edges connected to zero don't start with 0
+        # indeed 0 is often a regular singularity of L, and for some reason computing integration along [0, a] is harder than [a, 0]
+        self.edges = [[e[0], e[1]] if e[0]!=0 else [e[1], e[0]] for e in G.edges(labels=False)]
         self.edges.sort(key=lambda e: abs(e[0]-e[1]),reverse=True)
         
         return [sps[i] for i in order], [loops[i] for i in order]
