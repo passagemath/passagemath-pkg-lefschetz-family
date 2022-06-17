@@ -261,7 +261,9 @@ class LefschetzFamily(object):
                
         imphi = phi.image()
                
-        B=matrix(kerdelta.gens()).solve_left(matrix(imphi.gens()))
+        
+        D, U, V = matrix(kerdelta.gens()).smith_form()
+        B = D.solve_left(matrix(imphi.gens())*V).change_ring(ZZ)*U
         Brows=B.row_space()
                
         compl = [[0 for i in range(Brows.degree())]]
