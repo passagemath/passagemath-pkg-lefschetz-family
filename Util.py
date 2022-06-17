@@ -30,6 +30,7 @@ class Util(object):
 
     @classmethod 
     def simple_rational(cls, p, r):
+        """Gives a rational q such that |p-q|<=r"""
         x=p
         l=[floor(x)]
         while abs(p-cls.evaluate_continued_fraction(l))>r:
@@ -39,6 +40,7 @@ class Util(object):
     
     @classmethod
     def evaluate_continued_fraction(cls, l):
+        """ Given a list l, evaluates the continued fraction l[0] + 1/(l[1] + 1/(l[2] + ...))"""
         p=l[-1]
         l=l[:-1]
         while len(l)>0:
@@ -48,6 +50,7 @@ class Util(object):
 
     @classmethod
     def invert_permutation(cls, l):
+        """Given a list representing a permutation of [0, ..., len(l)-1], l[i] = j, returns the inverse permutation l2[j] = i"""
         return [l.index(x) for x in range(len(l))]
 
     @classmethod

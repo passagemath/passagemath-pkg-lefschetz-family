@@ -130,6 +130,8 @@ class LefschetzFamily(object):
             return (vector([0,0,0,1]),vector([2,5,7,0]))
         if self.dim==3:
             return (vector([0,0,0,0,1]),vector([2,5,7,11,0]))
+        if self.dim==4:
+            return (vector([0,0,0,0,0,1]),vector([2,5,7,11,13,0]))
 
     # def _compute_distance(self, points):
     #     return min([min([abs(ComplexField(50)(p1-p2)) for p2 in points if p2!=p1]) for p1 in points])
@@ -189,8 +191,13 @@ class LefschetzFamily(object):
                
         derivatives = [self._RtoS(0), wt]
         for k in range(n-1 if self.dim%2==0 else n-2):
-            derivatives += [self._derivative(derivatives[-1], self._RtoS(self.P))] 
+            derivatives += [self._derivative(derivatives[-1], self._RtoS(self.P))]
+        logger.info("Computing the coordinates of the successive derivatives of integration forms")
+        begin = time.time()
         derivatives_coordinates, denom = self.family.coordinates(derivatives)
+        end = time.time()
+        duration_str = time.strftime("%H:%M:%S",time.gmtime(end-begin))
+        logger.info("Coordinates computed in %s"% duration_str)
         
         integration_correction = diagonal_matrix([1/ZZ(factorial(k)) for k in range(n+1 if self.dim%2==0 else n)])
         initial_conditions = integration_correction* derivatives_coordinates(self.basepoint)/denom(self.basepoint)*self.fiber.period_matrix
@@ -237,20 +244,20 @@ class LefschetzFamily(object):
         
         logger.info("Gluing thimbles together in dimension %d ..." % self.dim)
         
-        delta = matrix(self.vanishing_cycles)
+        delta = matrix(self.vanishing_cycles).change_ring(ZZ)
         kerdelta= delta.kernel()
 
         r = len(self.monodromy_matrices)
         n = len(self.fiber.cohomology.basis())
         
-        M=1
+        Mtot=1
         phi=[]
-        for i in range(r):
-            tempM=(self.monodromy_matrices[i]-1)*M
-            phi+=[[c/self.vanishing_cycles[i] for c in tempM.columns()]]
-            M=self.monodromy_matrices[i]*M
+        for M, d in zip(self.monodromy_matrices, self.vanishing_cycles):
+            tempM=(M-1)*Mtot
+            phi+=[[c/d for c in tempM.columns()]]
+            Mtot=M*Mtot
         phi = matrix(phi).transpose().change_ring(ZZ)
-        assert M == identity_matrix(len(self.fiber.homology)), "monodromy around infinity is not trivial, either there is a critical point at infinity or the paths are not ordered properly"
+        assert Mtot == identity_matrix(len(self.fiber.homology)), "monodromy around infinity is not trivial, either there is a critical point at infinity or the paths are not ordered properly"
                
         imphi = phi.image()
                
@@ -298,12 +305,6 @@ class LefschetzFamily(object):
             transition_matrices = []
             for j in range(len(self.critical_points)):
                 path =  self._sps[j] + self._loops[j] +list(reversed(self._sps[j]))
-                M = self._reconstruct_path_voronoi(Util.simplify_path(path), ntms, L)
-                transition_matrices+=[M]
-            if self.dim==2:
-                p1 = self._sps[29] + self._loops[29] +list(reversed(self._sps[29]))
-                p2 = self._sps[30] + self._loops[30] +list(reversed(self._sps[30]))
-                path = Util.simplify_path(p1+p2)
                 M = self._reconstruct_path_voronoi(Util.simplify_path(path), ntms, L)
                 transition_matrices+=[M]
         return transition_matrices
@@ -420,16 +421,27 @@ class LefschetzFamily(object):
     def _compute_intersection_product(self):
         r=len(self.thimbles)
         inter_prod_thimbles = matrix([[self._compute_intersection_product_thimbles(i,j) for j in range(r)] for i in range(r)])
-        return (matrix(self.homology)*inter_prod_thimbles*matrix(self.homology).transpose()/2).change_ring(ZZ)
+        return (matrix(self.homology)*inter_prod_thimbles*matrix(self.homology).transpose()).change_ring(ZZ)
         
     def _compute_intersection_product_thimbles(self,i,j):
         vi = self.thimbles[i][0]
         Mi = self.monodromy_matrices[i]
         vj = self.thimbles[j][0]
         Mj = self.monodromy_matrices[j]
+
+        di, dj = ((Mi-1)*vi), (Mj-1)*vj
+
         
-        res = ((Mi-1)*vi)*self.fiber.intersection_product*(Mj-1)*vj
-        
+        res = di*self.fiber.intersection_product*dj
+        resid = -di*self.fiber.intersection_product*vi
+
+        if i==j:
+            return resid
+        if i<j:
+            return res
+        else:
+            return 0
+
         return 0 if i==j else res*(1 if i>j else -1)
     
     def _restrict_form(self, A):
@@ -466,17 +478,17 @@ class LefschetzFamily(object):
     def _compute_transition_matrix_voronoi(cls, i, L, l, nbits=300, maxtries=5):
         """ Returns the numerical transition matrix of L along l, adapted to computations of Voronoi. Accepts l=[]
         """
-        logger.info("[%d] Starting integration along edge [%d/%d]"% (os.getpid(), i[0],i[1]))
+        # logger.info("[%d] Starting integration along edge [%d/%d]"% (os.getpid(), i[0],i[1]))
         done = False
         tries = 1
         bounds_prec=256
-        begin = time.time()
+        # begin = time.time()
         while not done and tries < maxtries:
             try:
                 res = L.numerical_transition_matrix(l, eps=2**(-nbits), assume_analytic=True, bounds_prec=bounds_prec) if l!= [] else identity_matrix(L.order()) 
                 resinv = res**-1 # checking the matrix is precise enough to be inverted
             # except (ValueError, ZeroDivisionError) as e:
-            except Exception as e: #temporary fix : what exceptions do we expect ?
+            except Exception as e: #temporary fix : what exceptions do we expectd?
                 tries+=1
                 if tries<maxtries:
                     bounds_prec *=2
@@ -490,10 +502,10 @@ class LefschetzFamily(object):
             #     raise e
             else:
                 done=True
-        end = time.time()
-        duration = end-begin
-        duration_str = time.strftime("%H:%M:%S",time.gmtime(duration))
-        logger.info("[%d] Finished integration along edge [%d/%d] in %s"% (os.getpid(), i[0],i[1], duration_str))
+        # end = time.time()
+        # duration = end-begin
+        # duration_str = time.strftime("%H:%M:%S",time.gmtime(duration))
+        # logger.info("[%d] Finished integration along edge [%d/%d] in %s"% (os.getpid(), i[0],i[1], duration_str))
         return res
                
     def _compute_picard_fuchs(self):
