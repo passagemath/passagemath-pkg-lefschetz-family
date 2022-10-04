@@ -11,6 +11,7 @@ class Context(object):
             compute_periods=True,
             singular=False,
             debug=False,
+            use_symmetry=True,
             nbits=200,
             depth=0
         ):
@@ -45,6 +46,10 @@ class Context(object):
         # if not isinstance(nbits, ): # what type is int ?
         #     raise TypeError("nbits", type(nbits))
         self.nbits = nbits
+
+        if not isinstance(use_symmetry, bool):
+            raise TypeError("use_symmetry", type(use_symmetry))
+        self.use_symmetry = use_symmetry
 
         # if not isinstance(depth, int):
         #     raise TypeError("depth", type(depth))

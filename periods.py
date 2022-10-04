@@ -24,6 +24,7 @@ from sage.rings.integer_ring import ZZ
 from sage.matrix.special import identity_matrix
 from sage.matrix.special import diagonal_matrix
 from sage.matrix.special import block_matrix
+from sage.matrix.special import block_diagonal_matrix
 from sage.matrix.special import zero_matrix
 from sage.parallel.decorate import parallel
 from sage.arith.misc import gcd
@@ -221,11 +222,13 @@ class LefschetzFamily(object):
 
         vs=[]
         for M in Ms:
+            vc = (M-1).transpose().image().gen()
             for i in range(n):
                 v = vector([0 if j!=i else 1 for j in range(n)]) # I am not sure one of these necessarily maps to a generator of the image
-                if (M-1)*v!=0:
+                if (M-1)*v==vc or (M-1)*v==-vc: # just checking it's nonzero is not sufficient
                     vs+=[v]
                     break
+            assert (M-1)*v==vc or (M-1)*v==-vc, "Could not find a preimage of the generator of the image of M-1"
         
         logger.info("Found %d thimbles in dimension %d." % (r, self.dim))
 
@@ -260,9 +263,8 @@ class LefschetzFamily(object):
         assert Mtot == identity_matrix(len(self.fiber.homology)), "monodromy around infinity is not trivial, either there is a critical point at infinity or the paths are not ordered properly"
                
         imphi = phi.image()
-               
         
-        D, U, V = matrix(kerdelta.gens()).smith_form()
+        D, U, V = kerdelta.matrix().smith_form()
         B = D.solve_left(matrix(imphi.gens())*V).change_ring(ZZ)*U
         Brows=B.row_space()
                
@@ -278,7 +280,7 @@ class LefschetzFamily(object):
             if rank+N == Brows.degree():
                 break
         quotient_basis=matrix(compl[1:])
-        result = (quotient_basis*matrix(kerdelta.gens())).rows()
+        result = (quotient_basis*kerdelta.matrix()).rows()
         logger.info("Done. Homology has rank %d in dimension %d." % (len(result), self.dim))
                
         return result
@@ -328,8 +330,12 @@ class LefschetzFamily(object):
         for e2,M in ntms:
             if e2==e:
                 return self._reconstruct_path_delaunay(sp[1:], ntms, L, values)*M
-            if list(reversed(e2))==e:
+            if [e2[1], e2[0]]==e:
                 return self._reconstruct_path_delaunay(sp[1:], ntms, L, values)*M**-1
+            if [e2[0].conjugate(), e2[1].conjugate()]==e:
+                return self._reconstruct_path_delaunay(sp[1:], ntms, L, values)*M.conjugate()
+            if [e2[1].conjugate(), e2[0].conjugate()]==e:
+                return self._reconstruct_path_delaunay(sp[1:], ntms, L, values)*(M**-1).conjugate()
         print(e)
         raise Exception("unknown edge") 
 
@@ -343,8 +349,12 @@ class LefschetzFamily(object):
         for e2,M in ntms:
             if e2==e:
                 return self._reconstruct_path_voronoi(sp[1:], ntms, L)*M
-            if list(reversed(e2))==e:
+            if [e2[1], e2[0]]==e:
                 return self._reconstruct_path_voronoi(sp[1:], ntms, L)*M**-1
+            if [e2[0].conjugate(), e2[1].conjugate()]==e:
+                return self._reconstruct_path_voronoi(sp[1:], ntms, L)*M.conjugate()
+            if [e2[1].conjugate(), e2[0].conjugate()]==e:
+                return self._reconstruct_path_voronoi(sp[1:], ntms, L)*M.conjugate()**-1
         print(e)
         raise Exception("unknown edge") 
                
@@ -360,11 +370,17 @@ class LefschetzFamily(object):
             paths+=[Edges.break_edges(Delaunay, e, sings)]
 
         edges = []
+        print("test")
         for p in paths:
             for i in range(len(p)-1):
                 if p[i]!= "Ri" and p[i]!= "Rd" and p[i+1]!= "Ri" and p[i+1]!= "Rd":
                     if not [p[i], p[i+1]] in edges and not [p[i+1], p[i]] in edges:
-                        edges += [[p[i], p[i+1]]]
+                        if (not self.ctx.use_symmetry) or (not [p[i+1].conjugate(), p[i].conjugate()] in edges and not [p[i].conjugate(), p[i+1].conjugate()] in edges):
+                            print(p)
+                            edges += [[p[i], p[i+1]]]
+                        else:
+                            print(ctx.use_symmetry)
+                            print(p)
         
         logger.info("Reconstructing paths with broken edges")
         sps = []    
@@ -393,13 +409,9 @@ class LefschetzFamily(object):
         N=len(self.cohomology.basis())
         n=len(self.fiber.homology)
         r=len(self.thimbles)
-        
-        Ls = self._compute_picard_fuchs()
 
-        for i in range(1, N):
+        for i, L, w in list(zip(range(N), self._Ls, self.cohomology.basis()))[1:]:
             logger.info("Computing integral of form along thimbles [%d/%d]"% (i+1, N))
-            L = Ls[i]*Ls[i].parent().gens()[0]
-            w = self.cohomology.basis()[i]
             wt = self._restrict_form(w)
             derivatives = [self._RtoS(0), wt]
             for k in range(n-1 if self.dim%2==0 else n-2):
@@ -423,7 +435,14 @@ class LefschetzFamily(object):
     def _compute_intersection_product(self):
         r=len(self.thimbles)
         inter_prod_thimbles = matrix([[self._compute_intersection_product_thimbles(i,j) for j in range(r)] for i in range(r)])
-        return (matrix(self.homology)*inter_prod_thimbles*matrix(self.homology).transpose()).change_ring(ZZ)
+        intersection_11 = (matrix(self.homology)*inter_prod_thimbles*matrix(self.homology).transpose()).change_ring(ZZ)
+        if self.dim%2==0:
+            intersection_02 = zero_matrix(2,2)
+            intersection_02[0,1], intersection_02[1,0] = 1,1
+            intersection_02[1,1] = -1
+            return block_diagonal_matrix(intersection_11, intersection_02)
+        else:
+            return intersection_11
         
     def _compute_intersection_product_thimbles(self,i,j):
         vi = self.thimbles[i][0]
@@ -435,7 +454,7 @@ class LefschetzFamily(object):
 
         
         res = di*self.fiber.intersection_product*dj
-        resid = -di*self.fiber.intersection_product*vi
+        resid = -vi*self.fiber.intersection_product*di
 
         if i==j:
             return resid
@@ -500,7 +519,7 @@ class LefschetzFamily(object):
                     logger.info("[%d] Too many ValueErrors when integrating edge [%d/%d]. Stopping computation here"% (os.getpid(), i[0], i[1]))
                     raise e
             # except Exception as e:
-            #     logger.info("[%d] Unexpected exception occured while integrated ")
+            #     logger.info("[%d] Unexpected exception occured while integrating ")
             #     raise e
             else:
                 done=True
@@ -589,8 +608,16 @@ class LefschetzFamily(object):
         G.remove_loops()
 
         # this is a temp fix to make sure that edges connected to zero don't start with 0
-        # indeed 0 is often a regular singularity of L, and for some reason computing integration along [0, a] is harder than [a, 0]
+        # indeed 0 is often a regular singular point of L, and for some reason computing integration along [0, a] is harder than [a, 0]
         self.edges = [[e[0], e[1]] if e[0]!=0 else [e[1], e[0]] for e in G.edges(labels=False)]
+
+        edges = []
+        for e in self.edges:
+            if not e in edges and not [e[1], e[0]] in edges:
+                if (not self.ctx.use_symmetry) or (not [e[0].conjugate(), e[1].conjugate()] in edges and not [e[1].conjugate(), e[0].conjugate()] in edges):
+                    edges += [e]
+        self.edges=edges
+
         self.edges.sort(key=lambda e: abs(e[0]-e[1]),reverse=True)
         
         return [sps[i] for i in order], [loops[i] for i in order]

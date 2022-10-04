@@ -20,6 +20,7 @@ from sage.functions.other import floor
 from sage.symbolic.constants import pi
 from sage.plot.plot import list_plot
 from sage.parallel.decorate import parallel
+from sage.combinat.integer_vector import IntegerVectors
 
 import logging
 
@@ -72,3 +73,7 @@ class Util(object):
             else:
                 i=i+1
         return res
+
+    @classmethod
+    def monomials(cls, ring, degree):
+        return [ring.monomial(*m) for m in list(IntegerVectors(degree, ring.ngens()))]
