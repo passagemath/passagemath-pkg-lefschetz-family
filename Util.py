@@ -18,6 +18,8 @@ from delaunay_triangulation.triangulate import delaunay, Vertex
 from sage.functions.other import ceil
 from sage.functions.other import floor
 from sage.symbolic.constants import pi
+from sage.arith.misc import gcd
+from sage.arith.misc import xgcd
 from sage.plot.plot import list_plot
 from sage.parallel.decorate import parallel
 from sage.combinat.integer_vector import IntegerVectors
@@ -77,3 +79,20 @@ class Util(object):
     @classmethod
     def monomials(cls, ring, degree):
         return [ring.monomial(*m) for m in list(IntegerVectors(degree, ring.ngens()))]
+
+    @classmethod
+    def xgcd_list(cls, l):
+        if len(l)==0:
+            return 0, []
+        if len(l)==1:
+            return l[0], [1]
+        d = gcd(l)
+        result = [1]
+        a = l[0]
+        for i in range(len(l)-1):
+            b = l[i+1]
+            d2, u, v = xgcd(a,b)
+            result = [k*u for k in result] + [v]
+            a=d2
+        assert d2==d, "not getting the correct gcd"
+        return d2, result

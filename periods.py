@@ -223,12 +223,13 @@ class LefschetzFamily(object):
         vs=[]
         for M in Ms:
             vc = (M-1).transpose().image().gen()
-            for i in range(n):
-                v = vector([0 if j!=i else 1 for j in range(n)]) # I am not sure one of these necessarily maps to a generator of the image
-                if (M-1)*v==vc or (M-1)*v==-vc: # just checking it's nonzero is not sufficient
-                    vs+=[v]
-                    break
+            ints=[]
+            for c in (M-1).columns():
+                ints+=[c/vc]
+            d, l = Util.xgcd_list(ints)
+            v = vector(l)
             assert (M-1)*v==vc or (M-1)*v==-vc, "Could not find a preimage of the generator of the image of M-1"
+            vs+=[v]
         
         logger.info("Found %d thimbles in dimension %d." % (r, self.dim))
 
@@ -487,14 +488,14 @@ class LefschetzFamily(object):
             return [V(alpha)*A(alpha) for alpha in alphas]
         return _residue_form(A*U/(k-1)+(A*V).derivative()/(k-1)**2, P, k-1, alphas)
     
-    @parallel(4)
+    @parallel(128)
     @classmethod
     def _compute_transition_matrix_delaunay(cls, L, l, values, nbits=400):
         """computes the numerical transition matrix of L along l, adapted to computations of Delaunay. Accepts l=[]"""
         res = L.numerical_transition_matrix([values[v] for v in l], eps=2**(-nbits), assume_analytic=True) if l!= [] else identity_matrix(L.order())
         return res
 
-    @parallel(4)
+    @parallel(128)
     @classmethod
     def _compute_transition_matrix_voronoi(cls, i, L, l, nbits=300, maxtries=5):
         """ Returns the numerical transition matrix of L along l, adapted to computations of Voronoi. Accepts l=[]
