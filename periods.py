@@ -128,7 +128,7 @@ class LefschetzFamily(object):
     @property
     def family(self):
         if not hasattr(self,'_family'):
-            RtoS = self.RtoS()
+            RtoS = self._RtoS()
 
             self._family = Family(RtoS(self.P))
         return self._family
@@ -140,7 +140,7 @@ class LefschetzFamily(object):
             if self.dim==1:
                 self._fibration= (vector([0,0,1]), vector([2,5,0]))
             if self.dim==2:
-                self._fibration= (vector([0,0,0,1]),vector([2,5,7,0]))
+                self._fibration= (vector([0,0,0,1]),vector([1,2,-1,0]))
             if self.dim==3:
                 self._fibration= (vector([0,0,0,0,1]),vector([2,5,7,11,0]))
             if self.dim==4:
@@ -185,7 +185,7 @@ class LefschetzFamily(object):
             n = len(self.fiber.homology)
             r = len(self.critical_points)  
 
-            RtoS = self.RtoS()
+            RtoS = self._RtoS()
 
             if self.dim%2==1:
                 invariant_vector=vector([1]*n)
@@ -228,8 +228,7 @@ class LefschetzFamily(object):
     def fiber(self):
         assert self.dim!=0, "Variety of dimension 0 does not have a fiber"
         if not hasattr(self,'_fiber'):
-
-            RtoS = self.RtoS()
+            RtoS = self._RtoS()
             evaluate_at_basepoint = RtoS.codomain().hom([self.basepoint], RtoS.codomain().base_ring())
             self._fiber = LefschetzFamily(evaluate_at_basepoint(RtoS(self.P)), method=self.ctx.method, nbits=self.ctx.nbits, depth=self.ctx.depth+1)
 
@@ -310,7 +309,7 @@ class LefschetzFamily(object):
         return self._homology
 
 
-    def RtoS(self):
+    def _RtoS(self):
         R = self.P.parent()
         _vars = [v for v in R.gens()]
         S = PolynomialRing(PolynomialRing(QQ, _vars[:-1]), 't')
@@ -344,7 +343,7 @@ class LefschetzFamily(object):
         n=len(self.fiber.homology)
         r=len(self.thimbles)
         
-        RtoS = self.RtoS()
+        RtoS = self._RtoS()
 
         for i2 in l:
             i= l[i2]
@@ -515,7 +514,7 @@ class LefschetzFamily(object):
         """
         assert self.dim !=0, "cannot restrict form of a dimension 0 variety"
 
-        RtoS = self.RtoS()
+        RtoS = self._RtoS()
 
 
         dt = RtoS(self.P.parent().gens()[-1]).derivative() # this formula is specific to Lefschetz fibration where one of the maps is z and the other map does not depend on z, need to change it
