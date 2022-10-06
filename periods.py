@@ -49,242 +49,319 @@ class LefschetzFamily(object):
         This class aims at computing an effective basis of the homology group H_n(X), 
         given as lifts of paths through a Lefschetz fibration.
         """
-
-        logger.info("Computing homology of hypersurface defined by %s"% str(P))
         
         self.ctx = Context(**kwds)
         
         assert P.is_homogeneous(), "nonhomogeneous defining polynomial"
         
-        self.degree = P.degree()
-        self.P = P
-        self._nvars = P.parent().ngens()
-        self.dim = self._nvars-2
-        self._R = P.parent()
-        self._vars = [v for v in self._R.gens()]
-        
-        
-        logger.info("Computing homology of variety of dimension %d." % self.dim)
-        
-        if self.dim==0:
-            self.cohomology = Cohomology(self.P)
-            affineR = PolynomialRing(QQbar, 'X')
-            affineProjection= self._R.hom([affineR.gens()[0],1], affineR)
-            self.homology = [e[0] for e in affineProjection(self.P).roots()]
-            
-            self.period_matrix = matrix([self._residue_form(affineProjection(b), affineProjection(self.P), (b.degree()+len(self._R.gens()))//P.degree(), self.homology) for b in self.cohomology.basis()]).change_ring(self.ctx.CBF)
-            self.intersection_product=identity_matrix(self.degree)
-        
-        else:
-            self.cohomology = Cohomology(self.P)
-            self.fibration = self._compute_fibration()
-            self.critical_points = self._compute_critical_points()
-        
-            self._S = PolynomialRing(PolynomialRing(QQ, self._vars[:-1]), 't')
-            t=self._S.gens()[0]
-            form = self.fibration[1][:-1].dot_product(vector(self._S.base_ring().gens())) + t*self.fibration[0][:-1].dot_product(vector(self._S.base_ring().gens()))
-            denom = self.fibration[1][-1]*t+self.fibration[0][-1]
-            self._RtoS = self._R.hom([denom**self.degree*v for v in self._S.base_ring().gens()]+[t*form], self._S)
-            self.family = Family(self._RtoS(self.P))
-
-
-            self._Ls = [L*L.parent().gens()[0] for L in self._compute_picard_fuchs()]
-
-            # thimbles are given as a list of (p, l) where p is an element of H_{n-1}(X_b) and l a path 
-            # in P^1 \ Sigma such that tau_l(p) = Delta is the thimble
-            self.thimbles = []
-            self.monodromy_matrices =[]
-            self.vanishing_cycles =[]
-            self.perm_cycles = []
-            list_thimbles = self._compute_thimbles() # the basepoint is defined here
-            for (d, l, M) in list_thimbles:
-                self.thimbles+=[(d, l)]
-                self.perm_cycles += [d]
-                if not self.ctx.debug:
-                    self.vanishing_cycles+=[(M-1)*d / gcd((M-1)*d)]
-                self.monodromy_matrices += [M]
-            
-            # homology cycles are given as a vector corresponding to coordinates of thimbles
-            if not self.ctx.debug:
-                self.homology = self._compute_homology()
-                self.intersection_product=self._compute_intersection_product()
-                if self.ctx.compute_periods:
-                    self.period_matrix = self._compute_periods()
-        logger.info("Computation of homology of variety of dimension %d completed." % self.dim)
+        self._P = P
     
-    def _compute_fibration(self):
-        # TODO: find good fibration to separate critical points. Ideally, minimize standard deviation of distance between singularities (?)
-        # best_fibration=None
-        # best_distance=0 
-        # for i in range(100):
-        #     self.fibration = (vector([0]*(self.dim+1)+[1]), vector([ZZ.random_element(-100,100) for i in range(self.dim+1)]+[0]))
-        #     self.critical_points = self._compute_critical_points()
-        #     distance = self._compute_distance(self.critical_points)
-        #     if best_fibration==None or best_distance<distance:
-        #         best_fibration = self.fibration
-        #         best_distance = distance
-        # self.fibration = best_fibration
+    
+    @property
+    def intersection_product(self):
+        if not hasattr(self,'_intersection_product'):
+            assert self.dim==0, "No way to compute intersection product in positive dimension yet"
+            self._intersection_product=identity_matrix(self.degree)
+        return self._intersection_product
 
-        if self.dim==1:
-            return (vector([0,0,1]), vector([2,5,0]))
-        if self.dim==2:
-            return (vector([0,0,0,1]),vector([2,5,7,0]))
-        if self.dim==3:
-            return (vector([0,0,0,0,1]),vector([2,5,7,11,0]))
-        if self.dim==4:
-            return (vector([0,0,0,0,0,1]),vector([2,5,7,11,13,0]))
+    @property
+    def period_matrix(self):
+        if not hasattr(self, '_period_matrix'):
+            if self.dim==0:
+                R = self.P.parent()
+                affineR = PolynomialRing(QQbar, 'X')
+                affineProjection = R.hom([affineR.gens()[0],1], affineR)
+                self._period_matrix = matrix([self._residue_form(affineProjection(b), affineProjection(self.P), (b.degree()+len(R.gens()))//self.P.degree(), self.homology) for b in self.cohomology.basis()]).change_ring(self.ctx.CBF)
+            else:
+                self._period_matrix = matrix(self.integrated_thimbles([i for i in range(len(self.cohomology.basis()))]))*matrix(self.homology).transpose()
+
+        return self._period_matrix
+
+    @property
+    def simple_periods(self):
+        if not hasattr(self, '_simple_periods'):
+            if self.dim==0:
+                self._simple_periods = self.period_matrix
+            else:
+                self._simple_periods = matrix(self.integrated_thimbles([0]))*matrix(self.homology).transpose()
+        return self._simple_periods
+
+
+    @property
+    def P(self):
+        return self._P
+
+    @property
+    def degree(self):
+        if not hasattr(self,'_degree'):
+            self._degree = self.P.degree()
+        return self._degree
+    
+    @property
+    def dim(self):
+        if not hasattr(self,'_dim'):
+            self._dim = len(self.P.parent().gens())-2
+        return self._dim
+
+    def picard_fuchs_equation(self, i):
+        if not hasattr(self,'_picard_fuchs_equations'):
+            self._picard_fuchs_equations = [None for i in range(len(self.cohomology.basis()))]
+            logger.info("Computing Picard-Fuchs equations of %d forms in dimension %d"% (len(self.cohomology.basis()), self.dim))
+            coordinates, denom = self.family.coordinates([self._restrict_form(w) for w in self.cohomology.basis()])
+
+            for j, v in enumerate(coordinates.rows()):
+                v2 = v/denom
+                denom2 = lcm([r.denominator() for r in v2 if r!=0])
+                numerators = denom2 * v2
+                L = self.family.picard_fuchs_equation(numerators)*denom2
+                logger.info("Operator [%d/%d] has order %d and degree %d for form with numerator of degree %d"% (j+1, len(self.cohomology.basis()), L.order(), L.degree(), self.cohomology.basis()[j].degree()))
+                self._picard_fuchs_equations[j] = L
+        return self._picard_fuchs_equations[i]
+    
+    @property
+    def cohomology(self):
+        if not hasattr(self,'_cohomology'):
+            self._cohomology = Cohomology(self.P)
+        return self._cohomology
+    
+    
+    @property
+    def family(self):
+        if not hasattr(self,'_family'):
+            RtoS = self.RtoS()
+
+            self._family = Family(RtoS(self.P))
+        return self._family
+    
+
+    @property
+    def fibration(self):
+        if not hasattr(self,'_fibration'): #TODO take random fibration(s), and try to reduce variance of distance between critical points(?)
+            if self.dim==1:
+                self._fibration= (vector([0,0,1]), vector([2,5,0]))
+            if self.dim==2:
+                self._fibration= (vector([0,0,0,1]),vector([2,5,7,0]))
+            if self.dim==3:
+                self._fibration= (vector([0,0,0,0,1]),vector([2,5,7,11,0]))
+            if self.dim==4:
+                self._fibration= (vector([0,0,0,0,0,1]),vector([2,5,7,11,13,0]))
+        return self._fibration
 
     # def _compute_distance(self, points):
     #     return min([min([abs(ComplexField(50)(p1-p2)) for p2 in points if p2!=p1]) for p1 in points])
         
+    @property
+    def critical_points(self):
+        if not hasattr(self,'_critical_points'):
+            R = self.P.parent()
+            _vars = [v for v in R.gens()]
+            logger.info("Computing critical points")
+            begin=time.time()
+            forms=[v.dot_product(vector(_vars)) for v in self.fibration]
+            f=forms[0]/forms[1]
+            S = PolynomialRing(QQ, _vars+['k','t'])
+            k,t= S.gens()[-2:]
+            eqs = [self.P, _vars[-1]-1,t*forms[1]-forms[0]]+[(f.derivative(var).numerator()-k*self.P.derivative(var)*f.derivative(var).denominator()) for var in _vars]
 
-    def _compute_critical_points(self):
-        """Returns a list of the critical points of the projection map, as algebraic complex numbers
-        """
-        logger.info("Computing critical points")
-        begin=time.time()
-        forms=[v.dot_product(vector(self._vars)) for v in self.fibration]
-        f=forms[0]/forms[1]
-        S = PolynomialRing(QQ, self._vars+['k','t'])
-        k,t= S.gens()[-2:]
-        eqs = [self.P, self._vars[-1]-1,t*forms[1]-forms[0]]+[(f.derivative(var).numerator()-k*self.P.derivative(var)*f.derivative(var).denominator()) for var in self._vars]
+            ideal = S.ideal(eqs).elimination_ideal(S.gens()[:-1])
+            Qt = PolynomialRing(QQ, 't')
 
-        ideal = S.ideal(eqs).elimination_ideal(S.gens()[:-1])
-        Qt = PolynomialRing(QQ, 't')
+            self._critical_points=[e[0] for e in Qt(ideal.groebner_basis()[0]).roots(AlgebraicField())]
+            end = time.time()
+            logger.info("Critical points computed in %s"% time.strftime("%H:%M:%S",time.gmtime(end-begin)))
+        return self._critical_points
+    
+    @property
+    def monodromy_matrices(self):
+        assert self.dim!=0, "Cannot compute monodromy matrices in dimension 0"
+        if not hasattr(self, '_monodromy_matrices'):
+            i=0
+            assert self.picard_fuchs_equation(i).order()== len(self.family.basis),"Picard-Fuchs equation is not cyclic, cannot use it to compute monodromy"
+            w  = self.cohomology.basis()[i]
+            wt = self._restrict_form(w)
 
-        res=[e[0] for e in Qt(ideal.groebner_basis()[0]).roots(AlgebraicField())]
-        end = time.time()
-        logger.info("Critical points computed in %s"% time.strftime("%H:%M:%S",time.gmtime(end-begin)))
-        return res
+            transition_matrices= self.transition_matrices([i])[0]
 
-               
-    def _compute_thimbles(self):
-        """ Returns a list of triples (v, path, M) for each critical point x in self.critical_points, where 
-            -- `path` is a loop around x, 
-            -- `M` is the matrix of the action of monodromy along path on the homology of self.fiber
-            -- `v` is a vector such that Mv-v is the vanishing cycle of x
-        """
-        
-        logger.info("Computing thimbles of dimension %d ..." % self.dim)
-               
-        w = self.cohomology.basis()[0]
-        L = self._Ls[0]
-        wt = self._restrict_form(w)
-        assert L.order()== len(self.family.basis)+1
+            n = len(self.fiber.homology)
+            r = len(self.critical_points)  
 
-        paths = self._compute_paths()
+            RtoS = self.RtoS()
 
-        transition_matrices= self.integrate(L)
-
-        logger.info("Computing periods of fiber.")
-        self.evaluate_at_basepoint = self._S.hom([self.basepoint], self._S.base_ring())
-        self.fiber = LefschetzFamily(self.evaluate_at_basepoint(self._RtoS(self.P)), method=self.ctx.method, nbits=self.ctx.nbits, depth=self.ctx.depth+1)
-
-
-        n = len(self.fiber.homology)
-        r = len(self.critical_points)   
-
-        if self.dim%2==1:
-            invariant_vector=vector([1]*n)
-            proj = block_matrix([[identity_matrix(n-1), matrix([[-1]]*(n-1))]],subdivide=False)
-            lift = block_matrix([[identity_matrix(n-1)], [matrix([[0]*(n-1)])]],subdivide=False)
-            basis_change = block_matrix([[lift, matrix([-invariant_vector]).transpose()]],subdivide=False)
-               
-        derivatives = [self._RtoS(0), wt]
-        for k in range(n-1 if self.dim%2==0 else n-2):
-            derivatives += [self._derivative(derivatives[-1], self._RtoS(self.P))]
-        logger.info("Computing the coordinates of the successive derivatives of integration forms")
-        begin = time.time()
-        derivatives_coordinates, denom = self.family.coordinates(derivatives)
-        end = time.time()
-        duration_str = time.strftime("%H:%M:%S",time.gmtime(end-begin))
-        logger.info("Coordinates computed in %s"% duration_str)
-        
-        integration_correction = diagonal_matrix([1/ZZ(factorial(k)) for k in range(n+1 if self.dim%2==0 else n)])
-        initial_conditions = integration_correction* derivatives_coordinates(self.basepoint)/denom(self.basepoint)*self.fiber.period_matrix
-
-        if self.dim%2==1:
-            initial_conditions = initial_conditions*lift
-        
-        logger.info("Computing monodromy matrices")
-
-        Ms = [(initial_conditions.submatrix(1,0)**(-1)*M.submatrix(1,1)*initial_conditions.submatrix(1,0)) for M in transition_matrices]
-        if not self.ctx.debug:
-            Ms = [M.change_ring(ZZ) for M in Ms]
-
-        for i in range(r):
-            M=Ms[i]
-            if not self.ctx.singular and not self.ctx.debug:
-                assert (M-1).rank()==1, "If M is a monodromy matrix around a single critical point, M-I should have rank 1"
             if self.dim%2==1:
-                prod= invariant_vector*self.fiber.intersection_product*(lift*M*proj-identity_matrix(n))*lift/n
-                Ms[i] = basis_change.inverse()*block_matrix([[M,zero_matrix(n-1,1)],[matrix([prod]),matrix([[1]])]])*basis_change
+                invariant_vector=vector([1]*n)
+                proj = block_matrix([[identity_matrix(n-1), matrix([[-1]]*(n-1))]],subdivide=False)
+                lift = block_matrix([[identity_matrix(n-1)], [matrix([[0]*(n-1)])]],subdivide=False)
+                basis_change = block_matrix([[lift, matrix([-invariant_vector]).transpose()]],subdivide=False)
+                   
+            derivatives = [RtoS(0), wt]
+            for k in range(n-1 if self.dim%2==0 else n-2):
+                derivatives += [self._derivative(derivatives[-1], RtoS(self.P))]
+            
+            logger.info("Computing the coordinates of the successive derivatives of integration forms")
+            begin = time.time()
+            derivatives_coordinates, denom = self.family.coordinates(derivatives)
+            end = time.time()
+            duration_str = time.strftime("%H:%M:%S",time.gmtime(end-begin))
+            logger.info("Coordinates computed in %s"% duration_str)
+            
+            integration_correction = diagonal_matrix([1/ZZ(factorial(k)) for k in range(n+1 if self.dim%2==0 else n)])
+            initial_conditions = integration_correction* derivatives_coordinates(self.basepoint)/denom(self.basepoint)*self.fiber.period_matrix
 
-        vs=[]
-        for M in Ms:
-            vc = (M-1).transpose().image().gen()
-            ints=[]
-            for c in (M-1).columns():
-                ints+=[c/vc]
-            d, l = Util.xgcd_list(ints)
-            v = vector(l)
-            assert (M-1)*v==vc or (M-1)*v==-vc, "Could not find a preimage of the generator of the image of M-1"
-            vs+=[v]
-        
-        logger.info("Found %d thimbles in dimension %d." % (r, self.dim))
+            if self.dim%2==1:
+                initial_conditions = initial_conditions*lift
 
-        if not self.ctx.debug:
-            Mtot = 1
-            for M in Ms:
-                Mtot = M*Mtot
-            assert Mtot == identity_matrix(len(self.fiber.homology)), "Monodromy around infinity is nontrivial, most likely due to a mistake while computing a basis of homotopy."
+            Ms = [(initial_conditions.submatrix(1,0)**(-1)*M.submatrix(1,1)*initial_conditions.submatrix(1,0)) for M in transition_matrices]
+            if not self.ctx.debug:
+                Ms = [M.change_ring(ZZ) for M in Ms]
 
-        initial_conditions = integration_correction* derivatives_coordinates(self.basepoint)/denom(self.basepoint)*self.fiber.period_matrix
-        self._integrated_thimbles = [[(transition_matrices[j]*initial_conditions*vs[j])[0] for j in range(r)]]
+            for i in range(r):
+                M=Ms[i]
+                if not self.ctx.singular and not self.ctx.debug:
+                    assert (M-1).rank()==1, "If M is a monodromy matrix around a single critical point, M-I should have rank 1"
+                if self.dim%2==1:
+                    prod= invariant_vector*self.fiber.intersection_product*(lift*M*proj-identity_matrix(n))*lift/n
+                    Ms[i] = basis_change.inverse()*block_matrix([[M,zero_matrix(n-1,1)],[matrix([prod]),matrix([[1]])]])*basis_change
+            self._monodromy_matrices = Ms
+        return self._monodromy_matrices
+    
+    @property
+    def fiber(self):
+        assert self.dim!=0, "Variety of dimension 0 does not have a fiber"
+        if not hasattr(self,'_fiber'):
 
-        return [(vs[i], paths[i], Ms[i]) for i in range(r)]
-               
-    def _compute_homology(self):
-        
-        logger.info("Gluing thimbles together in dimension %d ..." % self.dim)
-        
-        delta = matrix(self.vanishing_cycles).change_ring(ZZ)
-        kerdelta= delta.kernel()
+            RtoS = self.RtoS()
+            evaluate_at_basepoint = RtoS.codomain().hom([self.basepoint], RtoS.codomain().base_ring())
+            self._fiber = LefschetzFamily(evaluate_at_basepoint(RtoS(self.P)), method=self.ctx.method, nbits=self.ctx.nbits, depth=self.ctx.depth+1)
 
-        r = len(self.monodromy_matrices)
-        n = len(self.fiber.cohomology.basis())
+        return self._fiber
+
+    @property
+    def thimbles(self):
+        if not hasattr(self,'_thimbles'):
+            self._thimbles=[]
+            for pc, path in zip(self.permuting_cycles, self.paths):
+                self._thimbles+=[(pc, path)]
+        return self._thimbles
+
+    @property
+    def permuting_cycles(self):
+        if not hasattr(self, '_permuting_cycles'):
+            self._permuting_cycles = [None for i in range(len(self.monodromy_matrices))]
+            for i in range(len(self.monodromy_matrices)):
+                M = self.monodromy_matrices[i]
+                D, U, V = (M-1).smith_form()
+                self._permuting_cycles[i] = V * vector([1]+[0]*(V.dimensions()[0]-1))
+        return self._permuting_cycles
+
+    @property
+    def vanishing_cycles(self):
+        if not hasattr(self, '_vanishing_cycles'):
+            self._vanishing_cycles = []
+            for p, M in zip(self.permuting_cycles,self.monodromy_matrices):
+                self._vanishing_cycles += [(M-1)*p]
+        return self._vanishing_cycles
+
+
+    @property
+    def homology(self):
+        if not hasattr(self, '_homology'):
+            if self.dim==0:
+                R = self.P.parent()
+                affineR = PolynomialRing(QQbar, 'X')
+                affineProjection = R.hom([affineR.gens()[0],1], affineR)
+                self._homology = [e[0] for e in affineProjection(self.P).roots()]
+
+            else:
+                # Compute the kernel of the boundary map
+                delta = matrix(self.vanishing_cycles).change_ring(ZZ)
+                kerdelta= delta.kernel()
+
+                r = len(self.monodromy_matrices)
+                n = len(self.fiber.cohomology.basis())
+
+                # Compute the extensions aronud infinity
+                Mtot=1
+                phi=[]
+                for M, v in zip(self.monodromy_matrices, self.vanishing_cycles):
+                    tempM=(M-1)*Mtot
+                    phi+=[[c/v for c in tempM.columns()]]
+                    Mtot=M*Mtot
+                phi = matrix(phi).transpose().change_ring(ZZ)
+                imphi = phi.image()
+                assert Mtot == identity_matrix(len(self.fiber.homology)), "Monodromy around infinity is nontrivial, most likely because the paths do not actually compose to the loop around infinity"
+
+                # compute representants of the quotient H(Y)/kerdelta
+                D, U, V = kerdelta.matrix().smith_form()
+                B = D.solve_left(matrix(imphi.gens())*V).change_ring(ZZ)*U
+                Brows=B.row_space()
+                compl = [[0 for i in range(Brows.degree())]]
+                rank=Brows.dimension()
+                N=0
+                for i in range(Brows.degree()):
+                    v=[1 if j==i else 0 for j in range(Brows.degree())]
+                    M=block_matrix([[B],[matrix(compl)],[matrix([v])]],subdivide=False)
+                    if rank+N+1==M.rank():
+                        compl += [v]
+                        N+=1
+                    if rank+N == Brows.degree():
+                        break
+                quotient_basis=matrix(compl[1:])
+                self._homology = (quotient_basis*kerdelta.matrix()).rows() # NB this is the homology of Y
+        return self._homology
+
+
+    def RtoS(self):
+        R = self.P.parent()
+        _vars = [v for v in R.gens()]
+        S = PolynomialRing(PolynomialRing(QQ, _vars[:-1]), 't')
+        t=S.gens()[0]
+        form = self.fibration[1][:-1].dot_product(vector(S.base_ring().gens())) + t*self.fibration[0][:-1].dot_product(vector(S.base_ring().gens()))
+        denom = self.fibration[1][-1]*t+self.fibration[0][-1]
+        RtoS = R.hom([denom**self.degree*v for v in S.base_ring().gens()]+[t*form], S)
+        return RtoS
+
+    def transition_matrices(self, l):
+        if not hasattr(self, '_integratedQ'):
+            self._integratedQ = [False for i in range(len(self.cohomology.basis()))]
+        if not hasattr(self, '_transition_matrices'):
+            self._transition_matrices = [None for i in range(len(self.cohomology.basis()))]
+        for i in l:
+            if not self._integratedQ[i]:
+                L = self.picard_fuchs_equation(i)
+                L = L* L.parent().gens()[0]
+                self._transition_matrices[i] = self.integrate(L)
+                self._integratedQ[i]=True
+        return [self._transition_matrices[i] for i in l]
+    
+    def integrated_thimbles(self, l):
+        transition_matrices= self.transition_matrices(l)
+        if not hasattr(self, '_integrated_thimblesQ'):
+            self._integrated_thimblesQ = [False for i in range(len(self.cohomology.basis()))]
+        if not hasattr(self, '_integrated_thimbles'):
+            self._integrated_thimbles = [None for i in range(len(self.cohomology.basis()))]
         
-        Mtot=1
-        phi=[]
-        for M, d in zip(self.monodromy_matrices, self.vanishing_cycles):
-            tempM=(M-1)*Mtot
-            phi+=[[c/d for c in tempM.columns()]]
-            Mtot=M*Mtot
-        phi = matrix(phi).transpose().change_ring(ZZ)
-        assert Mtot == identity_matrix(len(self.fiber.homology)), "monodromy around infinity is not trivial, either there is a critical point at infinity or the paths are not ordered properly"
-               
-        imphi = phi.image()
+        N=len(self.cohomology.basis())
+        n=len(self.fiber.homology)
+        r=len(self.thimbles)
         
-        D, U, V = kerdelta.matrix().smith_form()
-        B = D.solve_left(matrix(imphi.gens())*V).change_ring(ZZ)*U
-        Brows=B.row_space()
-               
-        compl = [[0 for i in range(Brows.degree())]]
-        rank=Brows.dimension()
-        N=0
-        for i in range(Brows.degree()):
-            v=[1 if j==i else 0 for j in range(Brows.degree())]
-            M=block_matrix([[B],[matrix(compl)],[matrix([v])]],subdivide=False)
-            if rank+N+1==M.rank():
-                compl += [v]
-                N+=1
-            if rank+N == Brows.degree():
-                break
-        quotient_basis=matrix(compl[1:])
-        result = (quotient_basis*kerdelta.matrix()).rows()
-        logger.info("Done. Homology has rank %d in dimension %d." % (len(result), self.dim))
-               
-        return result
+        RtoS = self.RtoS()
+
+        for i2 in l:
+            i= l[i2]
+            if not self._integrated_thimblesQ[i]:
+                L = self.picard_fuchs_equation(i)
+                w = self.cohomology.basis()[i]
+                wt = self._restrict_form(w)
+                derivatives = [RtoS(0), wt]
+                for k in range(n-1 if self.dim%2==0 else n-2):
+                    derivatives += [self._derivative(derivatives[-1], RtoS(self.P))] 
+                derivatives_coordinates, denom = self.family.coordinates(derivatives) # this is not optimal - it would be better to compute all coordinates together
+                
+                integration_correction = diagonal_matrix([1/ZZ(factorial(k)) for k in range(n+1 if self.dim%2==0 else n)])
+                initial_conditions = integration_correction* derivatives_coordinates(self.basepoint)/denom(self.basepoint)*self.fiber.period_matrix
+
+                self._integrated_thimbles[i]=[(transition_matrices[i2][j]*initial_conditions*self.permuting_cycles[j])[0] for j in range(r)]
+        return [self._integrated_thimbles[i] for i in l]
     
     # Integration methods
 
@@ -399,39 +476,6 @@ class LefschetzFamily(object):
                         break
 
         return sps, edges, sings
-        
-
-
-    def _compute_periods(self):
-        
-        logger.info("Computing periods in dimension %d." % self.dim)
-        integrated_thimbles=[]
-        
-        N=len(self.cohomology.basis())
-        n=len(self.fiber.homology)
-        r=len(self.thimbles)
-
-        for i, L, w in list(zip(range(N), self._Ls, self.cohomology.basis()))[1:]:
-            logger.info("Computing integral of form along thimbles [%d/%d]"% (i+1, N))
-            wt = self._restrict_form(w)
-            derivatives = [self._RtoS(0), wt]
-            for k in range(n-1 if self.dim%2==0 else n-2):
-                derivatives += [self._derivative(derivatives[-1], self._RtoS(self.P))] 
-            derivatives_coordinates, denom = self.family.coordinates(derivatives) # this is not optimal - it would be better to compute all coordinates together
-            
-            integration_correction = diagonal_matrix([1/ZZ(factorial(k)) for k in range(n+1 if self.dim%2==0 else n)])
-            initial_conditions = integration_correction* derivatives_coordinates(self.basepoint)/denom(self.basepoint)*self.fiber.period_matrix
-            
-            transition_matrices = self.integrate(L)
-
-            integrated_thimbles+=[[(transition_matrices[j]*initial_conditions*self.perm_cycles[j])[0] for j in range(r)]]
-        
-        logger.info("Integration of forms along thimbles computed in dimension %d." % self.dim)
-        
-        self._integrated_thimbles += integrated_thimbles
-
-        
-        return matrix(self._integrated_thimbles)*matrix(self.homology).transpose()
     
     def _compute_intersection_product(self):
         r=len(self.thimbles)
@@ -470,8 +514,12 @@ class LefschetzFamily(object):
         """ Given a form A, returns the form A_t such that A/P^k w_n = A_t/P_t^k w_{n-1}dt
         """
         assert self.dim !=0, "cannot restrict form of a dimension 0 variety"
-        dt = self._RtoS(self._vars[-1]).derivative() # this formula is specific to Lefschetz fibration where one of the maps is z and the other map does not depend on z, need to change it
-        return self._RtoS(A)*dt
+
+        RtoS = self.RtoS()
+
+
+        dt = RtoS(self.P.parent().gens()[-1]).derivative() # this formula is specific to Lefschetz fibration where one of the maps is z and the other map does not depend on z, need to change it
+        return RtoS(A)*dt
 
     @classmethod
     def _derivative(self, A, P): 
@@ -529,41 +577,55 @@ class LefschetzFamily(object):
         # duration_str = time.strftime("%H:%M:%S",time.gmtime(duration))
         # logger.info("[%d] Finished integration along edge [%d/%d] in %s"% (os.getpid(), i[0],i[1], duration_str))
         return res
-               
-    def _compute_picard_fuchs(self):
-        """ Returns the Picard-Fuchs equations of image of the forms of the variety in the parametrized family of fibers
-        """
-        # It is arguably more efficient to compute all the Picard-Fuchs equations at the same time
-        logger.info("Computing Picard-Fuchs equations of %d forms in dimension %d"% (len(self.cohomology.basis()), self.dim))
-        coordinates, denom = self.family.coordinates([self._restrict_form(w) for w in self.cohomology.basis()])
 
-        Ls = []
-        for i, v in enumerate(coordinates.rows()):
-            v2 = v/denom
-            denom2 = lcm([r.denominator() for r in v2 if r!=0])
-            numerators = denom2 * v2
-            Ls += [self.family.picard_fuchs_equation(numerators)*denom2]
-            logger.info("Operator [%d/%d] has order %d and degree %d for form with numerator of degree %d"% (i+1, len(self.cohomology.basis()), Ls[-1].order(), Ls[-1].degree(), self.cohomology.basis()[i].degree()))
-        return Ls
-   
 
+    @property
+    def paths(self):
+        if not hasattr(self,'_paths'):
+            if self.ctx.method=="delaunay":
+                self._paths=[sp+["Rd"]+list(reversed(sp)) for sp in self._sps]
+            elif self.ctx.method=="voronoi":
+                self._paths=[list(self._sps[i]+self._loops[i][1:]+list(reversed(self._sps[i]))) for i in range(len(self.critical_points))]
+        return self._paths
+
+    @property
+    def basepoint(self):
+        if  not hasattr(self, '_basepoint'):
+            shift = 1
+            reals = [s.real() for s in self.critical_points]
+            xmin, xmax = min(reals), max(reals)
+            self._basepoint = Util.simple_rational(xmin - (xmax-xmin)*shift, (xmax-xmin)/10)
+        return self._basepoint
+    
+
+
+    @property
+    def sps(self):
+        if not hasattr(self,'_sps'):
+            self._compute_paths()
+        return self._sps
+    @property
+    def loops(self):
+        assert self.ctx.method=="voronoi", "No loops with method 'delaunay'"
+        if not hasattr(self,'_loops'):
+            self._compute_paths()
+        return self._loops
+
+    @property
+    def edges(self):
+        if not hasattr(self,'_edges'):
+            self._compute_paths()
+        return self._edges
+           
     def _compute_paths(self):
-        if self.ctx.method=="delaunay":
-            self._sps = self._compute_paths_delaunay(self.critical_points)
-            paths=[sp+["Rd"]+list(reversed(sp)) for sp in self._sps]
-        elif self.ctx.method=="voronoi":
-            self._sps, self._loops = self._compute_paths_voronoi([self.ctx.CF(c) for c in self.critical_points]) #basepoint is chosen here
-            paths=[list(self._sps[i]+self._loops[i][1:]+list(reversed(self._sps[i]))) for i in range(len(self.critical_points))]
-        return paths
- 
-    def _compute_paths_delaunay(self, singus, shift=1):
+        if self.ctx.method=="voronoi":
+            self._compute_paths_voronoi()
+        elif self.ctx.method=="delaunay":
+            self._compute_paths_delaunay()
+
+    def _compute_paths_delaunay(self, shift=1):
         logger.info("Computing paths for integration")
-        
-        # Need to have a better choice for basepoint, often it is quite far away from other singularities 
-        # (on the other hand this sort of guarantees that the degree of basepoint in the cover tree is 1, 
-        # which is good for the circuit)
-        self.basepoint = floor(min([self.ctx.CF(s).real() for s in singus])-shift) 
-        points = [self.basepoint] + singus
+        points = [self.basepoint] + self.critical_points
 
         logger.info("Computing Delaunay triangulation of %d points"% (len(singus)+1))
         D = Edges.delaunay(points)
@@ -572,22 +634,22 @@ class LefschetzFamily(object):
         logger.info("Computing circuit")
         sps, order = Edges.circuit_delaunay(T, list(range(1, len(points))), 0, points)
         assert len(order)==len(self.critical_points), "circuit returned less critical points than expected"
-        self.critical_points = [self.critical_points[i] for i in order]
+        
         orderi = Util.invert_permutation([0] + [i+1 for i in order])
-        sps = [[orderi[p] for p in sps[i]] for i in order]
-        self.edges = [(orderi[e[0]], orderi[e[1]]) for e in T.edges(labels=False)]
+
+
+        self._critical_points = [self.critical_points[i] for i in order] # BAD PRACTICE
+        self._sps = [[orderi[p] for p in sps[i]] for i in order]
+        self._edges = [(orderi[e[0]], orderi[e[1]]) for e in T.edges(labels=False)]
         
         logger.info("Paths for integration are computed")
-
-        return sps
     
-    def _compute_paths_voronoi(self,singus, shift=1):
+    def _compute_paths_voronoi(self, shift=1):
+        singus = [self.ctx.CF(c) for c in self.critical_points]
 
         reals = [s.real() for s in singus]
         imags = [s.imag() for s in singus]
         xmin, xmax, ymin, ymax = min(reals), max(reals), min(imags), max(imags)
-
-        self.basepoint = Util.simple_rational(xmin - (xmax-xmin)*shift, (xmax-xmin)/10)
 
         logger.info("Computing homotopy representants of the image of the projection in dimension %d"%  self.dim)
         logger.info("Computing Voronoi Diagram of %d points"% len(singus))
@@ -596,7 +658,7 @@ class LefschetzFamily(object):
 
         sps, loops, order = Edges.voronoi_loops(singus, self.basepoint)
         
-        self.critical_points = [self.critical_points[i] for i in order] 
+        self._critical_points = [self.critical_points[i] for i in order] #  BAD PRACTICE
         
         G= Graph(loops=True)
         for sp in sps:
@@ -610,17 +672,20 @@ class LefschetzFamily(object):
 
         # this is a temp fix to make sure that edges connected to zero don't start with 0
         # indeed 0 is often a regular singular point of L, and for some reason computing integration along [0, a] is harder than [a, 0]
-        self.edges = [[e[0], e[1]] if e[0]!=0 else [e[1], e[0]] for e in G.edges(labels=False)]
+        edges = [[e[0], e[1]] if e[0]!=0 else [e[1], e[0]] for e in G.edges(labels=False)]
 
-        edges = []
-        for e in self.edges:
-            if not e in edges and not [e[1], e[0]] in edges:
-                if (not self.ctx.use_symmetry) or (not [e[0].conjugate(), e[1].conjugate()] in edges and not [e[1].conjugate(), e[0].conjugate()] in edges):
-                    edges += [e]
-        self.edges=edges
+        #TODO: put this in Util, with "remove_duplicates" method?
+        edges2 = []
+        for e in edges:
+            if not e in edges2 and not [e[1], e[0]] in edges2:
+                if (not self.ctx.use_symmetry) or (not [e[0].conjugate(), e[1].conjugate()] in edges2 and not [e[1].conjugate(), e[0].conjugate()] in edges2):
+                    edges2 += [e]
+        edges=edges2
 
-        self.edges.sort(key=lambda e: abs(e[0]-e[1]),reverse=True)
-        
-        return [sps[i] for i in order], [loops[i] for i in order]
+        edges.sort(key=lambda e: abs(e[0]-e[1]),reverse=True)
+
+        self._edges = edges
+        self._sps = [sps[i] for i in order]
+        self._loops = [loops[i] for i in order]
 
 
