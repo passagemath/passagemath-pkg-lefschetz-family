@@ -140,7 +140,7 @@ class LefschetzFamily(object):
             if self.dim==1:
                 self._fibration= (vector([0,0,1]), vector([2,5,0]))
             if self.dim==2:
-                self._fibration= (vector([0,0,0,1]),vector([1,2,-1,0]))
+                self._fibration= (vector([0,0,0,1]),vector([1,2,-3,0]))
             if self.dim==3:
                 self._fibration= (vector([0,0,0,0,1]),vector([2,5,7,11,0]))
             if self.dim==4:
@@ -447,17 +447,12 @@ class LefschetzFamily(object):
             paths+=[Edges.break_edges(Delaunay, e, sings)]
 
         edges = []
-        print("test")
-        for p in paths:
+        for p in paths: # this might be broken but I'm not using it for now
             for i in range(len(p)-1):
                 if p[i]!= "Ri" and p[i]!= "Rd" and p[i+1]!= "Ri" and p[i+1]!= "Rd":
                     if not [p[i], p[i+1]] in edges and not [p[i+1], p[i]] in edges:
                         if (not self.ctx.use_symmetry) or (not [p[i+1].conjugate(), p[i].conjugate()] in edges and not [p[i].conjugate(), p[i+1].conjugate()] in edges):
-                            print(p)
                             edges += [[p[i], p[i+1]]]
-                        else:
-                            print(ctx.use_symmetry)
-                            print(p)
         
         logger.info("Reconstructing paths with broken edges")
         sps = []    
@@ -591,7 +586,7 @@ class LefschetzFamily(object):
     def basepoint(self):
         if  not hasattr(self, '_basepoint'):
             shift = 1
-            reals = [s.real() for s in self.critical_points]
+            reals = [self.ctx.CF(c).real() for c in self.critical_points]
             xmin, xmax = min(reals), max(reals)
             self._basepoint = Util.simple_rational(xmin - (xmax-xmin)*shift, (xmax-xmin)/10)
         return self._basepoint
@@ -656,6 +651,7 @@ class LefschetzFamily(object):
         voronoi = Edges.voronoi(singus, self.basepoint, shift)
 
         sps, loops, order = Edges.voronoi_loops(singus, self.basepoint)
+        logger.info("Voronoi diagram computed. Extracting edges.")
         
         self._critical_points = [self.critical_points[i] for i in order] #  BAD PRACTICE
         
@@ -686,5 +682,7 @@ class LefschetzFamily(object):
         self._edges = edges
         self._sps = [sps[i] for i in order]
         self._loops = [loops[i] for i in order]
+
+        logger.info("Edges are computed.")
 
 
