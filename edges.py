@@ -72,8 +72,8 @@ class Edges(object):
         u=r1.real()
         v=r1.imag()
         r2 = (a-b)
-        x = r2.real()
-        y = r2.imag()
+        x = CC(r2).real()
+        y = CC(r2).imag()
         im = CC(v*x-u*y)
         return im<0 
 
@@ -84,8 +84,8 @@ class Edges(object):
         u=r1.real()
         v=r1.imag()
         r2 = (a-b)
-        x = r2.real()
-        y = r2.imag()
+        x = CC(r2).real()
+        y = CC(r2).imag()
         real = CC(u*x+v*y)
         im = v*x-u*y
         return cls.is_zero(im) and real>0 
@@ -241,7 +241,7 @@ class Edges(object):
 
         CC = cls.CC
 
-        r = min([min([ abs(CC(points[i]-points[j])) for j in range(i+1, len(points))]) for i in range(len(points)-1)])/10
+        r = min([min([ abs(CC(points[i]-points[j])) for j in range(i+1, len(points))]) for i in range(len(points)-1)])/100
 
         reals = [s.real() for s in points]
         imags = [s.imag() for s in points]
@@ -265,7 +265,7 @@ class Edges(object):
     def loops(cls, points, vd, basepoint):
 
         CC= cls.CC
-        r = min([min([ abs(CC(points[i]-points[j])) for j in range(i+1, len(points))]) for i in range(len(points)-1)])/10
+        r = min([min([ abs(CC(points[i]-points[j])) for j in range(i+1, len(points))]) for i in range(len(points)-1)])/100
         
         gr = Graph()
         for pt_, reg in vd.regions().items():
@@ -328,7 +328,7 @@ class Edges(object):
 
 
 
-        # this ensures the loops are trigonometric-wise around the critical points
+        # this ensures the loops are anticlockwise around the critical points
         for j, loop in enumerate(loops):
             A, B, C = loop[1], loop[0], loop[2]
             if not((B.real()-A.real())*(C.imag()-A.imag())-(B.imag()-A.imag())*(C.real()-A.real())<0):
