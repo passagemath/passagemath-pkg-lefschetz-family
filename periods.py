@@ -140,11 +140,7 @@ class LefschetzFamily(object):
             if self.dim==1:
                 self._fibration= (vector([0,0,1]), vector([2,5,0]))
             if self.dim==2:
-                self._fibration= (vector([0,0,0,1]),vector([1,2,-3,0]))
-            if self.dim==3:
-                self._fibration= (vector([0,0,0,0,1]),vector([2,5,7,11,0]))
-            if self.dim==4:
-                self._fibration= (vector([0,0,0,0,0,1]),vector([2,5,7,11,13,0]))
+                self._fibration= (vector([0,0,0,1]),vector([1,1,1,0]))
         return self._fibration
 
     # def _compute_distance(self, points):
@@ -166,9 +162,14 @@ class LefschetzFamily(object):
             ideal = S.ideal(eqs).elimination_ideal(S.gens()[:-1])
             Qt = PolynomialRing(QQ, 't')
 
-            self._critical_points=[e[0] for e in Qt(ideal.groebner_basis()[0]).roots(AlgebraicField())]
+            roots_with_multiplicity = Qt(ideal.groebner_basis()[0]).roots(AlgebraicField())
+            for e in roots_with_multiplicity:
+                assert e[1]==1, "double critical values, fibration is not Lefschetz"
+            self._critical_points=[e[0] for e in roots_with_multiplicity]
             end = time.time()
             logger.info("Critical points computed in %s"% time.strftime("%H:%M:%S",time.gmtime(end-begin)))
+            if self.dim==2:
+                assert len(self._critical_points)==36, "fibration is not Lefschetz (if you are not dealing with quartics, this should be removed)"
         return self._critical_points
     
     @property
