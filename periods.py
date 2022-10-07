@@ -530,23 +530,23 @@ class LefschetzFamily(object):
             return [V(alpha)*A(alpha) for alpha in alphas]
         return _residue_form(A*U/(k-1)+(A*V).derivative()/(k-1)**2, P, k-1, alphas)
     
-    @parallel(128)
     @classmethod
+    @parallel
     def _compute_transition_matrix_delaunay(cls, L, l, values, nbits=400):
         """computes the numerical transition matrix of L along l, adapted to computations of Delaunay. Accepts l=[]"""
         res = L.numerical_transition_matrix([values[v] for v in l], eps=2**(-nbits), assume_analytic=True) if l!= [] else identity_matrix(L.order())
         return res
 
-    @parallel(128)
     @classmethod
+    @parallel
     def _compute_transition_matrix_voronoi(cls, i, L, l, nbits=300, maxtries=5):
         """ Returns the numerical transition matrix of L along l, adapted to computations of Voronoi. Accepts l=[]
         """
-        # logger.info("[%d] Starting integration along edge [%d/%d]"% (os.getpid(), i[0],i[1]))
+        logger.info("[%d] Starting integration along edge [%d/%d]"% (os.getpid(), i[0],i[1]))
         done = False
         tries = 1
         bounds_prec=256
-        # begin = time.time()
+        begin = time.time()
         while not done and tries < maxtries:
             try:
                 res = L.numerical_transition_matrix(l, eps=2**(-nbits), assume_analytic=True, bounds_prec=bounds_prec) if l!= [] else identity_matrix(L.order()) 
@@ -566,10 +566,10 @@ class LefschetzFamily(object):
             #     raise e
             else:
                 done=True
-        # end = time.time()
-        # duration = end-begin
-        # duration_str = time.strftime("%H:%M:%S",time.gmtime(duration))
-        # logger.info("[%d] Finished integration along edge [%d/%d] in %s"% (os.getpid(), i[0],i[1], duration_str))
+        end = time.time()
+        duration = end-begin
+        duration_str = time.strftime("%H:%M:%S",time.gmtime(duration))
+        logger.info("[%d] Finished integration along edge [%d/%d] in %s"% (os.getpid(), i[0],i[1], duration_str))
         return res
 
 
