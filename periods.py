@@ -129,7 +129,6 @@ class LefschetzFamily(object):
     def family(self):
         if not hasattr(self,'_family'):
             RtoS = self._RtoS()
-
             self._family = Family(RtoS(self.P))
         return self._family
     
@@ -137,15 +136,17 @@ class LefschetzFamily(object):
     @property
     def fibration(self):
         if not hasattr(self,'_fibration'): #TODO take random fibration(s), and try to reduce variance of distance between critical points(?)
-            if self.dim==1:
-                self._fibration= (vector([0,0,1]), vector([2,5,0]))
-            if self.dim==2:
-                self._fibration= (vector([0,0,0,1]),vector([1,1,1,0]))
+            # if self.dim==1:
+            #     self._fibration= (vector([0,0,1]), vector([randint(-10,10) for i in range(self.dim+1)]+[0]))
+            # if self.dim==2:
+            #     self._fibration= (vector([0,0,0,1]),vector([1,1,1,0]))
+            self._fibration= (vector([0,0,1]), vector([randint(-10,10) for i in range(self.dim+1)]+[0]))
         return self._fibration
 
     # def _compute_distance(self, points):
     #     return min([min([abs(ComplexField(50)(p1-p2)) for p2 in points if p2!=p1]) for p1 in points])
-        
+    
+
     @property
     def critical_points(self):
         if not hasattr(self,'_critical_points'):
