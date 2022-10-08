@@ -31,6 +31,8 @@ from sage.arith.misc import gcd
 from sage.arith.functions import lcm
 from ore_algebra.analytic.monodromy import formal_monodromy
 
+from sage.misc.prandom import randint
+
 from edges import Edges
 from Util import Util
 from Context import Context
@@ -137,7 +139,7 @@ class LefschetzFamily(object):
     def fibration(self):
         if not hasattr(self,'_fibration'): #TODO take random fibration(s), and try to reduce variance of distance between critical points(?)
             # if self.dim==1:
-            #     self._fibration= (vector([0,0,1]), vector([randint(-10,10) for i in range(self.dim+1)]+[0]))
+            #     self._fibration= (vector([0,0,1]), vector([1,1,0]))
             # if self.dim==2:
             #     self._fibration= (vector([0,0,0,1]),vector([1,1,1,0]))
             self._fibration= (vector([0,0,1]), vector([randint(-10,10) for i in range(self.dim+1)]+[0]))
