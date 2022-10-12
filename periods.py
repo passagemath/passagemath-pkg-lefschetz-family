@@ -137,12 +137,11 @@ class LefschetzFamily(object):
 
     @property
     def fibration(self):
-        if not hasattr(self,'_fibration'): #TODO take random fibration(s), and try to reduce variance of distance between critical points(?)
-            # if self.dim==1:
-            #     self._fibration= (vector([0,0,1]), vector([1,1,0]))
-            # if self.dim==2:
-            #     self._fibration= (vector([0,0,0,1]),vector([1,1,1,0]))
-            self._fibration= (vector([0,0,1]), vector([randint(-10,10) for i in range(self.dim+1)]+[0]))
+        if not hasattr(self,'_fibration'): #TODO try to reduce variance of distance between critical points(?)
+            l = vector([randint(-10,10) for i in range(self.dim+2)])
+            m = vector([randint(-10,10) for i in range(self.dim+2)])
+            assert matrix([l,m]).rank()==2, "fibration is not well defined"
+            self._fibration= (l,m)
         return self._fibration
 
     # def _compute_distance(self, points):
@@ -160,7 +159,11 @@ class LefschetzFamily(object):
             f=forms[0]/forms[1]
             S = PolynomialRing(QQ, _vars+['k','t'])
             k,t= S.gens()[-2:]
-            eqs = [self.P, _vars[-1]-1,t*forms[1]-forms[0]]+[(f.derivative(var).numerator()-k*self.P.derivative(var)*f.derivative(var).denominator()) for var in _vars]
+            eqs = [
+                self.P, 
+                forms[1]-1, 
+                t*forms[1]-forms[0]
+            ] + [(f.derivative(var).numerator()-k*self.P.derivative(var)*f.derivative(var).denominator()) for var in _vars]
 
             ideal = S.ideal(eqs).elimination_ideal(S.gens()[:-1])
             Qt = PolynomialRing(QQ, 't')
@@ -171,8 +174,8 @@ class LefschetzFamily(object):
             self._critical_points=[e[0] for e in roots_with_multiplicity]
             end = time.time()
             logger.info("Critical points computed in %s"% time.strftime("%H:%M:%S",time.gmtime(end-begin)))
-            if self.dim==2:
-                assert len(self._critical_points)==36, "fibration is not Lefschetz (if you are not dealing with quartics, this should be removed)"
+            # if self.dim==2:
+            #     assert len(self._critical_points)==36, "fibration is not Lefschetz (if you are not dealing with quartics, this should be removed)"
         return self._critical_points
     
     @property
@@ -220,11 +223,12 @@ class LefschetzFamily(object):
 
             for i in range(r):
                 M=Ms[i]
-                if not self.ctx.singular and not self.ctx.debug:
-                    assert (M-1).rank()==1, "If M is a monodromy matrix around a single critical point, M-I should have rank 1"
                 if self.dim%2==1:
                     prod= invariant_vector*self.fiber.intersection_product*(lift*M*proj-identity_matrix(n))*lift/n
                     Ms[i] = basis_change.inverse()*block_matrix([[M,zero_matrix(n-1,1)],[matrix([prod]),matrix([[1]])]])*basis_change
+
+                if not self.ctx.singular and not self.ctx.debug:
+                    assert (Ms[i]-1).rank()==1, "If M is a monodromy matrix around a single critical point, M-I should have rank 1"
             self._monodromy_matrices = Ms
         return self._monodromy_matrices
     
@@ -309,19 +313,59 @@ class LefschetzFamily(object):
                     if rank+N == Brows.degree():
                         break
                 quotient_basis=matrix(compl[1:])
-                self._homology = (quotient_basis*kerdelta.matrix()).rows() # NB this is the homology of Y
+                self._homology = (quotient_basis*kerdelta.matrix()).rows() # NB this is the homology of Y, to recover the homology of X we need to remove the kernel of the period matrix
         return self._homology
 
 
     def _RtoS(self):
         R = self.P.parent()
+        for varid in range(self.dim+2):
+            if self.fibration[0][varid] !=0:
+                break
+        self._restriction_variable = varid # this is the variable we're removing when going from P to Pt
+
+        a = self.fibration[1][self._restriction_variable]
+        b = self.fibration[0][self._restriction_variable]
+
         _vars = [v for v in R.gens()]
-        S = PolynomialRing(PolynomialRing(QQ, _vars[:-1]), 't')
+        S = PolynomialRing(PolynomialRing(QQ, [_vars[i] for i in range(len(_vars)) if i != self._restriction_variable]), 't')
         t=S.gens()[0]
-        form = self.fibration[1][:-1].dot_product(vector(S.base_ring().gens())) + t*self.fibration[0][:-1].dot_product(vector(S.base_ring().gens()))
-        denom = self.fibration[1][-1]*t+self.fibration[0][-1]
-        RtoS = R.hom([denom**self.degree*v for v in S.base_ring().gens()]+[t*form], S)
+
+        l = vector([_vars[i] for i in range(len(_vars)) if i != self._restriction_variable])*vector([self.fibration[0][i] for i in range(len(_vars)) if i != self._restriction_variable])
+        m = vector([_vars[i] for i in range(len(_vars)) if i != self._restriction_variable])*vector([self.fibration[1][i] for i in range(len(_vars)) if i != self._restriction_variable])
+
+        form = (-S(l)+t*S(m))
+        denom = b-a*t
+
+        RtoS = R.hom([denom*S(_vars[i]) if i != self._restriction_variable else form for i in range(len(_vars))], S)
+
         return RtoS
+
+    def _restrict_form(self, A):
+        """ Given a form A, returns the form A_t such that A/P^k w_n = A_t/P_t^k w_{n-1}dt
+        """
+        assert self.dim !=0, "cannot restrict form of a dimension 0 variety"
+
+        RtoS = self._RtoS()
+
+
+        R = self.P.parent()
+
+        a = self.fibration[1][self._restriction_variable]
+        b = self.fibration[0][self._restriction_variable]
+
+        _vars = [v for v in R.gens()]
+        S = PolynomialRing(PolynomialRing(QQ, [_vars[i] for i in range(len(_vars)) if i != self._restriction_variable]), 't')
+        t=S.gens()[0]
+
+        l = vector([_vars[i] for i in range(len(_vars)) if i != self._restriction_variable])*vector([self.fibration[0][i] for i in range(len(_vars)) if i != self._restriction_variable])
+        m = vector([_vars[i] for i in range(len(_vars)) if i != self._restriction_variable])*vector([self.fibration[1][i] for i in range(len(_vars)) if i != self._restriction_variable])
+
+        form = (-S(l)+t*S(m))
+        denom = b-a*t
+
+        dt = (-a * S(l) +b* S(m))*denom**(self.dim)
+        return RtoS(A)*dt
 
     def transition_matrices(self, l):
         if not hasattr(self, '_integratedQ'):
@@ -336,6 +380,10 @@ class LefschetzFamily(object):
                 self._integratedQ[i]=True
         return [self._transition_matrices[i] for i in l]
     
+    def forget_transition_matrices(self):
+        del self._integratedQ
+        del self._transition_matrices
+
     def integrated_thimbles(self, l):
         transition_matrices= self.transition_matrices(l)
         if not hasattr(self, '_integrated_thimblesQ'):
@@ -507,17 +555,6 @@ class LefschetzFamily(object):
             return 0
 
         return 0 if i==j else res*(1 if i>j else -1)
-    
-    def _restrict_form(self, A):
-        """ Given a form A, returns the form A_t such that A/P^k w_n = A_t/P_t^k w_{n-1}dt
-        """
-        assert self.dim !=0, "cannot restrict form of a dimension 0 variety"
-
-        RtoS = self._RtoS()
-
-
-        dt = RtoS(self.P.parent().gens()[-1]).derivative() # this formula is specific to Lefschetz fibration where one of the maps is z and the other map does not depend on z, need to change it
-        return RtoS(A)*dt
 
     @classmethod
     def _derivative(self, A, P): 
@@ -546,11 +583,11 @@ class LefschetzFamily(object):
     def _compute_transition_matrix_voronoi(cls, i, L, l, nbits=300, maxtries=5):
         """ Returns the numerical transition matrix of L along l, adapted to computations of Voronoi. Accepts l=[]
         """
-        logger.info("[%d] Starting integration along edge [%d/%d]"% (os.getpid(), i[0],i[1]))
+        # logger.info("[%d] Starting integration along edge [%d/%d]"% (os.getpid(), i[0],i[1]))
         done = False
         tries = 1
         bounds_prec=256
-        begin = time.time()
+        # begin = time.time()
         while not done and tries < maxtries:
             try:
                 res = L.numerical_transition_matrix(l, eps=2**(-nbits), assume_analytic=True, bounds_prec=bounds_prec) if l!= [] else identity_matrix(L.order()) 
@@ -570,10 +607,10 @@ class LefschetzFamily(object):
             #     raise e
             else:
                 done=True
-        end = time.time()
-        duration = end-begin
-        duration_str = time.strftime("%H:%M:%S",time.gmtime(duration))
-        logger.info("[%d] Finished integration along edge [%d/%d] in %s"% (os.getpid(), i[0],i[1], duration_str))
+        # end = time.time()
+        # duration = end-begin
+        # duration_str = time.strftime("%H:%M:%S",time.gmtime(duration))
+        # logger.info("[%d] Finished integration along edge [%d/%d] in %s"% (os.getpid(), i[0],i[1], duration_str))
         return res
 
 
@@ -581,9 +618,9 @@ class LefschetzFamily(object):
     def paths(self):
         if not hasattr(self,'_paths'):
             if self.ctx.method=="delaunay":
-                self._paths=[sp+["Rd"]+list(reversed(sp)) for sp in self._sps]
+                self._paths=[sp+["Rd"]+list(reversed(sp)) for sp in self.sps]
             elif self.ctx.method=="voronoi":
-                self._paths=[list(self._sps[i]+self._loops[i][1:]+list(reversed(self._sps[i]))) for i in range(len(self.critical_points))]
+                self._paths=[list(self.sps[i]+self._loops[i][1:]+list(reversed(self.sps[i]))) for i in range(len(self.critical_points))]
         return self._paths
 
     @property
