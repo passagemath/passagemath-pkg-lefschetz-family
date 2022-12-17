@@ -54,7 +54,7 @@ class LefschetzFamily(object):
         
         self.ctx = Context(**kwds)
         
-        assert P.is_homogeneous(), "nonhomogeneous defining polynomial"
+        # assert P.is_homogeneous(), "nonhomogeneous defining polynomial"
         
         self._P = P
     
@@ -184,35 +184,28 @@ class LefschetzFamily(object):
         if not hasattr(self, '_monodromy_matrices'):
             i=0
             assert self.picard_fuchs_equation(i).order()== len(self.family.basis),"Picard-Fuchs equation is not cyclic, cannot use it to compute monodromy"
-            w  = self.cohomology.basis()[i]
-            wt = self._restrict_form(w)
-
             transition_matrices= self.transition_matrices([i])[0]
 
             n = len(self.fiber.homology)
             r = len(self.critical_points)  
-
-            RtoS = self._RtoS()
 
             if self.dim%2==1:
                 invariant_vector=vector([1]*n)
                 proj = block_matrix([[identity_matrix(n-1), matrix([[-1]]*(n-1))]],subdivide=False)
                 lift = block_matrix([[identity_matrix(n-1)], [matrix([[0]*(n-1)])]],subdivide=False)
                 basis_change = block_matrix([[lift, matrix([-invariant_vector]).transpose()]],subdivide=False)
-                   
-            derivatives = [RtoS(0), wt]
-            for k in range(n-1 if self.dim%2==0 else n-2):
-                derivatives += [self._derivative(derivatives[-1], RtoS(self.P))]
             
             logger.info("Computing the coordinates of the successive derivatives of integration forms")
             begin = time.time()
-            derivatives_coordinates, denom = self.family.coordinates(derivatives)
+            # derivatives_coordinates, denom = self.derivatives_coordinates(i)
+            derivatives_at_basepoint = self.derivatives_values_at_basepoint(i)
             end = time.time()
             duration_str = time.strftime("%H:%M:%S",time.gmtime(end-begin))
             logger.info("Coordinates computed in %s"% duration_str)
             
             integration_correction = diagonal_matrix([1/ZZ(factorial(k)) for k in range(n+1 if self.dim%2==0 else n)])
-            initial_conditions = integration_correction* derivatives_coordinates(self.basepoint)/denom(self.basepoint)*self.fiber.period_matrix
+            # initial_conditions = integration_correction* derivatives_coordinates(self.basepoint)/denom(self.basepoint)*self.fiber.period_matrix
+            initial_conditions = integration_correction* derivatives_at_basepoint*self.fiber.period_matrix
 
             if self.dim%2==1:
                 initial_conditions = initial_conditions*lift
@@ -394,27 +387,53 @@ class LefschetzFamily(object):
         N=len(self.cohomology.basis())
         n=len(self.fiber.homology)
         r=len(self.thimbles)
-        
-        RtoS = self._RtoS()
 
-        for i2 in l:
+        for i2 in range(len(l)):
             i= l[i2]
             if not self._integrated_thimblesQ[i]:
-                L = self.picard_fuchs_equation(i)
-                w = self.cohomology.basis()[i]
-                wt = self._restrict_form(w)
-                derivatives = [RtoS(0), wt]
-                for k in range(n-1 if self.dim%2==0 else n-2):
-                    derivatives += [self._derivative(derivatives[-1], RtoS(self.P))] 
-                derivatives_coordinates, denom = self.family.coordinates(derivatives) # this is not optimal - it would be better to compute all coordinates together
-                
+                # derivatives_coordinates, denom = self.derivatives_coordinates(i)
+                derivatives_at_basepoint = self.derivatives_values_at_basepoint(i)
                 integration_correction = diagonal_matrix([1/ZZ(factorial(k)) for k in range(n+1 if self.dim%2==0 else n)])
-                initial_conditions = integration_correction* derivatives_coordinates(self.basepoint)/denom(self.basepoint)*self.fiber.period_matrix
-
+                # initial_conditions = integration_correction* derivatives_coordinates(self.basepoint)/denom(self.basepoint)*self.fiber.period_matrix
+                initial_conditions = integration_correction* derivatives_at_basepoint*self.fiber.period_matrix
                 self._integrated_thimbles[i]=[(transition_matrices[i2][j]*initial_conditions*self.permuting_cycles[j])[0] for j in range(r)]
+                self._integrated_thimblesQ[i] = True
         return [self._integrated_thimbles[i] for i in l]
     
     # Integration methods
+
+    def derivatives_coordinates(self, i):
+        if not hasattr(self, '_coordinatesQ'):
+            self._coordinatesQ = [False for i in range(len(self.cohomology.basis()))]
+        if not hasattr(self, '_coordinates'):
+            self._coordinates = [None for i in range(len(self.cohomology.basis()))]
+
+        if not self._coordinatesQ[i]:
+            n=len(self.fiber.homology)
+            RtoS = self._RtoS()
+            w = self.cohomology.basis()[i]
+            wt = self._restrict_form(w)
+            derivatives = [RtoS(0), wt]
+            for k in range(n-1 if self.dim%2==0 else n-2):
+                derivatives += [self._derivative(derivatives[-1], RtoS(self.P))] 
+            self._coordinates[i] = self.family.coordinates(derivatives)
+            self._coordinatesQ[i] = True
+
+        return self._coordinates[i]
+
+
+    def derivatives_values_at_basepoint(self, i):
+        RtoS = self._RtoS()
+        n=len(self.fiber.homology)
+
+
+        w = self.cohomology.basis()[i]
+        wt = self._restrict_form(w)
+        derivatives = [RtoS(0), wt]
+        for k in range(n-1 if self.dim%2==0 else n-2):
+            derivatives += [self._derivative(derivatives[-1], RtoS(self.P))] 
+        return self.family._coordinates(derivatives, self.basepoint)
+
 
     def integrate(self, L):
 
