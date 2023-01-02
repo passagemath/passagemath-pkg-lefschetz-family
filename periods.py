@@ -89,6 +89,7 @@ class LefschetzFamily(object):
         return self._simple_periods
 
 
+
     @property
     def P(self):
         return self._P
