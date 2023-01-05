@@ -377,6 +377,8 @@ class LefschetzFamily(object):
     def forget_transition_matrices(self):
         del self._integratedQ
         del self._transition_matrices
+        del self._integrated_thimbles
+        del self._integrated_thimblesQ
 
     def integrated_thimbles(self, l):
         transition_matrices= self.transition_matrices(l)
