@@ -51,7 +51,7 @@ logger = logging.getLogger(__name__)
 
 
 class RootsBraid(object):
-    def __init__(self, P, edges):
+    def __init__(self, P, edges, additional_points=[]):
         """P, a polynomial in two variables u and t.
 
         This class computes the braid group of roots (in t) of P(u) as u moves along a path
@@ -61,11 +61,13 @@ class RootsBraid(object):
         
         self.edges = edges
         self.P = P
-        self.npoints = self.P.degree(self.P.parent().gens()[1])
+        self.additional_points=additional_points
+        self.npoints = self.P.degree(self.P.parent().gens()[1]) + len(self.additional_points)
         self._maximalstep = 1/1000
 
         self.freeGroup = FreeGroup(self.npoints)
         self.xs = list(self.freeGroup.gens())
+        self.additional_points=additional_points
 
 
     @property
@@ -91,8 +93,9 @@ class RootsBraid(object):
             roots=  Qt(self.P(u=e[0])).roots(QQbar, multiplicities=False)
             res=[]
             j=0
-            for r in roots:
+            for r in roots:   
                 j+=1
+                logger.info("Computing thread %d."% j)
                 line = followstrand(self.P, [], e[0], e[1],r, 50)
                 res+=  [[[c[0], c[1]+I*c[2]] for c in line]]
             res.sort(key=lambda thread: (CC(thread[0][1].real()), CC(thread[0][1].imag())))
@@ -165,7 +168,7 @@ class RootsBraid(object):
         section = []
         for thread in braid:
             section += [self.interpolate(thread, t)]
-        return section
+        return section+self.additional_points
 
     def isomorphisms(self, e):
         if not hasattr(self,'_isomorphisms'):
@@ -255,9 +258,9 @@ class RootsBraid(object):
                 cycle.reverse()
             ci = cycle.index(e[0])
             cycle = cycle[ci:] + cycle[:ci]
-            xmax=max([s.real() for s in section])
-            xmin=min([s.real() for s in section])
-            ymax=max([s.imag() for s in section])
+            xmax=Util.simple_rational(max([s.real() for s in section]), 0.1)
+            xmin=Util.simple_rational(min([s.real() for s in section]), 0.1)
+            ymax=Util.simple_rational(max([s.imag() for s in section]), 0.1)
             clockwise = Util.is_clockwise([section[i] if i!=self.npoints else 2*xmin-xmax+ymax*I/5 for i in cycle])
             
             # logger.info("Clockwise cycle" if clockwise else "Counterclockwise cycle")

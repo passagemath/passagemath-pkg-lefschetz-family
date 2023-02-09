@@ -23,6 +23,8 @@ from sage.arith.misc import xgcd
 from sage.plot.plot import list_plot
 from sage.parallel.decorate import parallel
 from sage.combinat.integer_vector import IntegerVectors
+from sage.matrix.constructor import matrix
+
 
 import logging
 
@@ -96,3 +98,58 @@ class Util(object):
             a=d2
         assert d2==d, "not getting the correct gcd"
         return d2, result
+
+
+    @classmethod
+    def path(cls, path, x):
+        CC=ComplexField(500)
+        dtot = sum([CC(abs(p1-p2)) for (p1,p2) in zip(path[:-1], path[1:])])
+        dmin, dmax = 0, CC(abs(path[0]-path[1]))
+        for i in range(len(path)-1):
+            if x*dtot<=dmax and x*dtot>=dmin:
+                break;
+            else:
+                dmin, dmax=dmax, dmax+CC(abs(path[i+1]-path[i+2]))
+        t = Util.simple_rational((x*dtot -dmin)/(dmax-dmin), 10e-10)
+        return (1-t)*path[i] + t*path[i+1]
+
+
+
+    @classmethod
+    def select_closest(cls, l, e):
+        # find element in l that is closest to e for abs
+        CC=ComplexField(500)
+        r = l[0]
+        for i in range(1,len(l)):
+            if abs(CC(l[i]-e))<abs(CC(r-e)):
+                r = l[i]
+        return r
+
+    @classmethod
+    def select_closest_index(cls, l, e):
+        # find index of element in l that is closest to e for abs
+        CC=ComplexField(500)
+        r = 0
+        for i in range(1,len(l)):
+            if abs(CC(l[i]-e))<abs(CC(l[r]-e)):
+                r = i
+        return r
+
+    @classmethod
+    def is_clockwise(cls, l):
+        CC=ComplexField(500)
+        # find index of element in l that is closest to e for abs
+        smally = min(l, key=lambda v:(CC(v).imag(), CC(v).real()))
+        i = l.index(smally)
+        n = l[i+1 if i+1<len(l) else 0]
+        p = l[i-1]
+
+        x1,x2,x3 = [v.real() for v in [p,smally,n]]
+        y1,y2,y3 = [v.imag() for v in [p,smally,n]]
+
+        M = matrix([[1,x1,y1],[1,x2,y2],[1,x3,y3]])
+        if abs(CC(M.determinant()))<10e-7:
+            logger.warning("cross product is very small, not certain about orientation")
+        
+        return CC(M.determinant())<0
+
