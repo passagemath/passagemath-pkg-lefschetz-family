@@ -36,8 +36,10 @@ X.period_matrix
 
 ### Options
 The object `LefschetzFamily` can be called with several options:
-- `method` (`voronoi` by default/`delaunay`): the method used for computing a basis of homotopy. `voronoi` uses integration along paths in the voronoi graph of the critical points, whereas `delaunay` uses integration along paths along the delaunay triangulation of the critical points. In practice, `delaunay` is more efficient for low dimension and low order varieties (such as degree 3 curves and surfaces, and degree 4 curves). This gain in performance is however hindered in higher dimensions because of the algebraic complexity of the critical points (which are defined as roots of high order polynomials, with very large integer coefficients).
-- `nbits` (`400` by default): the number of bits of precision used as input for the computations. If a computation fails to recover the integral  monodromy matrices, you should try to increase this precision. The output precision seems to be roughly linear with respect to the input precision.
+- `method` (`"voronoi"` by default/`"delaunay"`): the method used for computing a basis of homotopy. `voronoi` uses integration along paths in the voronoi graph of the critical points, whereas `delaunay` uses integration along paths along the delaunay triangulation of the critical points. In practice, `delaunay` is more efficient for low dimension and low order varieties (such as degree 3 curves and surfaces, and degree 4 curves). This gain in performance is however hindered in higher dimensions because of the algebraic complexity of the critical points (which are defined as roots of high order polynomials, with very large integer coefficients).
+- `nbits` (positive integer, `400` by default): the number of bits of precision used as input for the computations. If a computation fails to recover the integral  monodromy matrices, you should try to increase this precision. The output precision seems to be roughly linear with respect to the input precision.
+- `debug` (boolean, `False` by default): whether coherence checks should be done earlier rather than late. Set to true only if the computation fails.
+- `singular` (boolean, `False` by default): whether the variety is singular. <b>Not implemented yet</b>
 
 ### Properties
 The object `LefschetzFamily` has several properties.
@@ -47,7 +49,7 @@ Fibration related properties, in positive dimension:
 - `basepoint`: the basepoint of the fibration (i.e. a non critical value)
 - `fiber`: the fiber above the basepoint
 - `paths`: the list of simple loops around each point of `critical_points`. When this is called, the ordering of `critical_points` changes so that the composition of these loops is the loop around infinity.
-- `family`: the one parameter family corresponding to the fibration
+- `family`: the one parameter family corresponding to the fibration.
 
 Homology related properties:
 - `monodromy_matrices`: the matrices of the monodromy action of `paths` on $H_{n-1}(X_b)$.
@@ -55,7 +57,7 @@ Homology related properties:
 - `thimbles`: the thimbles of $H_n(Y,Y_b)$. They are represented by a starting cycle in $H_n(Y_b)$ and a loop in $\mathbb C$ avoiding `critical_points` and pointed at `basepoint`.
 - `extensions`: integral sums of thimbles with vanishing boundary.
 - `infinity_loops`: extensions around the loop at infinity.
-- `exceptional_divisors`: the exceptional cycles coming from the modification $Y\to X$.
+- `exceptional_divisors`: the exceptional cycles coming from the modification $Y\to X$. <b>(WIP)</b>
 - `homology`: a basis of representants of $H_n(X)$, apart from the $H_n(X_b)$ term.
 
 Cohomology related properties:
@@ -63,12 +65,12 @@ Cohomology related properties:
 - `picard_fuchs_equation(i)`: the picard fuchs equation of the parametrization of i-th element of `cohomology` by the fibration
 
 Period related properties
-- `period_matrix`: the period matrix of the blowup of $X$ in the aforementioned bases of homology and cohomology
-- `simple_periods`: the periods matrix of the blowup of $X$
-- `context`: the period matrix of the blowup of $X$
+- `period_matrix`: the period matrix of the blowup of $X$ in the aforementioned bases `homology` and `cohomology`
+- `simple_periods`: the periods of the first element of `cohomology` in the basis `homology`.
 
 Miscellaneous properties:
 - `dim`: the dimension of $X$.
+- `ctx`: the options of $X$, see related section above.
 
 
 ## Contact

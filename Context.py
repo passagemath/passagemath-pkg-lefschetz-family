@@ -8,7 +8,6 @@ class Context(object):
 
     def __init__(self,
             method=None,
-            compute_periods=True,
             singular=False,
             debug=False,
             use_symmetry=True,
