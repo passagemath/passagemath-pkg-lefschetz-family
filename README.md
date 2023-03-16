@@ -36,7 +36,7 @@ X.period_matrix
 
 ### Options
 The object `LefschetzFamily` can be called with several options:
-- `method` (`"voronoi"` by default/`"delaunay"`): the method used for computing a basis of homotopy. `voronoi` uses integration along paths in the voronoi graph of the critical points, whereas `delaunay` uses integration along paths along the delaunay triangulation of the critical points. In practice, `delaunay` is more efficient for low dimension and low order varieties (such as degree 3 curves and surfaces, and degree 4 curves). This gain in performance is however hindered in higher dimensions because of the algebraic complexity of the critical points (which are defined as roots of high order polynomials, with very large integer coefficients).
+- `method` (`"voronoi"` by default/`"delaunay"`): the method used for computing a basis of homotopy. `voronoi` uses integration along paths in the voronoi graph of the critical points, whereas `delaunay` uses integration along paths along the delaunay triangulation of the critical points. In practice, `delaunay` is more efficient for low dimension and low order varieties (such as degree 3 curves and surfaces, and degree 4 curves). This gain in performance is however hindered in higher dimensions because of the algebraic complexity of the critical points (which are defined as roots of high order polynomials, with very large integer coefficients). <b>`"delaunay"` method is broken</b>
 - `nbits` (positive integer, `400` by default): the number of bits of precision used as input for the computations. If a computation fails to recover the integral  monodromy matrices, you should try to increase this precision. The output precision seems to be roughly linear with respect to the input precision.
 - `debug` (boolean, `False` by default): whether coherence checks should be done earlier rather than late. Set to true only if the computation fails.
 - `singular` (boolean, `False` by default): whether the variety is singular. <b>Not implemented yet</b>
@@ -78,7 +78,7 @@ For any question, bug or remark, please contact [eric.pichon@polytechnique.edu](
 
 ## Roadmap
 Near future milestones:
-- [ ] Encapsulate integration step in its own class
+- [x] Encapsulate integration step in its own class
 - [ ] Making Delaunay triangulation functional again (issues with graphs)
 - [ ] Saving time on differential operator by precomputing cache before parallelization
 

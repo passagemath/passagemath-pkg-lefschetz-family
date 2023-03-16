@@ -21,6 +21,9 @@ from sage.misc.flatten import flatten
 from sage.misc.sage_input import sage_input
 
 from sage.graphs.spanning_tree import boruvka
+from sage.parallel.decorate import parallel
+
+import os
 
 
 

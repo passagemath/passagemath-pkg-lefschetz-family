@@ -35,6 +35,8 @@ from ore_algebra.analytic.differential_operator import DifferentialOperator
 from sage.misc.prandom import randint
 
 from edges import Edges
+from voronoi import FundamentalGroupVoronoi
+from integrator import Integrator
 from Util import Util
 from Context import Context
 
@@ -399,6 +401,10 @@ class LefschetzFamily(object):
                 self._integratedQ[i]=True
         return [self._transition_matrices[i] for i in l]
     
+    def integrate(self, L):
+        integrator = Integrator(self._fundamental_group, L, self.ctx.nbits)
+        return integrator.transition_matrices
+
     def forget_transition_matrices(self):
         del self._integratedQ
         del self._transition_matrices
@@ -460,114 +466,6 @@ class LefschetzFamily(object):
             derivatives += [self._derivative(derivatives[-1], RtoS(self.P))] 
         return self.family._coordinates(derivatives, self.basepoint)
 
-
-    def integrate(self, L):
-
-        if self.ctx.method == "delaunay":
-            sps, edges, values = self._break_edges(L)
-            logger.info("Computing numerical transition matrices along edges (%d edges total)."% len(edges))
-            ntms = [[r[0][0][1], r[1]] for r in list(LefschetzFamily._compute_transition_matrix_delaunay([(L,[e[0], e[1]], values, self.ctx.nbits) for e in edges]))]
-            transition_matrices = []
-            for j in range(len(self.critical_points)):
-                M = self._reconstruct_path_delaunay(sps[j], ntms, L, values).change_ring(self.ctx.CBF)
-                transition_matrices+=[M**-1*formal_monodromy(L, self.critical_points[j], ring=self.ctx.CBF)*M]
-        elif self.ctx.method == "voronoi":
-            N = len(self.edges)
-            logger.info("Computing numerical transition matrices of operator of order %d and degree %d (%d edges total)."% (L.order(), L.degree(), N))
-            begin = time.time()
-            ntms = [[r[0][0][2], r[1]] for r in list(LefschetzFamily._compute_transition_matrix_voronoi([([i+1,N],L,[e[0], e[1]], self.ctx.nbits) for i, e in list(enumerate(self.edges))]))]
-            end = time.time()
-            duration = end-begin
-            duration_str = time.strftime("%H:%M:%S",time.gmtime(duration))
-            logger.info("Computation of edges finished -- total time: %s."% duration_str)
-            transition_matrices = []
-            for j in range(len(self.paths)):
-                path =  self._sps[j] + self._loops[j] +list(reversed(self._sps[j]))
-                M = self._reconstruct_path_voronoi(Util.simplify_path(path), ntms, L)
-                transition_matrices+=[M]
-        return transition_matrices
-
-    def _reconstruct_path_delaunay(self, sp, ntms, L, values):
-        if len(sp)<=1:
-            return 1
-        e = sp[:2]
-        if e[1] == "Rd":
-        	return self._reconstruct_path_delaunay([sp[0]]+sp[2:], ntms, L, values)*formal_monodromy(L, values[e[0]], ring=self.ctx.CBF)
-        if e[1] == "Ri":
-        	return self._reconstruct_path_delaunay([sp[0]]+sp[2:], ntms, L, values)*formal_monodromy(L, values[e[0]], ring=self.ctx.CBF)**-1
-        if e[0] == "Rd":
-        	return self._reconstruct_path_delaunay(sp[1:], ntms, L, values)*formal_monodromy(L, values[e[1]], ring=self.ctx.CBF)
-        if e[0] == "Ri":
-        	return self._reconstruct_path_delaunay(sp[1:], ntms, L, values)*formal_monodromy(L, values[e[1]], ring=self.ctx.CBF)**-1
-        if e[0]==e[1]:
-            return self._reconstruct_path_delaunay(sp[1:], ntms, L, values)
-        for e2,M in ntms:
-            if e2==e:
-                return self._reconstruct_path_delaunay(sp[1:], ntms, L, values)*M
-            if [e2[1], e2[0]]==e:
-                return self._reconstruct_path_delaunay(sp[1:], ntms, L, values)*M**-1
-            if [e2[0].conjugate(), e2[1].conjugate()]==e:
-                return self._reconstruct_path_delaunay(sp[1:], ntms, L, values)*M.conjugate()
-            if [e2[1].conjugate(), e2[0].conjugate()]==e:
-                return self._reconstruct_path_delaunay(sp[1:], ntms, L, values)*(M**-1).conjugate()
-        print(e)
-        raise Exception("unknown edge") 
-
-    @classmethod
-    def _reconstruct_path_voronoi(self, sp, ntms, L):
-        if len(sp)<=1:
-            return 1
-        e = sp[:2]
-        if e[0]==e[1]:
-            return self._reconstruct_path_voronoi(sp[1:], ntms, L)
-        for e2,M in ntms:
-            if e2==e:
-                return self._reconstruct_path_voronoi(sp[1:], ntms, L)*M
-            if [e2[1], e2[0]]==e:
-                return self._reconstruct_path_voronoi(sp[1:], ntms, L)*M**-1
-            if [e2[0].conjugate(), e2[1].conjugate()]==e:
-                return self._reconstruct_path_voronoi(sp[1:], ntms, L)*M.conjugate()
-            if [e2[1].conjugate(), e2[0].conjugate()]==e:
-                return self._reconstruct_path_voronoi(sp[1:], ntms, L)*M.conjugate()**-1
-        print(e)
-        raise Exception("unknown edge") 
-               
-    def _break_edges(self, L):
-        logger.info("Adapting integration paths to delaunay triangulation of singularities of operator")
-
-        sings = [self.basepoint] + self.critical_points + [x for x in L.leading_coefficient().roots(QQbar, multiplicities=False) if not x in self.critical_points]
-        Delaunay = Edges.delaunay(sings)
-
-        logger.info("Breaking edges (%d total)"% len(self.edges))
-        paths=[]
-        for e in self.edges:
-            paths+=[Edges.break_edges(Delaunay, e, sings)]
-
-        edges = []
-        for p in paths: # this might be broken but I'm not using it for now
-            for i in range(len(p)-1):
-                if p[i]!= "Ri" and p[i]!= "Rd" and p[i+1]!= "Ri" and p[i+1]!= "Rd":
-                    if not [p[i], p[i+1]] in edges and not [p[i+1], p[i]] in edges:
-                        if (not self.ctx.use_symmetry) or (not [p[i+1].conjugate(), p[i].conjugate()] in edges and not [p[i].conjugate(), p[i+1].conjugate()] in edges):
-                            edges += [[p[i], p[i+1]]]
-        
-        logger.info("Reconstructing paths with broken edges")
-        sps = []    
-        for sp in self._sps:
-            sps+=[[]]
-            for i in range(len(sp)-1):
-                e = sp[i:i+2]
-                for i in range(len(self.edges)):
-                    e2 = self.edges[i]
-                    if e[0]==e2[0] and e[1] == e2[1]:
-                        sps[-1]+=paths[i]
-                        break
-                    if e[0]==e2[1] and e[1] == e2[0]:
-                        sps[-1]+=Edges.reverse(paths[i])
-                        break
-
-        return sps, edges, sings
-    
     def _compute_intersection_product(self):
         r=len(self.thimbles)
         inter_prod_thimbles = matrix([[self._compute_intersection_product_thimbles(i,j) for j in range(r)] for i in range(r)])
@@ -613,57 +511,19 @@ class LefschetzFamily(object):
         if k==1:
             return [V(alpha)*A(alpha) for alpha in alphas]
         return _residue_form(A*U/(k-1)+(A*V).derivative()/(k-1)**2, P, k-1, alphas)
-    
-    @classmethod
-    @parallel
-    def _compute_transition_matrix_delaunay(cls, L, l, values, nbits=400):
-        """computes the numerical transition matrix of L along l, adapted to computations of Delaunay. Accepts l=[]"""
-        res = L.numerical_transition_matrix([values[v] for v in l], eps=2**(-nbits), assume_analytic=True) if l!= [] else identity_matrix(L.order())
-        return res
 
-    @classmethod
-    @parallel
-    def _compute_transition_matrix_voronoi(cls, i, L, l, nbits=300, maxtries=5):
-        """ Returns the numerical transition matrix of L along l, adapted to computations of Voronoi. Accepts l=[]
-        """
-        # logger.info("[%d] Starting integration along edge [%d/%d]"% (os.getpid(), i[0],i[1]))
-        done = False
-        tries = 1
-        bounds_prec=256
-        # begin = time.time()
-        while not done and tries < maxtries:
-            try:
-                res = L.numerical_transition_matrix(l, eps=2**(-nbits), assume_analytic=True, bounds_prec=bounds_prec) if l!= [] else identity_matrix(L.order()) 
-                resinv = res**-1 # checking the matrix is precise enough to be inverted
-            # except (ValueError, ZeroDivisionError) as e:
-            except Exception as e: #temporary fix : what exceptions do we expectd?
-                tries+=1
-                if tries<maxtries:
-                    bounds_prec *=2
-                    nbits*=2
-                    logger.info("[%d] Precision error when integrating edge [%d/%d]. Trying again with double bounds_prec (%d) and nbits (%d)."% (os.getpid(), i[0], i[1], bounds_prec, nbits))
-                else:
-                    logger.info("[%d] Too many ValueErrors when integrating edge [%d/%d]. Stopping computation here"% (os.getpid(), i[0], i[1]))
-                    raise e
-            # except Exception as e:
-            #     logger.info("[%d] Unexpected exception occured while integrating ")
-            #     raise e
-            else:
-                done=True
-        # end = time.time()
-        # duration = end-begin
-        # duration_str = time.strftime("%H:%M:%S",time.gmtime(duration))
-        # logger.info("[%d] Finished integration along edge [%d/%d] in %s"% (os.getpid(), i[0],i[1], duration_str))
-        return res
-
+    @property
+    def _fundamental_group(self):
+        if not hasattr(self,'__fundamental_group'):
+            _fundamental_group = FundamentalGroupVoronoi(self.critical_points, self.basepoint) # access future delaunay implem here
+            _fundamental_group.sort_loops()
+            self.__fundamental_group = _fundamental_group
+        return self.__fundamental_group
 
     @property
     def paths(self):
         if not hasattr(self,'_paths'):
-            if self.ctx.method=="delaunay":
-                self._paths=[sp+["Rd"]+list(reversed(sp)) for sp in self.sps]
-            elif self.ctx.method=="voronoi":
-                self._paths=[list(self.sps[i]+self._loops[i][1:]+list(reversed(self.sps[i]))) for i in range(len(self.critical_points))]
+            self._paths= self._fundamental_group.pointed_loops
         return self._paths
 
     @property
@@ -674,99 +534,4 @@ class LefschetzFamily(object):
             xmin, xmax = min(reals), max(reals)
             self._basepoint = Util.simple_rational(xmin - (xmax-xmin)*shift, (xmax-xmin)/10)
         return self._basepoint
-    
-
-
-    @property
-    def sps(self):
-        if not hasattr(self,'_sps'):
-            self._compute_paths()
-        return self._sps
-    @property
-    def loops(self):
-        assert self.ctx.method=="voronoi", "No loops with method 'delaunay'"
-        if not hasattr(self,'_loops'):
-            self._compute_paths()
-        return self._loops
-
-    @property
-    def edges(self):
-        if not hasattr(self,'_edges'):
-            self._compute_paths()
-        return self._edges
-           
-    def _compute_paths(self):
-        if self.ctx.method=="voronoi":
-            self._compute_paths_voronoi()
-        elif self.ctx.method=="delaunay":
-            self._compute_paths_delaunay()
-
-    def _compute_paths_delaunay(self, shift=1):
-        logger.info("Computing paths for integration")
-        points = [self.basepoint] + self.critical_points
-
-        logger.info("Computing Delaunay triangulation of %d points"% (len(singus)+1))
-        D = Edges.delaunay(points)
-        logger.info("Computing minimal cover tree")
-        T = Edges.minimal_cover_tree(D, points)
-        logger.info("Computing circuit")
-        sps, order = Edges.circuit_delaunay(T, list(range(1, len(points))), 0, points)
-        assert len(order)==len(self.critical_points), "circuit returned less critical points than expected"
-        
-        orderi = Util.invert_permutation([0] + [i+1 for i in order])
-
-
-        self._critical_points = [self.critical_points[i] for i in order] # BAD PRACTICE
-        self._sps = [[orderi[p] for p in sps[i]] for i in order]
-        self._edges = [(orderi[e[0]], orderi[e[1]]) for e in T.edges(labels=False)]
-        
-        logger.info("Paths for integration are computed")
-    
-    def _compute_paths_voronoi(self, shift=1):
-        singus = [self.ctx.CF(c) for c in self.critical_points]
-
-        reals = [s.real() for s in singus]
-        imags = [s.imag() for s in singus]
-        xmin, xmax, ymin, ymax = min(reals), max(reals), min(imags), max(imags)
-
-        logger.info("Computing homotopy representants of the image of the projection in dimension %d"%  self.dim)
-        logger.info("Computing Voronoi Diagram of %d points"% len(singus))
-
-        voronoi = Edges.voronoi(singus, self.basepoint, shift)
-
-        sps, loops, order = Edges.voronoi_loops(singus, self.basepoint)
-        logger.info("Voronoi diagram computed. Extracting edges.")
-        
-        self._critical_points = [self.critical_points[i] for i in order] #  BAD PRACTICE
-        
-        G= Graph(loops=True)
-        for sp in sps:
-            for i in range(len(sp)-1):
-                G.add_edge((sp[i], sp[i+1]))
-        for loop in loops:
-            for i in range(len(loop)-1):
-                G.add_edge((loop[i], loop[i+1]))
-            G.add_edge((loop[-1], loop[0]))
-        G.remove_loops()
-
-        # this is a temp fix to make sure that edges connected to zero don't start with 0
-        # indeed 0 is often a regular singular point of L, and for some reason computing integration along [0, a] is harder than [a, 0]
-        edges = [[e[0], e[1]] if e[0]!=0 else [e[1], e[0]] for e in G.edges(labels=False)]
-
-        #TODO: put this in Util, with "remove_duplicates" method?
-        edges2 = []
-        for e in edges:
-            if not e in edges2 and not [e[1], e[0]] in edges2:
-                if (not self.ctx.use_symmetry) or (not [e[0].conjugate(), e[1].conjugate()] in edges2 and not [e[1].conjugate(), e[0].conjugate()] in edges2):
-                    edges2 += [e]
-        edges=edges2
-
-        edges.sort(key=lambda e: abs(e[0]-e[1]),reverse=True)
-
-        self._edges = edges
-        self._sps = [sps[i] for i in order]
-        self._loops = [loops[i] for i in order]
-
-        logger.info("Edges are computed.")
-
 
