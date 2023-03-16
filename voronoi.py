@@ -37,7 +37,7 @@ class FundamentalGroupVoronoi(object):
         self._shift = shift
         self._border = border
 
-        self.CC = ComplexField(500) # ultimately this should be dropped for certified precision
+        self.CC = ComplexField(50) # ultimately this should be dropped for certified precision
 
 
     def rationalize(self, z):
@@ -66,7 +66,9 @@ class FundamentalGroupVoronoi(object):
     @property
     def vertices(self):
         if not hasattr(self, "_vertices"):
-            polygons = self.polygons
+            polygons = self.polygons 
+            # calling self.polygons defines self._vertices -- this prevents unecessary 
+            # loops, but there is likely a better way to achieve the same goal
         return self._vertices
     
     @property
