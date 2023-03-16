@@ -11,7 +11,7 @@ This Sage package provides a means of efficiently computing periods of complex p
 | Quartic surface   	| est. 20 hours        	|
 
 ## Requirements
-Sagee 9.0 is recommended. Furthermore, this project relies on the following packages:
+Sage 9.0 and above is recommended. Furthermore, this project relies on the following packages:
 
 - [Ore Algebra](https://github.com/mkauers/ore_algebra). For better performance, I recommend using the [`fastalgexp` branch in Marc Mezzarobba's fork](https://github.com/mezzarobba/ore_algebra/tree/fastalgexp).
 - [The branch `coordinates` in my fork of numperiods](https://gitlab.inria.fr/epichonp/numperiods/-/tree/coordinates).
@@ -78,7 +78,7 @@ For any question, bug or remark, please contact [eric.pichon@polytechnique.edu](
 
 ## Roadmap
 Near future milestones:
-- [ ] Encapsulation integration step in its own class
+- [ ] Encapsulate integration step in its own class
 - [ ] Making Delaunay triangulation functional again (issues with graphs)
 - [ ] Saving time on differential operator by precomputing cache before parallelization
 
