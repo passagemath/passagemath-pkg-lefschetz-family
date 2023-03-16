@@ -80,9 +80,9 @@ class LefschetzFamily(object):
                 R = self.P.parent()
                 affineR = PolynomialRing(QQbar, 'X')
                 affineProjection = R.hom([affineR.gens()[0],1], affineR)
-                self._period_matrix = matrix([self._residue_form(affineProjection(b), affineProjection(self.P), (b.degree()+len(R.gens()))//self.P.degree(), self.homology) for b in self.cohomology.basis()]).change_ring(self.ctx.CBF)
+                self._period_matrix = matrix([self._residue_form(affineProjection(b), affineProjection(self.P), (b.degree()+len(R.gens()))//self.P.degree(), self.homology) for b in self.cohomology]).change_ring(self.ctx.CBF)
             else:
-                self._period_matrix = matrix(self.integrated_thimbles([i for i in range(len(self.cohomology.basis()))]))*matrix(self.homology).transpose()
+                self._period_matrix = matrix(self.integrated_thimbles([i for i in range(len(self.cohomology))]))*matrix(self.homology).transpose()
 
         return self._period_matrix
 
@@ -115,9 +115,9 @@ class LefschetzFamily(object):
 
     def picard_fuchs_equation(self, i):
         if not hasattr(self,'_picard_fuchs_equations'):
-            _picard_fuchs_equations = [None for i in range(len(self.cohomology.basis()))]
-            logger.info("Computing Picard-Fuchs equations of %d forms in dimension %d"% (len(self.cohomology.basis()), self.dim))
-            coordinates, denom = self.family.coordinates([self._restrict_form(w) for w in self.cohomology.basis()])
+            _picard_fuchs_equations = [None for i in range(len(self.cohomology))]
+            logger.info("Computing Picard-Fuchs equations of %d forms in dimension %d"% (len(self.cohomology), self.dim))
+            coordinates, denom = self.family.coordinates([self._restrict_form(w) for w in self.cohomology])
 
             for j, v in enumerate(coordinates.rows()):
                 v2 = v/denom
@@ -125,7 +125,7 @@ class LefschetzFamily(object):
                 numerators = denom2 * v2
                 L = self.family.picard_fuchs_equation(numerators)*denom2
                 L = DifferentialOperator(L)
-                logger.info("Operator [%d/%d] has order %d and degree %d for form with numerator of degree %d"% (j+1, len(self.cohomology.basis()), L.order(), L.degree(), self.cohomology.basis()[j].degree()))
+                logger.info("Operator [%d/%d] has order %d and degree %d for form with numerator of degree %d"% (j+1, len(self.cohomology), L.order(), L.degree(), self.cohomology[j].degree()))
                 _picard_fuchs_equations[j] = L
                 self._picard_fuchs_equations = _picard_fuchs_equations
         return self._picard_fuchs_equations[i]
@@ -133,7 +133,7 @@ class LefschetzFamily(object):
     @property
     def cohomology(self):
         if not hasattr(self,'_cohomology'):
-            self._cohomology = Cohomology(self.P)
+            self._cohomology = Cohomology(self.P).basis()
         return self._cohomology
     
     
@@ -309,7 +309,7 @@ class LefschetzFamily(object):
 
             else:
                 r = len(self.monodromy_matrices)
-                n = len(self.fiber.cohomology.basis())
+                n = len(self.fiber.cohomology)
 
                 # compute representants of the quotient H(Y)/kerdelta
                 D, U, V = self.extensions.matrix().smith_form()
@@ -390,9 +390,9 @@ class LefschetzFamily(object):
 
     def transition_matrices(self, l):
         if not hasattr(self, '_integratedQ'):
-            self._integratedQ = [False for i in range(len(self.cohomology.basis()))]
+            self._integratedQ = [False for i in range(len(self.cohomology))]
         if not hasattr(self, '_transition_matrices'):
-            self._transition_matrices = [None for i in range(len(self.cohomology.basis()))]
+            self._transition_matrices = [None for i in range(len(self.cohomology))]
         for i in l:
             if not self._integratedQ[i]:
                 L = self.picard_fuchs_equation(i)
@@ -402,8 +402,17 @@ class LefschetzFamily(object):
         return [self._transition_matrices[i] for i in l]
     
     def integrate(self, L):
-        integrator = Integrator(self._fundamental_group, L, self.ctx.nbits)
-        return integrator.transition_matrices
+        logger.info("Computing numerical transition matrices of operator of order %d and degree %d (%d edges total)."% (L.order(), L.degree(), len(self.fundamental_group.edges)))
+        begin = time.time()
+
+        integrator = Integrator(self.fundamental_group, L, self.ctx.nbits)
+        transition_matrices = integrator.transition_matrices
+        
+        end = time.time()
+        duration_str = time.strftime("%H:%M:%S",time.gmtime(end-begin))
+        logger.info("Integration finished -- total time: %s."% duration_str)
+
+        return transition_matrices
 
     def forget_transition_matrices(self):
         del self._integratedQ
@@ -414,11 +423,11 @@ class LefschetzFamily(object):
     def integrated_thimbles(self, l):
         transition_matrices= self.transition_matrices(l)
         if not hasattr(self, '_integrated_thimblesQ'):
-            self._integrated_thimblesQ = [False for i in range(len(self.cohomology.basis()))]
+            self._integrated_thimblesQ = [False for i in range(len(self.cohomology))]
         if not hasattr(self, '_integrated_thimbles'):
-            self._integrated_thimbles = [None for i in range(len(self.cohomology.basis()))]
+            self._integrated_thimbles = [None for i in range(len(self.cohomology))]
         
-        N=len(self.cohomology.basis())
+        N=len(self.cohomology)
         n=len(self.fiber.homology)
         r=len(self.thimbles)
 
@@ -436,14 +445,14 @@ class LefschetzFamily(object):
 
     def derivatives_coordinates(self, i):
         if not hasattr(self, '_coordinatesQ'):
-            self._coordinatesQ = [False for i in range(len(self.cohomology.basis()))]
+            self._coordinatesQ = [False for i in range(len(self.cohomology))]
         if not hasattr(self, '_coordinates'):
-            self._coordinates = [None for i in range(len(self.cohomology.basis()))]
+            self._coordinates = [None for i in range(len(self.cohomology))]
 
         if not self._coordinatesQ[i]:
             n=len(self.fiber.homology)
             RtoS = self._RtoS()
-            w = self.cohomology.basis()[i]
+            w = self.cohomology[i]
             wt = self._restrict_form(w)
             derivatives = [RtoS(0), wt]
             for k in range(n-1 if self.dim%2==0 else n-2):
@@ -459,7 +468,7 @@ class LefschetzFamily(object):
         n=len(self.fiber.homology)
 
 
-        w = self.cohomology.basis()[i]
+        w = self.cohomology[i]
         wt = self._restrict_form(w)
         derivatives = [RtoS(0), wt]
         for k in range(n-1 if self.dim%2==0 else n-2):
@@ -513,17 +522,28 @@ class LefschetzFamily(object):
         return _residue_form(A*U/(k-1)+(A*V).derivative()/(k-1)**2, P, k-1, alphas)
 
     @property
-    def _fundamental_group(self):
-        if not hasattr(self,'__fundamental_group'):
-            _fundamental_group = FundamentalGroupVoronoi(self.critical_points, self.basepoint) # access future delaunay implem here
-            _fundamental_group.sort_loops()
-            self.__fundamental_group = _fundamental_group
-        return self.__fundamental_group
+    def fundamental_group(self):
+        if not hasattr(self,'_fundamental_group'):
+            begin = time.time()
+
+            fundamental_group = FundamentalGroupVoronoi(self.critical_points, self.basepoint) # access future delaunay implem here
+            fundamental_group.sort_loops()
+
+            end = time.time()
+            duration_str = time.strftime("%H:%M:%S",time.gmtime(end-begin))
+            logger.info("Computed fundamental group in %s."% duration_str)
+
+            self._critical_points = fundamental_group.points[1:]
+            self._fundamental_group = fundamental_group
+        return self._fundamental_group
 
     @property
     def paths(self):
         if not hasattr(self,'_paths'):
-            self._paths= self._fundamental_group.pointed_loops
+            paths = []
+            for path in self.fundamental_group.pointed_loops:
+                paths += [[self.fundamental_group.vertices[v] for v in path]]
+            self._paths= self.fundamental_group.pointed_loops # replace indices by vertices
         return self._paths
 
     @property

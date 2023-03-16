@@ -77,16 +77,47 @@ class Integrator(object):
             self._transition_matrices = transition_matrices
         return self._transition_matrices
 
+    def find_complex_conjugates(self):
+        complex_conjugates = [None]*len(self.voronoi.vertices)
+        for i in range(len(self.voronoi.vertices)):
+            if complex_conjugates[i]==None:
+                if self.voronoi.vertices[i].conjugate() in self.voronoi.vertices:
+                    complex_conjugates[i] = self.voronoi.vertices.index(self.voronoi.vertices[i].conjugate())
+                    complex_conjugates[complex_conjugates[i]] = i
+        return complex_conjugates
+
     @property
     def integrated_edges(self):
         if not hasattr(self, "_integrated_edges"):
-            edges = [[self.voronoi.vertices[e[0]], self.voronoi.vertices[e[1]]] for e in self.voronoi.edges]
+            complex_conjugates = self.find_complex_conjugates()
+            index_of_edges_to_integrate = []
+            edges=[]
+            for i, e in enumerate(self.voronoi.edges):
+                if [e[1], e[0]] not in edges and [complex_conjugates[e[0]], complex_conjugates[e[1]]] not in edges and [complex_conjugates[e[1]], complex_conjugates[e[0]]] not in edges:
+                    index_of_edges_to_integrate+=[i]
+                    edges+=[e]
+
+            edges = [[self.voronoi.vertices[e[0]], self.voronoi.vertices[e[1]]] for e in edges]
             N = len(edges)
             integration_result = Integrator._integrate_edge([([i,N],self.operator,[e[0], e[1]], self.nbits) for i, e in list(enumerate(edges))])
-            integrated_edges= [None]*N
-            # self._integration_result  = integration_result
+            integrated_edges_temp= [None]*N
+
             for [inp, _], ntm in integration_result:
-                integrated_edges[inp[0][0]] = ntm # there should be a cleaner way to do this
+                integrated_edges_temp[inp[0][0]] = ntm # there should be a cleaner way to do this
+
+            integrated_edges = [None]*len(self.voronoi.edges)
+            for index, i in enumerate(index_of_edges_to_integrate):
+                integrated_edges[i] = integrated_edges_temp[index]
+                e = self.voronoi.edges[i]
+                if [complex_conjugates[e[0]], complex_conjugates[e[1]]] == e:
+                    continue
+                if [complex_conjugates[e[0]], complex_conjugates[e[1]]] in self.voronoi.edges:
+                    j = self.voronoi.edges.index([complex_conjugates[e[0]], complex_conjugates[e[1]]])
+                    integrated_edges[j] = integrated_edges_temp[index].conjugate()
+                if [complex_conjugates[e[1]], complex_conjugates[e[0]]] in self.voronoi.edges:
+                    j = self.voronoi.edges.index([complex_conjugates[e[1]], complex_conjugates[e[0]]])
+                    integrated_edges[j] = integrated_edges_temp[index].inverse().conjugate()
+
             self._integrated_edges = integrated_edges
         return self._integrated_edges
     
