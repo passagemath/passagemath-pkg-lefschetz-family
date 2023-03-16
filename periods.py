@@ -30,6 +30,7 @@ from sage.parallel.decorate import parallel
 from sage.arith.misc import gcd
 from sage.arith.functions import lcm
 from ore_algebra.analytic.monodromy import formal_monodromy
+from ore_algebra.analytic.differential_operator import DifferentialOperator
 
 from sage.misc.prandom import randint
 
@@ -45,7 +46,7 @@ logger = logging.getLogger(__name__)
 
 
 class LefschetzFamily(object):
-    def __init__(self, P, **kwds):
+    def __init__(self, P, axis=None, **kwds):
         """P, a homogeneous polynomial defining a smooth hypersurface X in P^{n+1}.
 
         This class aims at computing an effective basis of the homology group H_n(X), 
@@ -57,13 +58,17 @@ class LefschetzFamily(object):
         # assert P.is_homogeneous(), "nonhomogeneous defining polynomial"
         
         self._P = P
+        self._axis=axis
     
     
     @property
     def intersection_product(self):
         if not hasattr(self,'_intersection_product'):
-            assert self.dim==0, "No way to compute intersection product in positive dimension yet"
-            self._intersection_product=identity_matrix(self.degree)
+            # assert self.dim==0, "No way to compute intersection product in positive dimension yet"
+            if self.dim==0:
+                self._intersection_product=identity_matrix(self.degree)
+            else:
+                self._intersection_product=self._compute_intersection_product()
         return self._intersection_product
 
     @property
@@ -108,7 +113,7 @@ class LefschetzFamily(object):
 
     def picard_fuchs_equation(self, i):
         if not hasattr(self,'_picard_fuchs_equations'):
-            self._picard_fuchs_equations = [None for i in range(len(self.cohomology.basis()))]
+            _picard_fuchs_equations = [None for i in range(len(self.cohomology.basis()))]
             logger.info("Computing Picard-Fuchs equations of %d forms in dimension %d"% (len(self.cohomology.basis()), self.dim))
             coordinates, denom = self.family.coordinates([self._restrict_form(w) for w in self.cohomology.basis()])
 
@@ -117,8 +122,10 @@ class LefschetzFamily(object):
                 denom2 = lcm([r.denominator() for r in v2 if r!=0])
                 numerators = denom2 * v2
                 L = self.family.picard_fuchs_equation(numerators)*denom2
+                L = DifferentialOperator(L)
                 logger.info("Operator [%d/%d] has order %d and degree %d for form with numerator of degree %d"% (j+1, len(self.cohomology.basis()), L.order(), L.degree(), self.cohomology.basis()[j].degree()))
-                self._picard_fuchs_equations[j] = L
+                _picard_fuchs_equations[j] = L
+                self._picard_fuchs_equations = _picard_fuchs_equations
         return self._picard_fuchs_equations[i]
     
     @property
@@ -139,7 +146,7 @@ class LefschetzFamily(object):
     @property
     def fibration(self):
         if not hasattr(self,'_fibration'): #TODO try to reduce variance of distance between critical points(?)
-            l = vector([randint(-10,10) for i in range(self.dim+2)])
+            l = vector([randint(-10,10) for i in range(self.dim+2)]) if self._axis==None else self._axis
             m = vector([randint(-10,10) for i in range(self.dim+2)])
             assert matrix([l,m]).rank()==2, "fibration is not well defined"
             self._fibration= (l,m)
@@ -164,14 +171,15 @@ class LefschetzFamily(object):
                 self.P, 
                 forms[1]-1, 
                 t*forms[1]-forms[0]
-            ] + [(f.derivative(var).numerator()-k*self.P.derivative(var)*f.derivative(var).denominator()) for var in _vars]
+            ] + [(f.derivative(var).numerator()*k-self.P.derivative(var)*f.derivative(var).denominator()) for var in _vars]
 
             ideal = S.ideal(eqs).elimination_ideal(S.gens()[:-1])
             Qt = PolynomialRing(QQ, 't')
 
             roots_with_multiplicity = Qt(ideal.groebner_basis()[0]).roots(AlgebraicField())
-            for e in roots_with_multiplicity:
-                assert e[1]==1, "double critical values, fibration is not Lefschetz"
+            if not self.ctx.debug:
+                for e in roots_with_multiplicity:
+                    assert e[1]==1, "double critical values, fibration is not Lefschetz"
             self._critical_points=[e[0] for e in roots_with_multiplicity]
             end = time.time()
             logger.info("Critical points computed in %s"% time.strftime("%H:%M:%S",time.gmtime(end-begin)))
@@ -264,6 +272,31 @@ class LefschetzFamily(object):
 
 
     @property
+    def infinity_loops(self):
+        if not hasattr(self, '_infinity_loops'):
+            Mtot=1
+            phi=[]
+            for M, v in zip(self.monodromy_matrices, self.vanishing_cycles):
+                tempM=(M-1)*Mtot
+                phi+=[[c/v for c in tempM.columns()]]
+                Mtot=M*Mtot
+            phi = matrix(phi).transpose().change_ring(ZZ)
+            if not self.ctx.debug:
+                assert Mtot == identity_matrix(len(self.fiber.homology)), "Monodromy around infinity is nontrivial, most likely because the paths do not actually compose to the loop around infinity"
+            self._infinity_loops = phi.rows()
+
+        return self._infinity_loops
+    
+    @property
+    def extensions(self):
+        if not hasattr(self, '_extensions'):
+            delta = matrix(self.vanishing_cycles).change_ring(ZZ)
+            self._extensions = delta.kernel()
+
+        return self._extensions
+    
+
+    @property
     def homology(self):
         if not hasattr(self, '_homology'):
             if self.dim==0:
@@ -273,27 +306,12 @@ class LefschetzFamily(object):
                 self._homology = [e[0] for e in affineProjection(self.P).roots()]
 
             else:
-                # Compute the kernel of the boundary map
-                delta = matrix(self.vanishing_cycles).change_ring(ZZ)
-                kerdelta= delta.kernel()
-
                 r = len(self.monodromy_matrices)
                 n = len(self.fiber.cohomology.basis())
 
-                # Compute the extensions aronud infinity
-                Mtot=1
-                phi=[]
-                for M, v in zip(self.monodromy_matrices, self.vanishing_cycles):
-                    tempM=(M-1)*Mtot
-                    phi+=[[c/v for c in tempM.columns()]]
-                    Mtot=M*Mtot
-                phi = matrix(phi).transpose().change_ring(ZZ)
-                imphi = phi.image()
-                assert Mtot == identity_matrix(len(self.fiber.homology)), "Monodromy around infinity is nontrivial, most likely because the paths do not actually compose to the loop around infinity"
-
                 # compute representants of the quotient H(Y)/kerdelta
-                D, U, V = kerdelta.matrix().smith_form()
-                B = D.solve_left(matrix(imphi.gens())*V).change_ring(ZZ)*U
+                D, U, V = self.extensions.matrix().smith_form()
+                B = D.solve_left(matrix(self.infinity_loops)*V).change_ring(ZZ)*U
                 Brows=B.row_space()
                 compl = [[0 for i in range(Brows.degree())]]
                 rank=Brows.dimension()
@@ -307,8 +325,15 @@ class LefschetzFamily(object):
                     if rank+N == Brows.degree():
                         break
                 quotient_basis=matrix(compl[1:])
-                self._homology = (quotient_basis*kerdelta.matrix()).rows() # NB this is the homology of Y, to recover the homology of X we need to remove the kernel of the period matrix
+                self._homology = (quotient_basis*self.extensions.matrix()).rows() # NB this is the homology of Y, to recover the homology of X we need to remove the kernel of the period matrix
         return self._homology
+
+    @property
+    def exceptional_divisors(self):
+        if not hasattr(self, '_exceptional_divisors'):
+            assert self.dim<=2, "Not implemented yet"
+            self._exceptional_divisors = []
+        return self._exceptional_divisors
 
 
     def _RtoS(self):
@@ -394,10 +419,8 @@ class LefschetzFamily(object):
         for i2 in range(len(l)):
             i= l[i2]
             if not self._integrated_thimblesQ[i]:
-                # derivatives_coordinates, denom = self.derivatives_coordinates(i)
                 derivatives_at_basepoint = self.derivatives_values_at_basepoint(i)
                 integration_correction = diagonal_matrix([1/ZZ(factorial(k)) for k in range(n+1 if self.dim%2==0 else n)])
-                # initial_conditions = integration_correction* derivatives_coordinates(self.basepoint)/denom(self.basepoint)*self.fiber.period_matrix
                 initial_conditions = integration_correction* derivatives_at_basepoint*self.fiber.period_matrix
                 self._integrated_thimbles[i]=[(transition_matrices[i2][j]*initial_conditions*self.permuting_cycles[j])[0] for j in range(r)]
                 self._integrated_thimblesQ[i] = True
@@ -458,7 +481,7 @@ class LefschetzFamily(object):
             duration_str = time.strftime("%H:%M:%S",time.gmtime(duration))
             logger.info("Computation of edges finished -- total time: %s."% duration_str)
             transition_matrices = []
-            for j in range(len(self.critical_points)):
+            for j in range(len(self.paths)):
                 path =  self._sps[j] + self._loops[j] +list(reversed(self._sps[j]))
                 M = self._reconstruct_path_voronoi(Util.simplify_path(path), ntms, L)
                 transition_matrices+=[M]
@@ -548,7 +571,7 @@ class LefschetzFamily(object):
     def _compute_intersection_product(self):
         r=len(self.thimbles)
         inter_prod_thimbles = matrix([[self._compute_intersection_product_thimbles(i,j) for j in range(r)] for i in range(r)])
-        intersection_11 = (matrix(self.homology)*inter_prod_thimbles*matrix(self.homology).transpose()).change_ring(ZZ)
+        intersection_11 = (-1)**self.dim * (matrix(self.homology)*inter_prod_thimbles*matrix(self.homology).transpose()).change_ring(ZZ)
         if self.dim%2==0:
             intersection_02 = zero_matrix(2,2)
             intersection_02[0,1], intersection_02[1,0] = 1,1
@@ -575,8 +598,6 @@ class LefschetzFamily(object):
             return res
         else:
             return 0
-
-        return 0 if i==j else res*(1 if i>j else -1)
 
     @classmethod
     def _derivative(self, A, P): 

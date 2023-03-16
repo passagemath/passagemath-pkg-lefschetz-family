@@ -44,11 +44,23 @@ The object `LefschetzFamily` can be called with several options:
 For any question, bug or remark, please contact [eric.pichon@polytechnique.edu](mailto:eric.pichon@polytechnique.edu).
 
 ## Roadmap
-Future goals include:
+Near future milestones:
+- [ ] Encapsulation integration step in its own class
+- [ ] Making Delaunay triangulation functional again (issues with graphs)
+- [ ] Saving time on differential operator by precomputing cache before parallelization
+
+Middle term goals include:
+- [ ] Having own implementation of 2D voronoi graphs/Delaunay triangulation
+
+Long term goals include:
 - [ ] Tackling higher dimensional varieties (most notably cubics in P^5).
 - [ ] Computing periods of singular varieties.
+- [ ] Computing periods of elliptic fibrations.
 - [ ] Computing periods of complete intersections.
-- [ ] Computing periods of weighed projective hypersurfaces, notably double covers of P^2 ramified along a cubic.
+- [ ] Computing periods of weighted projective hypersurfaces, notably double covers of P^2 ramified along a cubic.
+
+Other directions include:
+- [ ] Computation of homology through braid groups instead of monodromy of differential operators
 
 
 ## Project status

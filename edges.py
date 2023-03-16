@@ -210,16 +210,6 @@ class Edges(object):
                 G.add_edge((dictionary[e1],dictionary[e2]))
 
         return  G
-
-    @classmethod
-    def closest(cls, p, l): # not used
-        """ Finds the element closest to p in l for the euclidean norm in the complex plane
-        """
-        res=l[0]
-        for e in l:
-            if abs(p-e) < abs(p-res):
-                res = e
-        return res
     
     @classmethod
     def voronoi_loops(cls, points, basepoint):

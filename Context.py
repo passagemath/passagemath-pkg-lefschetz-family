@@ -27,13 +27,9 @@ class Context(object):
         * (other options still to be documented...)
         """
 
-        if not method in [None, "voronoi", "delaunay"]:
+        if not method in [None, "voronoi"]:
             raise ValueError("method", method)
         self.method = "voronoi" if method==None else method
-
-        if not isinstance(compute_periods, bool):
-            raise TypeError("compute_periods", type(compute_periods))
-        self.compute_periods = compute_periods
 
         if not isinstance(singular, bool):
             raise TypeError("singular", type(singular))

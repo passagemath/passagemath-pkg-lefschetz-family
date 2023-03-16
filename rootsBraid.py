@@ -96,7 +96,7 @@ class RootsBraid(object):
             for r in roots:   
                 j+=1
                 logger.info("Computing thread %d."% j)
-                line = followstrand(self.P, [], e[0], e[1],r, 50)
+                line = followstrand(self.P, [z.minpoly()(self.P.parent().gens()[1]) for z in self.additional_points], e[0], e[1],r, 50)
                 res+=  [[[c[0], c[1]+I*c[2]] for c in line]]
             res.sort(key=lambda thread: (CC(thread[0][1].real()), CC(thread[0][1].imag())))
             self._braid[i] = res
