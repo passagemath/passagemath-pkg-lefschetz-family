@@ -11,13 +11,7 @@ from sage.rings.polynomial.polynomial_ring_constructor import PolynomialRing
 from sage.rings.rational_field import QQ
 from sage.rings.qqbar import AlgebraicField
 from sage.rings.qqbar import QQbar
-from sage.functions.other import ceil
-from sage.functions.other import floor
-from sage.functions.other import arg
 from sage.functions.other import factorial
-from sage.graphs.graph import Graph
-from sage.symbolic.constants import I
-from sage.rings.complex_double import CDF
 from sage.matrix.constructor import matrix
 from sage.arith.misc import xgcd
 from sage.rings.integer_ring import ZZ
@@ -26,10 +20,7 @@ from sage.matrix.special import diagonal_matrix
 from sage.matrix.special import block_matrix
 from sage.matrix.special import block_diagonal_matrix
 from sage.matrix.special import zero_matrix
-from sage.parallel.decorate import parallel
-from sage.arith.misc import gcd
 from sage.arith.functions import lcm
-from ore_algebra.analytic.monodromy import formal_monodromy
 from ore_algebra.analytic.differential_operator import DifferentialOperator
 
 from sage.misc.prandom import randint
@@ -82,7 +73,9 @@ class LefschetzFamily(object):
                 affineProjection = R.hom([affineR.gens()[0],1], affineR)
                 self._period_matrix = matrix([self._residue_form(affineProjection(b), affineProjection(self.P), (b.degree()+len(R.gens()))//self.P.degree(), self.homology) for b in self.cohomology]).change_ring(self.ctx.CBF)
             else:
-                self._period_matrix = matrix(self.integrated_thimbles([i for i in range(len(self.cohomology))]))*matrix(self.homology).transpose()
+                homology_mat = matrix(self.homology).transpose()
+                integrated_thimbles =  matrix(self.integrated_thimbles([i for i in range(len(self.cohomology))]))
+                self._period_matrix = integrated_thimbles*homology_mat
 
         return self._period_matrix
 
@@ -116,7 +109,7 @@ class LefschetzFamily(object):
     def picard_fuchs_equation(self, i):
         if not hasattr(self,'_picard_fuchs_equations'):
             _picard_fuchs_equations = [None for i in range(len(self.cohomology))]
-            logger.info("Computing Picard-Fuchs equations of %d forms in dimension %d"% (len(self.cohomology), self.dim))
+            logger.info("[%d] Computing Picard-Fuchs equations of %d forms in dimension %d"% (self.dim, len(self.cohomology), self.dim))
             coordinates, denom = self.family.coordinates([self._restrict_form(w) for w in self.cohomology])
 
             for j, v in enumerate(coordinates.rows()):
@@ -125,7 +118,7 @@ class LefschetzFamily(object):
                 numerators = denom2 * v2
                 L = self.family.picard_fuchs_equation(numerators)*denom2
                 L = DifferentialOperator(L)
-                logger.info("Operator [%d/%d] has order %d and degree %d for form with numerator of degree %d"% (j+1, len(self.cohomology), L.order(), L.degree(), self.cohomology[j].degree()))
+                logger.info("[%d] Operator [%d/%d] has order %d and degree %d for form with numerator of degree %d"% (self.dim, j+1, len(self.cohomology), L.order(), L.degree(), self.cohomology[j].degree()))
                 _picard_fuchs_equations[j] = L
                 self._picard_fuchs_equations = _picard_fuchs_equations
         return self._picard_fuchs_equations[i]
@@ -154,17 +147,11 @@ class LefschetzFamily(object):
             self._fibration= (l,m)
         return self._fibration
 
-    # def _compute_distance(self, points):
-    #     return min([min([abs(ComplexField(50)(p1-p2)) for p2 in points if p2!=p1]) for p1 in points])
-    
-
     @property
     def critical_points(self):
         if not hasattr(self,'_critical_points'):
             R = self.P.parent()
             _vars = [v for v in R.gens()]
-            logger.info("Computing critical points")
-            begin=time.time()
             forms=[v.dot_product(vector(_vars)) for v in self.fibration]
             f=forms[0]/forms[1]
             S = PolynomialRing(QQ, _vars+['k','t'])
@@ -183,10 +170,6 @@ class LefschetzFamily(object):
                 for e in roots_with_multiplicity:
                     assert e[1]==1, "double critical values, fibration is not Lefschetz"
             self._critical_points=[e[0] for e in roots_with_multiplicity]
-            end = time.time()
-            logger.info("Critical points computed in %s"% time.strftime("%H:%M:%S",time.gmtime(end-begin)))
-            # if self.dim==2:
-            #     assert len(self._critical_points)==36, "fibration is not Lefschetz (if you are not dealing with quartics, this should be removed)"
         return self._critical_points
     
     @property
@@ -206,16 +189,10 @@ class LefschetzFamily(object):
                 lift = block_matrix([[identity_matrix(n-1)], [matrix([[0]*(n-1)])]],subdivide=False)
                 basis_change = block_matrix([[lift, matrix([-invariant_vector]).transpose()]],subdivide=False)
             
-            logger.info("Computing the coordinates of the successive derivatives of integration forms")
-            begin = time.time()
-            # derivatives_coordinates, denom = self.derivatives_coordinates(i)
             derivatives_at_basepoint = self.derivatives_values_at_basepoint(i)
-            end = time.time()
-            duration_str = time.strftime("%H:%M:%S",time.gmtime(end-begin))
-            logger.info("Coordinates computed in %s"% duration_str)
             
             integration_correction = diagonal_matrix([1/ZZ(factorial(k)) for k in range(n+1 if self.dim%2==0 else n)])
-            # initial_conditions = integration_correction* derivatives_coordinates(self.basepoint)/denom(self.basepoint)*self.fiber.period_matrix
+
             initial_conditions = integration_correction* derivatives_at_basepoint*self.fiber.period_matrix
 
             if self.dim%2==1:
@@ -309,9 +286,9 @@ class LefschetzFamily(object):
 
             else:
                 r = len(self.monodromy_matrices)
-                n = len(self.fiber.cohomology)
-
-                # compute representants of the quotient H(Y)/kerdelta
+                
+                begin = time.time()
+                # compute representants of the quotient H(Y)/imtau
                 D, U, V = self.extensions.matrix().smith_form()
                 B = D.solve_left(matrix(self.infinity_loops)*V).change_ring(ZZ)*U
                 Brows=B.row_space()
@@ -328,6 +305,11 @@ class LefschetzFamily(object):
                         break
                 quotient_basis=matrix(compl[1:])
                 self._homology = (quotient_basis*self.extensions.matrix()).rows() # NB this is the homology of Y, to recover the homology of X we need to remove the kernel of the period matrix
+                
+                end = time.time()
+                duration_str = time.strftime("%H:%M:%S",time.gmtime(end-begin))
+                logger.info("[%d] Reconstructed homology from monodromy -- total time: %s."% (self.dim, duration_str))
+
         return self._homology
 
     @property
@@ -402,7 +384,7 @@ class LefschetzFamily(object):
         return [self._transition_matrices[i] for i in l]
     
     def integrate(self, L):
-        logger.info("Computing numerical transition matrices of operator of order %d and degree %d (%d edges total)."% (L.order(), L.degree(), len(self.fundamental_group.edges)))
+        logger.info("[%d] Computing numerical transition matrices of operator of order %d and degree %d (%d edges total)."% (self.dim, L.order(), L.degree(), len(self.fundamental_group.edges)))
         begin = time.time()
 
         integrator = Integrator(self.fundamental_group, L, self.ctx.nbits)
@@ -410,7 +392,7 @@ class LefschetzFamily(object):
         
         end = time.time()
         duration_str = time.strftime("%H:%M:%S",time.gmtime(end-begin))
-        logger.info("Integration finished -- total time: %s."% duration_str)
+        logger.info("[%d] Integration finished -- total time: %s."% (self.dim, duration_str))
 
         return transition_matrices
 
@@ -427,15 +409,14 @@ class LefschetzFamily(object):
         if not hasattr(self, '_integrated_thimbles'):
             self._integrated_thimbles = [None for i in range(len(self.cohomology))]
         
-        N=len(self.cohomology)
-        n=len(self.fiber.homology)
+        s=len(self.fiber.homology)
         r=len(self.thimbles)
 
         for i2 in range(len(l)):
             i= l[i2]
             if not self._integrated_thimblesQ[i]:
                 derivatives_at_basepoint = self.derivatives_values_at_basepoint(i)
-                integration_correction = diagonal_matrix([1/ZZ(factorial(k)) for k in range(n+1 if self.dim%2==0 else n)])
+                integration_correction = diagonal_matrix([1/ZZ(factorial(k)) for k in range(s+1 if self.dim%2==0 else s)])
                 initial_conditions = integration_correction* derivatives_at_basepoint*self.fiber.period_matrix
                 self._integrated_thimbles[i]=[(transition_matrices[i2][j]*initial_conditions*self.permuting_cycles[j])[0] for j in range(r)]
                 self._integrated_thimblesQ[i] = True
@@ -450,12 +431,12 @@ class LefschetzFamily(object):
             self._coordinates = [None for i in range(len(self.cohomology))]
 
         if not self._coordinatesQ[i]:
-            n=len(self.fiber.homology)
+            s=len(self.fiber.homology)
             RtoS = self._RtoS()
             w = self.cohomology[i]
             wt = self._restrict_form(w)
             derivatives = [RtoS(0), wt]
-            for k in range(n-1 if self.dim%2==0 else n-2):
+            for k in range(s-1 if self.dim%2==0 else s-2):
                 derivatives += [self._derivative(derivatives[-1], RtoS(self.P))] 
             self._coordinates[i] = self.family.coordinates(derivatives)
             self._coordinatesQ[i] = True
@@ -465,13 +446,13 @@ class LefschetzFamily(object):
 
     def derivatives_values_at_basepoint(self, i):
         RtoS = self._RtoS()
-        n=len(self.fiber.homology)
+        s=len(self.fiber.homology)
 
 
         w = self.cohomology[i]
         wt = self._restrict_form(w)
         derivatives = [RtoS(0), wt]
-        for k in range(n-1 if self.dim%2==0 else n-2):
+        for k in range(s-1 if self.dim%2==0 else s-2):
             derivatives += [self._derivative(derivatives[-1], RtoS(self.P))] 
         return self.family._coordinates(derivatives, self.basepoint)
 
@@ -512,14 +493,13 @@ class LefschetzFamily(object):
         field = P.parent()
         return field(A).derivative() - A*P.derivative()         
     
-    @classmethod
     def _residue_form(self, A, P, k, alphas): 
         """ returns the formal residue of A/P^k at alpha for alpha in alphas """
         G,U,V = xgcd(P, P.derivative())
         assert G==1
         if k==1:
             return [V(alpha)*A(alpha) for alpha in alphas]
-        return _residue_form(A*U/(k-1)+(A*V).derivative()/(k-1)**2, P, k-1, alphas)
+        return self._residue_form(A*U/(k-1)+(A*V).derivative()/(k-1)**2, P, k-1, alphas)
 
     @property
     def fundamental_group(self):
@@ -531,7 +511,7 @@ class LefschetzFamily(object):
 
             end = time.time()
             duration_str = time.strftime("%H:%M:%S",time.gmtime(end-begin))
-            logger.info("Fundamental group computed in %s."% duration_str)
+            logger.info("[%d] Fundamental group computed in %s."% (self.dim, duration_str))
 
             self._critical_points = fundamental_group.points[1:]
             self._fundamental_group = fundamental_group

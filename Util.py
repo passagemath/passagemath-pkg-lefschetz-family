@@ -3,25 +3,10 @@
 import sage.all
 
 from ore_algebra import *
-from sage.modules.free_module_element import vector
-from sage.rings.polynomial.polynomial_ring_constructor import PolynomialRing
-from sage.rings.rational_field import QQ
-from sage.rings.qqbar import AlgebraicField
-from sage.rings.qqbar import QQbar
-from sage.rings.complex_arb import ComplexBallField
 from sage.rings.complex_mpfr import ComplexField
-from sage.geometry.voronoi_diagram import VoronoiDiagram
-from sage.graphs.graph import Graph
-from sage.symbolic.constants import I
-from sage.functions.other import arg
-from delaunay_triangulation.triangulate import delaunay, Vertex
-from sage.functions.other import ceil
 from sage.functions.other import floor
-from sage.symbolic.constants import pi
 from sage.arith.misc import gcd
 from sage.arith.misc import xgcd
-from sage.plot.plot import list_plot
-from sage.parallel.decorate import parallel
 from sage.combinat.integer_vector import IntegerVectors
 from sage.matrix.constructor import matrix
 

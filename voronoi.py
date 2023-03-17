@@ -2,26 +2,16 @@
 
 import sage.all
 
-from sage.rings.qqbar import AlgebraicField
-
-from sage.rings.qqbar import QQbar
 from sage.rings.rational_field import QQ
-from sage.rings.complex_arb import ComplexBallField
 from sage.rings.complex_mpfr import ComplexField
 from sage.graphs.graph import Graph
 from sage.symbolic.constants import I
 from sage.functions.other import arg
-from delaunay_triangulation.triangulate import delaunay, Vertex
-from sage.functions.other import floor
-from sage.functions.other import ceil
 
 from sage.geometry.voronoi_diagram import VoronoiDiagram
 from sage.misc.flatten import flatten
 
-from sage.misc.sage_input import sage_input
-
 from sage.graphs.spanning_tree import boruvka
-from sage.parallel.decorate import parallel
 
 import os
 
@@ -30,11 +20,10 @@ import os
 from Util import Util
 
 class FundamentalGroupVoronoi(object):
-    def __init__(self, points, basepoint, shift=1, border=5):
+    def __init__(self, points, basepoint, border=5):
         assert basepoint not in points
 
         self._points = [basepoint] + points
-        self._shift = shift
         self._border = border
 
         self.CC = ComplexField(50) # ultimately this should be dropped for certified precision
@@ -86,9 +75,6 @@ class FundamentalGroupVoronoi(object):
             self._edges = edges
         return self._edges
 
-    @property
-    def shift(self):
-        return self._shift
     @property
     def border(self):
         return self._border
@@ -223,10 +209,11 @@ class FundamentalGroupVoronoi(object):
             rootapprox = [p for p in self.qpoints] # there should be a `copy` function
 
             qpoints = [self.complex_number_to_point(z) for z in self.qpoints]
-            reals = [s[0] for s in qpoints[1:]]
-            imags = [s[1] for s in qpoints[1:]]
+            reals = [s[0] for s in qpoints]
+            imags = [s[1] for s in qpoints]
             xmin, xmax, ymin, ymax = min(reals), max(reals), min(imags), max(imags)
-            xmin, xmax, ymin, ymax = xmin + self.shift*(xmin-xmax), xmax + self.shift*(xmax-xmin), ymin + self.shift*(ymin-ymax), ymax + self.shift*(ymax-ymin)
+            shift = max(ymax-ymin, xmax-xmin)/2 # there is likely something more clever to do here
+            xmin, xmax, ymin, ymax = xmin - shift, xmax + shift, ymin - shift, ymax + shift
             
             for i in range(self.border):
                 step = QQ(i)/QQ(self.border)
@@ -241,6 +228,9 @@ class FundamentalGroupVoronoi(object):
                 list_of_rational_points+= [[QQ(p[0]), QQ([p[1]])]]
 
             vd = VoronoiDiagram(list_of_rational_points)
+
+            self._voronoi_diagram = vd
+            self._rootapprox = rootapprox
 
             polygons_temp = [] # first we collect all polygons and translate the centers in rational coordinates
             for pt, reg in vd.regions().items():
