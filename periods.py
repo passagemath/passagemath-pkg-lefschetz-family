@@ -52,6 +52,8 @@ class LefschetzFamily(object):
         
         self._P = P
         self._axis=axis
+        if self.dim>=1:
+            fg = self.fundamental_group # this allows reordering the critical points straight away and prevents shenanigans. There should be a better way to do this
     
     
     @property
@@ -503,6 +505,7 @@ class LefschetzFamily(object):
 
     @property
     def fundamental_group(self):
+        assert self.dim>0, "Dimension 0 vartiety has no fibration"
         if not hasattr(self,'_fundamental_group'):
             begin = time.time()
 
@@ -519,6 +522,7 @@ class LefschetzFamily(object):
 
     @property
     def paths(self):
+        assert self.dim>0, "Dimension 0 vartiety has no fibration"
         if not hasattr(self,'_paths'):
             paths = []
             for path in self.fundamental_group.pointed_loops:
@@ -528,6 +532,7 @@ class LefschetzFamily(object):
 
     @property
     def basepoint(self):
+        assert self.dim>0, "Dimension 0 vartiety has no fibration"
         if  not hasattr(self, '_basepoint'):
             shift = 1
             reals = [self.ctx.CF(c).real() for c in self.critical_points]
