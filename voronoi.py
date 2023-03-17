@@ -232,11 +232,15 @@ class FundamentalGroupVoronoi(object):
                 step = QQ(i)/QQ(self.border)
                 rootapprox += [xmin + step*(xmax-xmin) + I*ymax]
                 rootapprox += [xmax + step*(xmin-xmax) + I*ymin]
-                rootapprox += [xmin + I*ymin + step*(ymax-ymin)]
-                rootapprox += [xmax + I*ymax + step*(ymin-ymax)]
+                rootapprox += [xmin + I*(ymin + step*(ymax-ymin))]
+                rootapprox += [xmax + I*(ymax + step*(ymin-ymax))]
             
-            
-            vd = VoronoiDiagram(eval(str(sage_input([self.complex_number_to_point(z) for z in rootapprox]))))
+            list_of_rational_points = [] # why is this necessary? I do not know, but otherwise VoronoiDiagram throws a fit
+            for z in rootapprox:
+                p = self.complex_number_to_point(z)
+                list_of_rational_points+= [[QQ(p[0]), QQ([p[1]])]]
+
+            vd = VoronoiDiagram(list_of_rational_points)
 
             polygons_temp = [] # first we collect all polygons and translate the centers in rational coordinates
             for pt, reg in vd.regions().items():

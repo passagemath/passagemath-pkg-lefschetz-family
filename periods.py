@@ -531,7 +531,7 @@ class LefschetzFamily(object):
 
             end = time.time()
             duration_str = time.strftime("%H:%M:%S",time.gmtime(end-begin))
-            logger.info("Computed fundamental group in %s."% duration_str)
+            logger.info("Fundamental group computed in %s."% duration_str)
 
             self._critical_points = fundamental_group.points[1:]
             self._fundamental_group = fundamental_group
@@ -543,7 +543,7 @@ class LefschetzFamily(object):
             paths = []
             for path in self.fundamental_group.pointed_loops:
                 paths += [[self.fundamental_group.vertices[v] for v in path]]
-            self._paths= self.fundamental_group.pointed_loops # replace indices by vertices
+            self._paths= paths
         return self._paths
 
     @property
