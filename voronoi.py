@@ -72,6 +72,7 @@ class FundamentalGroupVoronoi(object):
                         edges += [e]
             connection_to_basepoint = min([i for i in range(1, len(self.vertices))], key=lambda i: abs(self.vertices[0] - self.vertices[i]))
             edges += [[0, connection_to_basepoint]]
+            edges.sort(reverse=True, key=lambda e:(self.vertices[e[0]].real()-self.vertices[e[1]].real())**2 + (self.vertices[e[0]].imag()-self.vertices[e[1]].imag())**2)
             self._edges = edges
         return self._edges
 

@@ -79,6 +79,7 @@ For any question, bug or remark, please contact [eric.pichon@polytechnique.edu](
 ## Roadmap
 Near future milestones:
 - [x] Encapsulate integration step in its own class
+- [ ] Certified computation of the exceptional divisors
 - [ ] Making Delaunay triangulation functional again (issues with graphs)
 - [ ] Saving time on differential operator by precomputing cache before parallelization
 
@@ -86,7 +87,7 @@ Middle term goals include:
 - [ ] Having own implementation of 2D voronoi graphs/Delaunay triangulation
 
 Long term goals include:
-- [ ] Tackling higher dimensional varieties (most notably cubics in P^5).
+- [ ] Tackling higher dimensional varieties (most notably cubics in $\mathbb P^5$).
 - [ ] Computing periods of singular varieties.
 - [ ] Computing periods of elliptic fibrations.
 - [ ] Computing periods of complete intersections.

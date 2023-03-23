@@ -12,6 +12,7 @@ class Context(object):
             debug=False,
             use_symmetry=True,
             nbits=200,
+            long_fibration=True,
             depth=0
         ):
         r"""
@@ -37,6 +38,10 @@ class Context(object):
         if not isinstance(debug, bool):
             raise TypeError("debug", type(debug))
         self.debug = debug
+
+        if not isinstance(long_fibration, bool):
+            raise TypeError("long_fibration", type(debug))
+        self.long_fibration = long_fibration
 
         # if not isinstance(nbits, ): # what type is int ?
         #     raise TypeError("nbits", type(nbits))

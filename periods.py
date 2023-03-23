@@ -25,7 +25,6 @@ from ore_algebra.analytic.differential_operator import DifferentialOperator
 
 from sage.misc.prandom import randint
 
-from edges import Edges
 from voronoi import FundamentalGroupVoronoi
 from integrator import Integrator
 from Util import Util
@@ -39,7 +38,7 @@ logger = logging.getLogger(__name__)
 
 
 class LefschetzFamily(object):
-    def __init__(self, P, axis=None, **kwds):
+    def __init__(self, P, fibration=None, **kwds):
         """P, a homogeneous polynomial defining a smooth hypersurface X in P^{n+1}.
 
         This class aims at computing an effective basis of the homology group H_n(X), 
@@ -51,7 +50,10 @@ class LefschetzFamily(object):
         # assert P.is_homogeneous(), "nonhomogeneous defining polynomial"
         
         self._P = P
-        self._axis=axis
+        if fibration != None:
+            assert matrix(fibration).rank() == len(fibration), "collection of hyperplanes is not generic"
+            assert len(fibration) == self.dim+1, "fibration does not have the correct number of hyperplanes"
+            self._fibration = fibration
         if self.dim>=1:
             fg = self.fundamental_group # this allows reordering the critical points straight away and prevents shenanigans. There should be a better way to do this
     
@@ -143,10 +145,17 @@ class LefschetzFamily(object):
     @property
     def fibration(self):
         if not hasattr(self,'_fibration'): #TODO try to reduce variance of distance between critical points(?)
-            l = vector([randint(-10,10) for i in range(self.dim+2)]) if self._axis==None else self._axis
-            m = vector([randint(-10,10) for i in range(self.dim+2)])
-            assert matrix([l,m]).rank()==2, "fibration is not well defined"
-            self._fibration= (l,m)
+            rank = self.dim+1 if self.ctx.long_fibration else 2
+            
+            r=0
+            fibration = []
+            for r in range(rank):
+                while True:
+                    v = vector([randint(-10,10) for i in range(self.dim+2)])
+                    if v not in matrix(fibration).image():
+                        fibration += [v]
+                        break
+            self._fibration = fibration
         return self._fibration
 
     @property
@@ -154,7 +163,7 @@ class LefschetzFamily(object):
         if not hasattr(self,'_critical_points'):
             R = self.P.parent()
             _vars = [v for v in R.gens()]
-            forms=[v.dot_product(vector(_vars)) for v in self.fibration]
+            forms=[v.dot_product(vector(_vars)) for v in self.fibration[:2]]
             f=forms[0]/forms[1]
             S = PolynomialRing(QQ, _vars+['k','t'])
             k,t= S.gens()[-2:]
@@ -221,7 +230,9 @@ class LefschetzFamily(object):
         if not hasattr(self,'_fiber'):
             RtoS = self._RtoS()
             evaluate_at_basepoint = RtoS.codomain().hom([self.basepoint], RtoS.codomain().base_ring())
-            self._fiber = LefschetzFamily(evaluate_at_basepoint(RtoS(self.P)), method=self.ctx.method, nbits=self.ctx.nbits, depth=self.ctx.depth+1)
+            P = evaluate_at_basepoint(RtoS(self.P))
+            fibration  = self._restrict_fibration() if self.ctx.long_fibration else None
+            self._fiber = LefschetzFamily(P, fibration = fibration, method=self.ctx.method, nbits=self.ctx.nbits, long_fibration=self.ctx.long_fibration, depth=self.ctx.depth+1)
 
         return self._fiber
 
@@ -321,13 +332,17 @@ class LefschetzFamily(object):
             self._exceptional_divisors = []
         return self._exceptional_divisors
 
+    @property
+    def _restriction_variable(self):
+        if not hasattr(self, "__restriction_variable"):
+            for varid in range(self.dim+2):
+                if self.fibration[0][varid] !=0:
+                    break
+            self.__restriction_variable = varid
+        return self.__restriction_variable
 
     def _RtoS(self):
         R = self.P.parent()
-        for varid in range(self.dim+2):
-            if self.fibration[0][varid] !=0:
-                break
-        self._restriction_variable = varid # this is the variable we're removing when going from P to Pt
 
         a = self.fibration[1][self._restriction_variable]
         b = self.fibration[0][self._restriction_variable]
@@ -336,15 +351,30 @@ class LefschetzFamily(object):
         S = PolynomialRing(PolynomialRing(QQ, [_vars[i] for i in range(len(_vars)) if i != self._restriction_variable]), 't')
         t=S.gens()[0]
 
-        l = vector([_vars[i] for i in range(len(_vars)) if i != self._restriction_variable])*vector([self.fibration[0][i] for i in range(len(_vars)) if i != self._restriction_variable])
-        m = vector([_vars[i] for i in range(len(_vars)) if i != self._restriction_variable])*vector([self.fibration[1][i] for i in range(len(_vars)) if i != self._restriction_variable])
+        l = vector([c for i, c in enumerate(_vars) if i != self._restriction_variable])*vector([c for i,c in enumerate(self.fibration[0]) if i != self._restriction_variable])
+        m = vector([c for i, c in enumerate(_vars) if i != self._restriction_variable])*vector([c for i,c in enumerate(self.fibration[1]) if i != self._restriction_variable])
 
         form = (-S(l)+t*S(m))
         denom = b-a*t
 
         RtoS = R.hom([denom*S(_vars[i]) if i != self._restriction_variable else form for i in range(len(_vars))], S)
-
         return RtoS
+    
+    def _restrict_fibration(self):
+        a = self.fibration[1][self._restriction_variable]
+        b = self.fibration[0][self._restriction_variable]
+        
+        l = vector([c for i, c in enumerate(self.fibration[0]) if i != self._restriction_variable])
+        m = vector([c for i, c in enumerate(self.fibration[1]) if i != self._restriction_variable])
+
+        form = l+self.basepoint*m
+        
+        hyperplanes = []
+        for hyperplane in self.fibration[1:]:
+            cs = (b-a*self.basepoint) * vector([c for i, c in enumerate(hyperplane) if i != self._restriction_variable])
+            cz = hyperplane[self._restriction_variable]*form
+            hyperplanes += [cs+cz]
+        return hyperplanes
 
     def _restrict_form(self, A):
         """ Given a form A, returns the form A_t such that A/P^k w_n = A_t/P_t^k w_{n-1}dt

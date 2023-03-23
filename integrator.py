@@ -122,6 +122,6 @@ class Integrator(object):
         end = time.time()
         duration = end-begin
         duration_str = time.strftime("%H:%M:%S",time.gmtime(duration))
-        logger.info("[%d] Finished integration along edge [%d/%d] in %s"% (os.getpid(), i[0],i[1], duration_str))
+        logger.info("[%d] Finished integration along edge [%d/%d] in %s"% (os.getpid(), i[0]+1,i[1], duration_str))
 
         return ntm
