@@ -31,14 +31,13 @@ from Util import Util
 from Context import Context
 
 import logging
-import os
 import time
 
 logger = logging.getLogger(__name__)
 
 
 class LefschetzFamily(object):
-    def __init__(self, P, fibration=None, **kwds):
+    def __init__(self, P, fibration=None, compute_fundamental_group=True, **kwds):
         """P, a homogeneous polynomial defining a smooth hypersurface X in P^{n+1}.
 
         This class aims at computing an effective basis of the homology group H_n(X), 
@@ -54,7 +53,7 @@ class LefschetzFamily(object):
             assert matrix(fibration).rank() == len(fibration), "collection of hyperplanes is not generic"
             assert len(fibration) == self.dim+1, "fibration does not have the correct number of hyperplanes"
             self._fibration = fibration
-        if self.dim>=1:
+        if self.dim>=1 and not self.ctx.debug:
             fg = self.fundamental_group # this allows reordering the critical points straight away and prevents shenanigans. There should be a better way to do this
     
     
@@ -367,7 +366,7 @@ class LefschetzFamily(object):
         l = vector([c for i, c in enumerate(self.fibration[0]) if i != self._restriction_variable])
         m = vector([c for i, c in enumerate(self.fibration[1]) if i != self._restriction_variable])
 
-        form = l+self.basepoint*m
+        form = -l+self.basepoint*m
         
         hyperplanes = []
         for hyperplane in self.fibration[1:]:
@@ -491,7 +490,7 @@ class LefschetzFamily(object):
     def _compute_intersection_product(self):
         r=len(self.thimbles)
         inter_prod_thimbles = matrix([[self._compute_intersection_product_thimbles(i,j) for j in range(r)] for i in range(r)])
-        intersection_11 = (-1)**self.dim * (matrix(self.homology)*inter_prod_thimbles*matrix(self.homology).transpose()).change_ring(ZZ)
+        intersection_11 = (-1)**(self.dim-1) * (matrix(self.homology)*inter_prod_thimbles*matrix(self.homology).transpose()).change_ring(ZZ)
         if self.dim%2==0:
             intersection_02 = zero_matrix(2,2)
             intersection_02[0,1], intersection_02[1,0] = 1,1

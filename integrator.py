@@ -104,19 +104,19 @@ class Integrator(object):
         bounds_prec=256
         begin = time.time()
         while True:
-            try:
-                ntm = L.numerical_transition_matrix(l, eps=2**(-nbits), assume_analytic=True, bounds_prec=bounds_prec) if l!= [] else identity_matrix(L.order()) 
-                ntmi = ntm**-1 # checking the matrix is precise enough to be inverted
-            except Exception as e: # TODO: manage different types of exceptions
-                tries+=1
-                if tries<maxtries:
-                    bounds_prec *=2
-                    nbits*=2
-                    logger.info("[%d] Precision error when integrating edge [%d/%d]. Trying again with double bounds_prec (%d) and nbits (%d)."% (os.getpid(), i[0]+1, i[1], bounds_prec, nbits))
-                    continue
-                else:
-                    logger.info("[%d] Too many ValueErrors when integrating edge [%d/%d]. Stopping computation here"% (os.getpid(), i[0]+1, i[1]))
-                    raise e
+            # try:
+            ntm = L.numerical_transition_matrix(l, eps=2**(-nbits), assume_analytic=True, bounds_prec=bounds_prec) if l!= [] else identity_matrix(L.order()) 
+            ntmi = ntm**-1 # checking the matrix is precise enough to be inverted
+            # except Exception as e: # TODO: manage different types of exceptions
+            #     tries+=1
+            #     if tries<maxtries:
+            #         bounds_prec *=2
+            #         nbits*=2
+            #         logger.info("[%d] Precision error when integrating edge [%d/%d]. Trying again with double bounds_prec (%d) and nbits (%d)."% (os.getpid(), i[0]+1, i[1], bounds_prec, nbits))
+            #         continue
+            #     else:
+            #         logger.info("[%d] Too many ValueErrors when integrating edge [%d/%d]. Stopping computation here"% (os.getpid(), i[0]+1, i[1]))
+            #         raise e
             break
 
         end = time.time()
