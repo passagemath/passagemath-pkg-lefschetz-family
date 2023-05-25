@@ -13,9 +13,8 @@ This Sage package provides a means of efficiently computing periods of complex p
 ## Requirements
 Sage 9.0 and above is recommended. Furthermore, this project relies on the following packages:
 
-- [Ore Algebra](https://github.com/mkauers/ore_algebra). For better performance, I recommend using the [`fastalgexp` branch in Marc Mezzarobba's fork](https://github.com/mezzarobba/ore_algebra/tree/fastalgexp).
-- [The branch `coordinates` in my fork of numperiods](https://gitlab.inria.fr/epichonp/numperiods/-/tree/coordinates).
-- The [delaunay-triangulation](https://pypi.org/project/delaunay-triangulation/) package from PyPI.
+- [Ore Algebra](https://github.com/mkauers/ore_algebra).
+- [numperiods](https://gitlab.inria.fr/lairez/numperiods).
 
 ## Usage
 The first step is to define the polynomial $P$ defining the projective hypersurface $X=V(P)$. For instance, the following gives the Fermat elliptic curve:
@@ -36,7 +35,7 @@ X.period_matrix
 
 ### Options
 The object `LefschetzFamily` can be called with several options:
-- `method` (`"voronoi"` by default/`"delaunay"`): the method used for computing a basis of homotopy. `voronoi` uses integration along paths in the voronoi graph of the critical points, whereas `delaunay` uses integration along paths along the delaunay triangulation of the critical points. In practice, `delaunay` is more efficient for low dimension and low order varieties (such as degree 3 curves and surfaces, and degree 4 curves). This gain in performance is however hindered in higher dimensions because of the algebraic complexity of the critical points (which are defined as roots of high order polynomials, with very large integer coefficients). <b>`"delaunay"` method is broken</b>
+- `method` (`"voronoi"` by default/`"delaunay"`): the method used for computing a basis of homotopy. `voronoi` uses integration along paths in the voronoi graph of the critical points, whereas `delaunay` uses integration along paths along the delaunay triangulation of the critical points. In practice, `delaunay` is more efficient for low dimension and low order varieties (such as degree 3 curves and surfaces, and degree 4 curves). This gain in performance is however hindered in higher dimensions because of the algebraic complexity of the critical points (which are defined as roots of high order polynomials, with very large integer coefficients). <b>`"delaunay"` method is not working for now</b>
 - `nbits` (positive integer, `400` by default): the number of bits of precision used as input for the computations. If a computation fails to recover the integral  monodromy matrices, you should try to increase this precision. The output precision seems to be roughly linear with respect to the input precision.
 - `debug` (boolean, `False` by default): whether coherence checks should be done earlier rather than late. Set to true only if the computation fails.
 - `singular` (boolean, `False` by default): whether the variety is singular. <b>Not implemented yet</b>
@@ -44,10 +43,10 @@ The object `LefschetzFamily` can be called with several options:
 ### Properties
 The object `LefschetzFamily` has several properties.
 Fibration related properties, in positive dimension:
-- `fibration`: the two linear maps defining the map $X\dashrightarrow \mathbb P^1$
-- `critical_points`: the list critical values  of that map
-- `basepoint`: the basepoint of the fibration (i.e. a non critical value)
-- `fiber`: the fiber above the basepoint
+- `fibration`: the two linear maps defining the map $X\dashrightarrow \mathbb P^1$.
+- `critical_points`: the list critical values  of that map.
+- `basepoint`: the basepoint of the fibration (i.e. a non critical value).
+- `fiber`: the fiber above the basepoint as a `LefschetzFamily` object.
 - `paths`: the list of simple loops around each point of `critical_points`. When this is called, the ordering of `critical_points` changes so that the composition of these loops is the loop around infinity.
 - `family`: the one parameter family corresponding to the fibration.
 
@@ -80,21 +79,21 @@ For any question, bug or remark, please contact [eric.pichon@polytechnique.edu](
 Near future milestones:
 - [x] Encapsulate integration step in its own class
 - [ ] Certified computation of the exceptional divisors
-- [ ] Making Delaunay triangulation functional again (issues with graphs)
-- [ ] Saving time on differential operator by precomputing cache before parallelization
+- [ ] Making Delaunay triangulation functional again
+- [x] Saving time on differential operator by precomputing cache before parallelization
 
 Middle term goals include:
 - [ ] Having own implementation of 2D voronoi graphs/Delaunay triangulation
 
 Long term goals include:
+- [ ] Computing periods of elliptic fibrations.
 - [ ] Tackling higher dimensional varieties (most notably cubics in $\mathbb P^5$).
 - [ ] Computing periods of singular varieties.
-- [ ] Computing periods of elliptic fibrations.
 - [ ] Computing periods of complete intersections.
 - [ ] Computing periods of weighted projective hypersurfaces, notably double covers of $\mathbb P^2$ ramified along a cubic.
 
 Other directions include:
-- [ ] Computation of homology through braid groups instead of monodromy of differential operators
+- [ ] Computation of homology through braid groups instead of monodromy of differential operators.
 
 
 ## Project status

@@ -62,7 +62,7 @@ class FundamentalGroupVoronoi(object):
     
     @property
     def edges(self):
-        """ returns the edges of the Voronoi graph given as pairs of indices of self.vertices, in no particular order
+        """ returns the edges of the Voronoi graph given as pairs of indices of self.vertices, in decreasing length
         """
         if not hasattr(self, "_edges"):
             edges = []
@@ -183,6 +183,19 @@ class FundamentalGroupVoronoi(object):
             self._pointed_loops = [self.pointed_loops[i] for i in order]
         return order
 
+    def adapted_loops(self, subvoronoi):
+        for v in subvoronoi.points:
+            assert v in self.points
+        correspondance = []
+        for v in subvoronoi.vertices:
+            correspondance += [Util.select_closest_index(self.vertices,v)]
+        adapted_loops = []
+        for loop in subvoronoi.pointed_loops:
+            adapted_loop = [correspondance[loop[0]]]
+            for v in loop[1:]:
+                adapted_loop += self.graph.shortest_path(adapted_loop[-1], correspondance[v])[1:]
+            adapted_loops += [adapted_loop]
+        return adapted_loops
 
 
     def _sort_loops_rec(self, v, parent=None, depth=0):

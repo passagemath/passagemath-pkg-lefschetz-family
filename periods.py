@@ -74,7 +74,9 @@ class LefschetzFamily(object):
                 R = self.P.parent()
                 affineR = PolynomialRing(QQbar, 'X')
                 affineProjection = R.hom([affineR.gens()[0],1], affineR)
-                self._period_matrix = matrix([self._residue_form(affineProjection(b), affineProjection(self.P), (b.degree()+len(R.gens()))//self.P.degree(), self.homology) for b in self.cohomology]).change_ring(self.ctx.CBF)
+                period_matrix = matrix([self._residue_form(affineProjection(b), affineProjection(self.P), (b.degree()+len(R.gens()))//self.P.degree(), self.homology) for b in self.cohomology]).change_ring(self.ctx.CBF)
+                period_matrix = block_matrix([[period_matrix],[matrix([[1]*self.degree])]])
+                self._period_matrix=period_matrix
             else:
                 homology_mat = matrix(self.homology).transpose()
                 integrated_thimbles =  matrix(self.integrated_thimbles([i for i in range(len(self.cohomology))]))
@@ -190,36 +192,24 @@ class LefschetzFamily(object):
             assert self.picard_fuchs_equation(i).order()== len(self.family.basis),"Picard-Fuchs equation is not cyclic, cannot use it to compute monodromy"
             transition_matrices= self.transition_matrices([i])[0]
 
-            n = len(self.fiber.homology)
-            r = len(self.critical_points)  
-
-            if self.dim%2==1:
-                invariant_vector=vector([1]*n)
-                proj = block_matrix([[identity_matrix(n-1), matrix([[-1]]*(n-1))]],subdivide=False)
-                lift = block_matrix([[identity_matrix(n-1)], [matrix([[0]*(n-1)])]],subdivide=False)
-                basis_change = block_matrix([[lift, matrix([-invariant_vector]).transpose()]],subdivide=False)
-            
-            derivatives_at_basepoint = self.derivatives_values_at_basepoint(i)
+            n = len(self.fiber.homology) 
             
             integration_correction = diagonal_matrix([1/ZZ(factorial(k)) for k in range(n+1 if self.dim%2==0 else n)])
+            derivatives_at_basepoint = self.derivatives_values_at_basepoint(i)
+            initial_conditions = integration_correction* derivatives_at_basepoint
+            initial_conditions = initial_conditions.submatrix(1,0)
 
-            initial_conditions = integration_correction* derivatives_at_basepoint*self.fiber.period_matrix
-
+            cohomology_monodromies = [initial_conditions**(-1)*M.submatrix(1,1)*initial_conditions for M in transition_matrices]
             if self.dim%2==1:
-                initial_conditions = initial_conditions*lift
+                cohomology_monodromies = [block_diagonal_matrix([M, identity_matrix(1)]) for M in cohomology_monodromies]
 
-            Ms = [(initial_conditions.submatrix(1,0)**(-1)*M.submatrix(1,1)*initial_conditions.submatrix(1,0)) for M in transition_matrices]
+
+            Ms = [(self.fiber.period_matrix**(-1)*M*self.fiber.period_matrix) for M in cohomology_monodromies]
             if not self.ctx.debug:
                 Ms = [M.change_ring(ZZ) for M in Ms]
-
-            for i in range(r):
-                M=Ms[i]
-                if self.dim%2==1:
-                    prod= invariant_vector*self.fiber.intersection_product*(lift*M*proj-identity_matrix(n))*lift/n
-                    Ms[i] = basis_change.inverse()*block_matrix([[M,zero_matrix(n-1,1)],[matrix([prod]),matrix([[1]])]])*basis_change
-
-                if not self.ctx.singular and not self.ctx.debug:
-                    assert (Ms[i]-1).rank()==1, "If M is a monodromy matrix around a single critical point, M-I should have rank 1"
+            if not self.ctx.singular and not self.ctx.debug:
+                assert (Ms[i]-1).rank()==1, "If M is a monodromy matrix around a single critical point, M-I should have rank 1"
+            
             self._monodromy_matrices = Ms
         return self._monodromy_matrices
     
@@ -448,7 +438,10 @@ class LefschetzFamily(object):
             if not self._integrated_thimblesQ[i]:
                 derivatives_at_basepoint = self.derivatives_values_at_basepoint(i)
                 integration_correction = diagonal_matrix([1/ZZ(factorial(k)) for k in range(s+1 if self.dim%2==0 else s)])
-                initial_conditions = integration_correction* derivatives_at_basepoint*self.fiber.period_matrix
+                pM = self.fiber.period_matrix
+                if self.dim%2==1:
+                    pM = pM.submatrix(0,0,s-1)
+                initial_conditions = integration_correction* derivatives_at_basepoint*pM
                 self._integrated_thimbles[i]=[(transition_matrices[i2][j]*initial_conditions*self.permuting_cycles[j])[0] for j in range(r)]
                 self._integrated_thimblesQ[i] = True
         return [self._integrated_thimbles[i] for i in l]
