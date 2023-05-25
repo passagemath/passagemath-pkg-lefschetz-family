@@ -2,7 +2,9 @@
 
 
 ## Description
-This Sage package provides a means of efficiently computing periods of complex projective hypersurfaces with certified rigorous precision bounds. Here is a runtime benchmark for various examples:
+This Sage package provides a means of efficiently computing periods of complex projective hypersurfaces with certified rigorous precision bounds.
+It implements the methods described in [Coming soon]().
+Here is a runtime benchmark for various examples:
 | Variety (generic) 	| Time (on 4 M1 cores) 	|
 |-------------------	|----------------------	|
 | Elliptic curve    	| 7 seconds            	|
@@ -11,7 +13,7 @@ This Sage package provides a means of efficiently computing periods of complex p
 | Quartic surface   	| est. 20 hours        	|
 
 ## Requirements
-Sage 9.0 and above is recommended. Furthermore, this project relies on the following packages:
+Sage 9.0 and above is recommended. Furthermore, this package has the following dependencies:
 
 - [Ore Algebra](https://github.com/mkauers/ore_algebra).
 - [numperiods](https://gitlab.inria.fr/lairez/numperiods).
@@ -31,6 +33,8 @@ The period matrix of $X$ is the simply given by:
 ```python
 X.period_matrix
 ```
+
+See [Coming soon]() for a usage example.
 
 
 ### Options
@@ -54,7 +58,7 @@ Homology related properties:
 - `monodromy_matrices`: the matrices of the monodromy action of `paths` on $H_{n-1}(X_b)$.
 - `vanishing_cycles`: the vanshing cycles at each point of `critical_points` along `paths`.
 - `thimbles`: the thimbles of $H_n(Y,Y_b)$. They are represented by a starting cycle in $H_n(Y_b)$ and a loop in $\mathbb C$ avoiding `critical_points` and pointed at `basepoint`.
-- `extensions`: integral sums of thimbles with vanishing boundary.
+- `extensions`: integer linear combinations of thimbles with vanishing boundary.
 - `infinity_loops`: extensions around the loop at infinity.
 - `exceptional_divisors`: the exceptional cycles coming from the modification $Y\to X$. <b>(WIP)</b>
 - `homology`: a basis of representants of $H_n(X)$, apart from the $H_n(X_b)$ term.
