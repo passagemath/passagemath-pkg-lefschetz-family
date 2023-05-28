@@ -10,7 +10,7 @@ from sage.rings.complex_mpfr import ComplexField
 from sage.graphs.graph import Graph
 from sage.symbolic.constants import I
 from sage.functions.other import arg
-from delaunay_triangulation.triangulate import delaunay, Vertex
+# from delaunay_triangulation.triangulate import delaunay, Vertex
 from sage.functions.other import floor
 from sage.functions.other import ceil
 
@@ -186,30 +186,30 @@ class Edges(object):
     def is_zero(cls, x, eps=2**-50):
         return abs(cls.CC(x))<eps
 
-    @classmethod        
-    def delaunay(cls, points):
-        """Computes the Delaunay triangulation of a cloud of points in the complex plane
+    # @classmethod        
+    # def delaunay(cls, points):
+    #     """Computes the Delaunay triangulation of a cloud of points in the complex plane
 
-        """
-        alg_points = [QQbar(p) for p in points]
+    #     """
+    #     alg_points = [QQbar(p) for p in points]
 
-        CC = cls.CC
-        r  = min([abs(CC(x-y)) for x in alg_points for y in alg_points if x!=y])
+    #     CC = cls.CC
+    #     r  = min([abs(CC(x-y)) for x in alg_points for y in alg_points if x!=y])
 
-        Qpoints = [Util.simple_rational(p.real(), r/3) + I*Util.simple_rational(p.imag(), r/3) for p in alg_points]
-        dictionary = {Qpoints[i]:i for i in range(len(alg_points))}
+    #     Qpoints = [Util.simple_rational(p.real(), r/3) + I*Util.simple_rational(p.imag(), r/3) for p in alg_points]
+    #     dictionary = {Qpoints[i]:i for i in range(len(alg_points))}
 
-        # we deal with rational points because equality is faster
-        triangles = delaunay(vertices=[Vertex(x=Qp.real(), y=Qp.imag()) for Qp in Qpoints])
-        G=Graph()
+    #     # we deal with rational points because equality is faster
+    #     triangles = delaunay(vertices=[Vertex(x=Qp.real(), y=Qp.imag()) for Qp in Qpoints])
+    #     G=Graph()
 
-        for t in triangles:
-            for e in t.edges:
-                e1=e.a.to_tuple[0]+e.a.to_tuple[1]*I
-                e2=e.b.to_tuple[0]+e.b.to_tuple[1]*I
-                G.add_edge((dictionary[e1],dictionary[e2]))
+    #     for t in triangles:
+    #         for e in t.edges:
+    #             e1=e.a.to_tuple[0]+e.a.to_tuple[1]*I
+    #             e2=e.b.to_tuple[0]+e.b.to_tuple[1]*I
+    #             G.add_edge((dictionary[e1],dictionary[e2]))
 
-        return  G
+    #     return  G
     
     @classmethod
     def voronoi_loops(cls, points, basepoint):
