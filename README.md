@@ -34,7 +34,7 @@ The period matrix of $X$ is the simply given by:
 X.period_matrix
 ```
 
-See [Coming soon]() for a usage example.
+See [the computation of the periods of the Fermat quartic surface](https://nbviewer.org/urls/gitlab.inria.fr/mathexp/effective-picard-lefschetz-theory/-/raw/main/Fermat_periods.ipynb) for a usage example.
 
 
 ### Options
