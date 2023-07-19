@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+from delaunay_dual import FundamentalGroupDelaunayDual
 import sage.all
 
 from numperiods import Family
@@ -530,8 +531,12 @@ class LefschetzFamily(object):
         assert self.dim>0, "Dimension 0 vartiety has no fibration"
         if not hasattr(self,'_fundamental_group'):
             begin = time.time()
-
-            fundamental_group = FundamentalGroupVoronoi(self.critical_points, self.basepoint) # access future delaunay implem here
+            if self.ctx.method == 'voronoi':# access future delaunay implem here
+                fundamental_group = FundamentalGroupVoronoi(self.critical_points, self.basepoint)
+            elif self.ctx.method == 'delaunay_dual':
+                fundamental_group = FundamentalGroupDelaunayDual(self.critical_points, self.basepoint)
+            else:
+                fundamental_group = FundamentalGroupVoronoi(self.critical_points, self.basepoint)
             fundamental_group.sort_loops()
 
             end = time.time()
@@ -556,9 +561,12 @@ class LefschetzFamily(object):
     def basepoint(self):
         assert self.dim>0, "Dimension 0 vartiety has no fibration"
         if  not hasattr(self, '_basepoint'):
-            shift = 1
-            reals = [self.ctx.CF(c).real() for c in self.critical_points]
-            xmin, xmax = min(reals), max(reals)
-            self._basepoint = Util.simple_rational(xmin - (xmax-xmin)*shift, (xmax-xmin)/10)
+            if self.ctx.long_fibration and self.ctx.depth>0:
+                self._basepoint=ZZ(0)
+            else:
+                shift = 1
+                reals = [self.ctx.CF(c).real() for c in self.critical_points]
+                xmin, xmax = min(reals), max(reals)
+                self._basepoint = Util.simple_rational(xmin - (xmax-xmin)*shift, (xmax-xmin)/10)
         return self._basepoint
 

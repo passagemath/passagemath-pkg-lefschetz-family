@@ -15,17 +15,20 @@ from sage.groups.free_group import FreeGroup
 from sage.misc.flatten import flatten
 from sage.schemes.curves.zariski_vankampen import followstrand
 
+from sage.parallel.decorate import parallel
+
 
 from Util import Util
 
 import logging
+import os
 from copy import copy
 
 logger = logging.getLogger(__name__)
 
 
 class RootsBraid(object):
-    def __init__(self, P, edges, additional_points=[]):
+    def __init__(self, P, edges, basepoint, additional_points=[]):
         """P, a polynomial in two variables u and t.
 
         This class computes the braid group of roots (in t) of P(u) as u moves along a path
@@ -42,6 +45,8 @@ class RootsBraid(object):
         self.freeGroup = FreeGroup(self.npoints)
         self.xs = list(self.freeGroup.gens())
         self.additional_points=additional_points
+
+        self.basepoint = basepoint
 
 
     @property
@@ -63,13 +68,13 @@ class RootsBraid(object):
             CC=ComplexField(500)
             Qt=PolynomialRing(QQ[I], 't')
             u,t = self.P.parent()('u'),self.P.parent()('t')
-            logger.info("Computing braid along edge %d."% i)
+            logger.info("[%d] Computing braid along edge %d."% (os.getpid(), i))
             roots=  Qt(self.P(u=e[0])).roots(QQbar, multiplicities=False)
             res=[]
             j=0
             for r in roots:   
                 j+=1
-                logger.info("Computing thread %d."% j)
+                # logger.info("[%d] Computing thread %d of edge %d."% (os.getpid(), j, i))
                 line = followstrand(self.P, [z.minpoly()(self.P.parent().gens()[1]) for z in self.additional_points], e[0], e[1],r, 50)
                 res+=  [[[c[0], c[1]+I*c[2]] for c in line]]
             res.sort(key=lambda thread: (CC(thread[0][1].real()), CC(thread[0][1].imag())))
@@ -98,7 +103,7 @@ class RootsBraid(object):
                 mtc.add_edge(e)
         # then we add the path to the basepoint
         vertices = [i for i in range(self.npoints)]
-        vertices.sort(key=(lambda v: (section[v].real(), -section[v].imag()))) # the fixed basepoint is also specific to example
+        vertices.sort(key=(lambda v: Util.simple_rational(abs(CC(section[v]-self.basepoint)), 10e-10)))
         mtc.add_edge([self.npoints,vertices[0]])
         return mtc
 
@@ -144,6 +149,50 @@ class RootsBraid(object):
             section += [self.interpolate(thread, t)]
         return section+self.additional_points
 
+    def compute_all_isomorphisms(self):
+        if not hasattr(self,'_isomorphisms'):
+            self._isomorphisms=[None]*len(self.edges)
+            self._isomorphismsQ=[False]*len(self.edges)
+        missing_edges = [i for i in range(len(self.edges)) if not self._isomorphismsQ[i]]
+        res = sorted(self._compute_all_isomorphisms([(i, self.edges[i]) for i in missing_edges]))
+        for r in res:
+            i=r[0][0][0]
+            self._isomorphisms[i] = r[1]
+            self._isomorphismsQ[i] = True
+        return
+
+    @parallel
+    def _compute_all_isomorphisms(self,i,e):
+        braid = self.braid(e)
+        logger.info("[%d] Computing isomorphism of edge %d."% (os.getpid(), i))
+        ts=[]
+        for thread in braid:
+            for p in thread:
+                ts+=[p[0]]
+        ts = list(set(ts))
+        ts.sort()
+        for t0,t1 in zip(ts[:-1], ts[1:]):
+            while t1-t0>1.1*self._maximalstep:
+                t0+=self._maximalstep
+                ts.append(t0)
+        ts.sort()
+        sections = [self.braid_section(braid, t) for t in ts]
+
+        mtcs = [self.minimal_cover_tree(section) for section in sections]
+
+        iso = self.freeGroup.hom(self.xs)
+        for k in range(len(mtcs)-1):
+            mtc1 = mtcs[k]
+            mtc2 = mtcs[k+1]
+            if mtc1!=mtc2:
+                logger.info("[%d] Encountered distinct minimal covering trees between sections %d and %d (out of %d). Computing transition."% (os.getpid(), k, k+1, len(ts)))
+                iso = self.braid_action(mtc1, mtc2, sections[k])*iso
+                iso = self.freeGroup.hom([iso(x) for x in self.xs])
+        return iso
+                
+
+
+
     def isomorphisms(self, e):
         if not hasattr(self,'_isomorphisms'):
             self._isomorphisms=[None]*len(self.edges)
@@ -151,7 +200,7 @@ class RootsBraid(object):
         i = self.edge(e)
         if not self._isomorphismsQ[i]:
             braid = self.braid(e)
-            logger.info("Computing isomorphism of edge %d."% (i))
+            logger.info("[%d] Computing isomorphism of edge %d."% (os.getpid(), i))
             ts=[]
             for thread in braid:
                 for p in thread:
@@ -172,7 +221,7 @@ class RootsBraid(object):
                 mtc1 = mtcs[k]
                 mtc2 = mtcs[k+1]
                 if mtc1!=mtc2:
-                    logger.info("Encountered distinct minimal covering trees between sections %d and %d (out of %d). Computing transition."% (k, k+1, len(ts)))
+                    logger.info("[%d] Encountered distinct minimal covering trees between sections %d and %d (out of %d). Computing transition."% (os.getpid(), k, k+1, len(ts)))
                     iso = self.braid_action(mtc1, mtc2, sections[k])*iso
                     iso = self.freeGroup.hom([iso(x) for x in self.xs])
             self._isomorphismsQ[i]=True
@@ -181,6 +230,7 @@ class RootsBraid(object):
     
     def isomorphism_along_path(self,path):
         path_edges = [path[i:i+2] for i in range(len(path)-1)]
+        
         iso = self.isomorphisms(path_edges[0])
         for i in range(len(path_edges)-1):
             iso = self.isomorphisms(path_edges[i+1])*self.transition_isomorphism(path_edges[i], path_edges[i+1])*iso
@@ -232,10 +282,10 @@ class RootsBraid(object):
                 cycle.reverse()
             ci = cycle.index(e[0])
             cycle = cycle[ci:] + cycle[:ci]
-            xmax=Util.simple_rational(max([s.real() for s in section]), 0.1)
-            xmin=Util.simple_rational(min([s.real() for s in section]), 0.1)
-            ymax=Util.simple_rational(max([s.imag() for s in section]), 0.1)
-            clockwise = Util.is_clockwise([section[i] if i!=self.npoints else 2*xmin-xmax+ymax*I/5 for i in cycle])
+            # xmax=Util.simple_rational(max([s.real() for s in section]), 0.1)
+            # xmin=Util.simple_rational(min([s.real() for s in section]), 0.1)
+            # ymax=Util.simple_rational(max([s.imag() for s in section]), 0.1)
+            clockwise = Util.is_clockwise([section[i] if i!=self.npoints else self.basepoint for i in cycle])
             
             # logger.info("Clockwise cycle" if clockwise else "Counterclockwise cycle")
 

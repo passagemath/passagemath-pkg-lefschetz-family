@@ -138,3 +138,64 @@ class Util(object):
         
         return CC(M.determinant())<0
 
+    @classmethod
+    def is_simple(l):
+        for w in l:
+            if len(w.syllables()) != 1:
+                return False
+        return True
+    
+    @classmethod
+    def letter(w,i):
+        return w.syllables()[i][0]^(w.syllables()[i][1]/abs(w.syllables()[i][1]))
+
+    @classmethod
+    def invert_morphism(phi, ts = None):
+        # I have no idea if this terminates -- if it does it should not take very long
+        pmax=20
+        pcutoff=0
+        if ts == None:
+            ts = list(phi.domain().gens())
+        while not Util.is_simple([phi(t) for t in ts]):
+            managed = False
+            for i, t in enumerate(ts):
+                print(i)
+                print(phi(t))
+                others = [t for j,t in enumerate(ts) if i != j]
+                while len(phi(t).syllables())!=1:
+                    options = [t*t2 for t2 in others if Util.letter(phi(t2),0) == Util.letter(phi(t),-1)^-1]
+                    options += [t*t2^-1 for t2 in others if Util.letter(phi(t2^-1),0) == Util.letter(phi(t),-1)^-1]
+                    options += [t2*t for t2 in others if Util.letter(phi(t2),-1) == Util.letter(phi(t),0)^-1]
+                    options += [t2^-1*t for t2 in others if Util.letter(phi(t2^-1),-1) == Util.letter(phi(t),0)^-1]
+                    if len(options)==0:
+                        break
+                    options = [o for o in options if phi(o)!=phi(1)]
+                    options.sort(key = lambda w: len(phi(w).syllables()))
+                    p=randint(1,pmax)
+                    if len(phi(options[0]).syllables())< len(phi(t).syllables()):
+                        t=options[0]
+                        managed=True
+                    else:
+                        break
+                ts[i] = t
+                print(phi(t))
+                print("\n")
+            if not managed:
+                for j, wi in enumerate(ts):
+                    for i in range(j+1, len(ts)):
+                        if Util.letter(phi(wi),0) != Util.letter(phi(wi),-1)^-1 and len(phi(wi).syllables())!=1:
+                            while Util.letter(phi(wi),0) == Util.letter(phi(ts[i]),-1)^-1 or Util.letter(phi(wi),0) == Util.letter(phi(ts[i]),0):
+                                if Util.letter(phi(wi),0) == Util.letter(phi(ts[i]),-1)^-1:
+                                    ts[i] = ts[i]*wi
+                                if Util.letter(phi(wi),0) == Util.letter(phi(ts[i]),0):
+                                    ts[i] = wi^-1*ts[i]
+                if pcutoff>5:
+                    return ts
+                pcutoff+=1
+            else:
+                pcutoff = max(0, pcutoff-1)
+        tfin = [None]*len(ts)
+        for t in ts:
+            x, power = phi(t).syllables()[0]
+            tfin[phi.codomain().gens().index(x)] = t^power
+        return phi.codomain
