@@ -70,7 +70,8 @@ class FundamentalGroupVoronoi(object):
                 for e in polygon:
                     if e not in edges and [e[1], e[0]] not in edges:
                         edges += [e]
-            connection_to_basepoint = min([i for i in range(1, len(self.vertices))], key=lambda i: abs(self.vertices[0] - self.vertices[i]))
+                if center == self.vertices[0]:
+                    connection_to_basepoint = min([i for i in flatten(polygon)], key=lambda i: abs(self.vertices[0] - self.vertices[i]))
             edges += [[0, connection_to_basepoint]]
             edges.sort(reverse=True, key=lambda e:(self.vertices[e[0]].real()-self.vertices[e[1]].real())**2 + (self.vertices[e[0]].imag()-self.vertices[e[1]].imag())**2)
             self._edges = edges
@@ -136,6 +137,8 @@ class FundamentalGroupVoronoi(object):
         if not hasattr(self, "_loops"):
             loops = []
             for center, polygon in self.polygons:
+                if center == self.vertices[0]:
+                    continue
                 polygon = [[v for v in e] for e in polygon]
                 loop = polygon.pop()
                 while len(polygon) > 0:
@@ -253,7 +256,7 @@ class FundamentalGroupVoronoi(object):
                 polygons_temp += [[center, reg]]
 
             # we are only interested in cells around elements of self.points
-            indices = [Util.select_closest_index([center for center, polygon in polygons_temp], c) for c in self.qpoints[1:]]
+            indices = [Util.select_closest_index([center for center, polygon in polygons_temp], c) for c in self.qpoints]
             polygons_temp = [polygons_temp[i] for i in indices]
 
             # then we translate the edges in rational coordinate as well

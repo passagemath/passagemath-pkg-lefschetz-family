@@ -237,6 +237,8 @@ class FundamentalGroupDelaunayDual(object):
             imags = [s[1] for s in qpoints]
             xmin, xmax, ymin, ymax = min(reals), max(reals), min(imags), max(imags)
             shift = max(ymax-ymin, xmax-xmin)/2 # there is likely something more clever to do here
+            xmax, ymax = max(xmax, ymax),max(xmax, ymax)
+            xmin, ymin = min(xmin, ymin),min(xmin, ymin)
             xmin, xmax, ymin, ymax = xmin - shift, xmax + shift, ymin - shift, ymax + shift
             
             for i in range(self.border):

@@ -9,6 +9,8 @@ from sage.arith.misc import gcd
 from sage.arith.misc import xgcd
 from sage.combinat.integer_vector import IntegerVectors
 from sage.matrix.constructor import matrix
+from sage.matrix.special import block_matrix
+from sage.matrix.special import identity_matrix
 
 
 import logging
@@ -139,18 +141,18 @@ class Util(object):
         return CC(M.determinant())<0
 
     @classmethod
-    def is_simple(l):
+    def is_simple(cls, l):
         for w in l:
             if len(w.syllables()) != 1:
                 return False
         return True
     
     @classmethod
-    def letter(w,i):
+    def letter(cls, w,i):
         return w.syllables()[i][0]^(w.syllables()[i][1]/abs(w.syllables()[i][1]))
 
     @classmethod
-    def invert_morphism(phi, ts = None):
+    def invert_morphism(cls, phi, ts = None):
         # I have no idea if this terminates -- if it does it should not take very long
         pmax=20
         pcutoff=0
@@ -199,3 +201,10 @@ class Util(object):
             x, power = phi(t).syllables()[0]
             tfin[phi.codomain().gens().index(x)] = t^power
         return phi.codomain
+
+    @classmethod
+    def find_complement(cls, B):
+        D, U, V = B.smith_form()
+        quotient = identity_matrix(D.ncols())[D.nrows():]*V**-1
+        assert block_matrix([[B],[quotient]]).det() in [-1,1], "cannot find complement, are you sure sublattice is primitive?"
+        return quotient

@@ -42,15 +42,18 @@ class EllipticSingularities(object):
         "IV*":matrix([[-1,-1],[1,0]]),
     }
 
+    U = matrix([[1,1],[0,1]])
+    V = matrix([[1,0],[-1,1]])
+
     fibre_confluence = {
-        "I": [matrix(ZZ, [[1, 1], [0, 1]])],
-        "II": [matrix(ZZ, [[2, 1], [-1, 0]]), matrix(ZZ, [[1, 1], [0, 1]])],
-        "III": [matrix(ZZ, [[1, 0], [-1, 1]]), matrix(ZZ, [[2, 1], [-1, 0]]), matrix(ZZ, [[1, 1], [0, 1]])],
-        "IV": [matrix(ZZ, [[2, 1], [-1, 0]]), matrix(ZZ, [[1, 1], [0, 1]]), matrix(ZZ, [[1, 0], [-1, 1]]), matrix(ZZ, [[2, 1], [-1, 0]])],
-        "I*": [matrix(ZZ, [[-1,4],[-1,3]]), matrix(ZZ, [[1,0],[-1,1]])] + [matrix(ZZ, [[1,1],[0,1]])]*5,
-        "II*": [matrix(ZZ, [[1, 0], [-1, 1]])]*8+[ matrix(ZZ, [[7, 1], [-36, -5]]), matrix(ZZ, [[4, 1], [-9, -2]])],
-        "III*": [matrix(ZZ, [[1, 0], [-1, 1]])]*4 + [matrix(ZZ, [[4, 1], [-9, -2]])]*3 + [matrix(ZZ, [[3, 1], [-4, -1]])]*2,
-        "IV*": [matrix(ZZ, [[1, 1], [0, 1]]), matrix(ZZ, [[1, 0], [-1, 1]]), matrix(ZZ, [[1, 1], [0, 1]]), matrix(ZZ, [[1, 0], [-1, 1]]), matrix(ZZ, [[2, 1], [-1, 0]]), matrix(ZZ, [[1, 1], [0, 1]]), matrix(ZZ, [[1, 1], [0, 1]]), matrix(ZZ, [[1, 0], [-1, 1]])],
+        "I": [U],
+        "II": [U, V],
+        "III": [V,U,V],
+        "IV": [U,V]*2,
+        "I*": [U,V]*3+[U],
+        "II*": [U,V]*5,
+        "III*": [U,V]*3+[V,U,V],
+        "IV*": [U,V]*4
     }
 
     @classmethod
@@ -125,7 +128,7 @@ class EllipticSingularities(object):
         
         x = SR('x')
         discr = eq.coefficient(c)**2 - 4*eq.coefficient(c**2)*eq(c=0)
-        possible_ds = range(ceil(solve(discr(d=x)>0,x)[0][0].right_hand_side()), floor(solve(discr(d=x)>0,x)[0][1].right_hand_side()))
+        possible_ds = range(ceil(solve(discr(d=x)>0,x)[0][0].right_hand_side()), floor(solve(discr(d=x)>0,x)[0][1].right_hand_side())+1)
         Qt = PolynomialRing(ZZ, 't')
         t=Qt.gens()[0]
         
@@ -139,4 +142,3 @@ class EllipticSingularities(object):
                     bv = -I2.elimination_ideal([a,c,d]).gens()[0](b=0)
                     sols += [matrix([[av,bv],[cv,dv]])]    
         return [(s**-1).change_ring(ZZ) for s in sols]
-        

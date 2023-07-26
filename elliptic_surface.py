@@ -10,6 +10,7 @@ from ore_algebra import *
 from sage.modules.free_module_element import vector
 from sage.rings.qqbar import QQbar
 from sage.functions.other import factorial
+from sage.functions.other import floor
 from sage.matrix.constructor import matrix
 from sage.rings.integer_ring import ZZ
 from sage.matrix.special import identity_matrix
@@ -47,10 +48,19 @@ class EllipticSurface(object):
         
         self.ctx = Context(**kwds)
         
-        # assert P.is_homogeneous(), "nonhomogeneous defining polynomial"
-        
+        # maybe put P in Weierstrass form ?
+        # flatPolRing = PolynomialRing(QQ, ['a','b','c','t'])
+        # [a,b,c,t] = flatPolRing.gens()
+        # weierstrass_coefs = WeierstrassForm(P(t,a,b,c), [a,b,c])
+        # Qt = PolynomialRing(QQ, 't')
+        # t= P.parent().gens()[0]
+        # weierstrass_coefs =  [c(t=t) for c in weierstrass_coefs]
+        # t= P.parent().gens()[0]
+        # X,Y,Z = P.base_ring().gens()
+        # P = -Y**2*Z + X**3 + weierstrass_coefs[0]*X*Z**2 + weierstrass_coefs[1]*Z**3
+
         self._P = P
-        self._family = Family(P)
+        self._family = Family(self.P)
 
         if basepoint!= None: # it is useful to be able to specify the basepoint to avoid being stuck in arithmetic computations if critical values have very large modulus
             self._basepoint=basepoint
@@ -68,7 +78,7 @@ class EllipticSurface(object):
     def period_matrix(self):
         if not hasattr(self, '_period_matrix'):
             homology_mat = self.homology.transpose()
-            integrated_thimbles =  matrix([self.integrated_thimbles])
+            integrated_thimbles =  matrix(self.integrated_thimbles)
             self._period_matrix = integrated_thimbles*homology_mat
 
         return self._period_matrix
@@ -78,10 +88,12 @@ class EllipticSurface(object):
         if not hasattr(self, '_periods_smoothing'):
             homology_mat= self.homology*self.thimbles_confluence
             infinity_mat= self.infinity_loops*self.thimbles_confluence
-            sing_comps = matrix(flatten(self.singular_components))*self.homology_smoothing
-            if sing_comps ==0:
+            singular_components = flatten(self.singular_components)
+
+            if len(singular_components)==0:
                 mattot = block_matrix([[homology_mat], [infinity_mat]])
             else:
+                sing_comps = matrix(singular_components)*self.homology_smoothing
                 mattot = block_matrix([[homology_mat], [infinity_mat], [sing_comps]])
 
             coefs = mattot.solve_left(self.homology_smoothing)
@@ -91,20 +103,14 @@ class EllipticSurface(object):
         return self._periods_smoothing
 
     @property
-    def simple_periods(self):
-        if not hasattr(self, '_simple_periods'):
-            self._simple_periods = matrix(self.integrated_thimbles([0]))*self.homology.transpose()
-        return self._simple_periods
-
-    @property
     def P(self):
         return self._P
 
     @property
-    def picard_fuchs_equation(self):
-        if not hasattr(self,'_picard_fuchs_equation'):
-            self._picard_fuchs_equation = self._family.picard_fuchs_equation(vector([1,0]))
-        return self._picard_fuchs_equation
+    def picard_fuchs_equations(self):
+        if not hasattr(self,'_picard_fuchs_equations'):
+            self._picard_fuchs_equations = [self._family.picard_fuchs_equation(vector([w,0])) for w in self.holomorphic_forms]
+        return self._picard_fuchs_equations
     
     @property
     def family(self):
@@ -132,16 +138,17 @@ class EllipticSurface(object):
     @property
     def monodromy_matrices(self):
         if not hasattr(self, '_monodromy_matrices'):
-            assert self.picard_fuchs_equation.order()== len(self.family.basis),"Picard-Fuchs equation is not cyclic, cannot use it to compute monodromy"
-
             n = len(self.fiber.homology) 
             
+            cyclic_form = self.cyclic_form
+            w = cyclic_form[0]*self.P + cyclic_form[1]*self.fiber.cohomology[1]
+
             integration_correction = diagonal_matrix([1/ZZ(factorial(k)) for k in range(n+1)])
-            derivatives_at_basepoint = self.derivatives_values_at_basepoint()
+            derivatives_at_basepoint = self.derivatives_values_at_basepoint(w)
             initial_conditions = integration_correction* derivatives_at_basepoint
             initial_conditions = initial_conditions.submatrix(1,0)
 
-            cohomology_monodromies = [initial_conditions**(-1)*M.submatrix(1,1)*initial_conditions for M in self.transition_matrices]
+            cohomology_monodromies = [initial_conditions**(-1)*M.submatrix(1,1)*initial_conditions for M in self.cyclic_transition_matrices]
 
 
             Ms = [(self.fiber.period_matrix**(-1)*M*self.fiber.period_matrix) for M in cohomology_monodromies]
@@ -154,9 +161,9 @@ class EllipticSurface(object):
             if Mtot!=identity_matrix(2):
                 self._critical_points = self.critical_points+["infinity"]
                 transition_matrix_infinity = 1
-                for M in self.transition_matrices:
+                for M in self.cyclic_transition_matrices:
                     transition_matrix_infinity = M*transition_matrix_infinity
-                self._transition_matrices += [transition_matrix_infinity**(-1)]
+                self._cyclic_transition_matrices += [transition_matrix_infinity**(-1)]
                 Ms += [(Mtot**-1).change_ring(ZZ)]
                 pathtot=[]
                 for path in self.paths:
@@ -293,7 +300,6 @@ class EllipticSurface(object):
                     v = self.monodromy_matrices[j]*v
                 infinity_cycles+=[vector(coefs)]
             self._infinity_loops = matrix(infinity_cycles)
-
         return self._infinity_loops
     
     @property
@@ -320,22 +326,10 @@ class EllipticSurface(object):
             # compute representatives of the quotient H(Y)/imtau
             D, U, V = self.extensions.matrix().smith_form()
             B = D.solve_left(self.infinity_loops*V).change_ring(ZZ)*U
-            Brows=B.row_space()
-            compl = [[0 for i in range(Brows.degree())]]
-            rank=Brows.dimension()
-            N=0
-            for i in range(Brows.degree()):
-                v=[1 if j==i else 0 for j in range(Brows.degree())]
-                M=block_matrix([[B],[matrix(compl)],[matrix([v])]],subdivide=False)
-                if rank+N+1==M.rank():
-                    compl += [v]
-                    N+=1
-                if rank+N == Brows.degree():
-                    break
-            if len(compl)==1:
+            quotient_basis = Util.find_complement(B)
+            if quotient_basis.nrows()==0:
                 self._homology = self.extensions.matrix().submatrix(0,0,0)
             else:
-                quotient_basis=matrix(compl[1:])
                 self._homology = quotient_basis*self.extensions.matrix()
             
             end = time.time()
@@ -351,19 +345,7 @@ class EllipticSurface(object):
             infinity_loops = self.infinity_loops*self.thimbles_confluence
             D, U, V = self.extensions_smoothing.matrix().smith_form()
             B = D.solve_left(infinity_loops*V).change_ring(ZZ)*U
-            Brows=B.row_space()
-            compl = [[0 for i in range(Brows.degree())]]
-            rank=Brows.dimension()
-            N=0
-            for i in range(Brows.degree()):
-                v=[1 if j==i else 0 for j in range(Brows.degree())]
-                M=block_matrix([[B],[matrix(compl)],[matrix([v])]],subdivide=False)
-                if rank+N+1==M.rank():
-                    compl += [v]
-                    N+=1
-                if rank+N == Brows.degree():
-                    break
-            quotient_basis=matrix(compl[1:])
+            quotient_basis=Util.find_complement(B)
             self._homology_smoothing = quotient_basis*self.extensions_smoothing.matrix()
             
             end = time.time()
@@ -375,10 +357,43 @@ class EllipticSurface(object):
     @property
     def transition_matrices(self):
         if not hasattr(self, '_transition_matrices'):
-            L = self.picard_fuchs_equation
-            L = L* L.parent().gens()[0]
-            self._transition_matrices = self.integrate(L)
+            transition_matrices = []
+            for L in self.picard_fuchs_equations:
+                L = L* L.parent().gens()[0]
+                transition_matrices += [self.integrate(L)]
+                if "infinity" in self.critical_points:
+                    transition_matrix_infinity = 1
+                    for M in transition_matrices[-1]:
+                        transition_matrix_infinity = M*transition_matrix_infinity
+                    transition_matrices[-1] += [transition_matrix_infinity**(-1)]
+            self._transition_matrices = transition_matrices
         return self._transition_matrices
+    
+    @property
+    def cyclic_form(self):
+        if not hasattr(self, '_cyclic_form'):
+            for v in [[1,0], [0,1], [1,1]]:
+                L = self._family.picard_fuchs_equation(vector(v))
+                if L.order() == 2:
+                    break
+            assert L.order() == 2, "could not find cyclic  Picard-Fuchs equation"
+            self._cyclic_form = v
+            self._cyclic_picard_fuchs_equation = L
+        return self._cyclic_form
+    
+    @property
+    def cyclic_picard_fuchs_equation(self):
+        if not hasattr(self, '_cyclic_picard_fuchs_equation'):
+            self.cyclic_form
+        return self._cyclic_picard_fuchs_equation
+    
+    @property
+    def cyclic_transition_matrices(self):
+        if not hasattr(self, '_cyclic_transition_matrices'):
+            L = self.cyclic_picard_fuchs_equation
+            L = L* L.parent().gens()[0]
+            self._cyclic_transition_matrices = self.integrate(L)
+        return self._cyclic_transition_matrices
     
     def integrate(self, L):
         logger.info("[Elliptic Surface] Computing numerical transition matrices of operator of order %d and degree %d (%d edges total)."% (L.order(), L.degree(), len(self.fundamental_group.edges)))
@@ -403,38 +418,26 @@ class EllipticSurface(object):
         
             s=len(self.fiber.homology)
             r=len(self.thimbles)
-
-            transition_matrices= self.transition_matrices
-
-            derivatives_at_basepoint = self.derivatives_values_at_basepoint()
-            integration_correction = diagonal_matrix([1/ZZ(factorial(k)) for k in range(s+1)])
-            pM = self.fiber.period_matrix
-            initial_conditions = integration_correction* derivatives_at_basepoint*pM
-            _integrated_thimbles = []
-            for i,ps in enumerate(self.permuting_cycles):
-                _integrated_thimbles += [(transition_matrices[i]*initial_conditions*p)[0] for p in ps]
-            self._integrated_thimbles = _integrated_thimbles
-        return self._integrated_thimbles
-    
-    # Integration methods
-
-    def derivatives_coordinates(self, i):
-        if not hasattr(self, '_coordinates'):
-            s=len(self.fiber.homology)
             
-            w = self.P.parent()(1)
-            derivatives = [self.P.parent()(0), w]
-            for k in range(s-1):
-                derivatives += [self._derivative(derivatives[-1], self.P)] 
-            self._coordinates = self.family.coordinates(derivatives)
+            pM = self.fiber.period_matrix
+            integration_correction = diagonal_matrix([1/ZZ(factorial(k)) for k in range(s+1)])
 
-        return self._coordinates[i]
+            _integrated_thimbles_all=[]
+            for transition_matrices, w in zip(self.transition_matrices, self.holomorphic_forms):
+                derivatives_at_basepoint = self.derivatives_values_at_basepoint(w)
+                
+                initial_conditions = integration_correction* derivatives_at_basepoint*pM
+                _integrated_thimbles = []
+                for i,ps in enumerate(self.permuting_cycles):
+                    _integrated_thimbles += [(transition_matrices[i]*initial_conditions*p)[0] for p in ps]
+                _integrated_thimbles_all += [_integrated_thimbles]
+            self._integrated_thimbles = _integrated_thimbles_all
+        return self._integrated_thimbles
 
 
-    def derivatives_values_at_basepoint(self):
+    def derivatives_values_at_basepoint(self, w):
         s=len(self.fiber.homology)
 
-        w = self.P.parent()(1)
         derivatives = [self.P.parent()(0), w]
         for k in range(s-1):
             derivatives += [self._derivative(derivatives[-1], self.P)] 
@@ -528,10 +531,127 @@ class EllipticSurface(object):
         return self._trivial_lattice
     
     @property
-    def mordell_weyl(self):
-        if  not hasattr(self, '_mordell_weyl'):
+    def mordell_weil(self):
+        if  not hasattr(self, '_mordell_weil'):
             NS = matrix(self.neron_severi).image()
             Triv = NS.submodule(self.trivial_lattice)
-            self._mordell_weyl = NS/TL
-        return self._mordell_weyl
+            self._mordell_weil = NS/Triv
+        return self._mordell_weil
+    
+    @property
+    def essential_lattice(self):
+        if  not hasattr(self, '_essential_lattice'):
+            IL = IntegralLattice(self.intersection_product)
+            self._essential_lattice = IL.sublattice(self.neron_severi).orthogonal_complement(self.trivial_lattice).basis_matrix()
+        return self._essential_lattice
+    
+    @property
+    def mordell_weil_lattice(self):
+        ess_coords = matrix(self.neron_severi).solve_left(self.essential_lattice)
+        triv_coords = matrix(self.neron_severi).solve_left(matrix(self.trivial_lattice))
+        coords = block_matrix([[ess_coords],[triv_coords]])
+        projection_temp = block_diagonal_matrix([identity_matrix(len(self.essential_lattice.rows())), zero_matrix(len(self.trivial_lattice))])
+        orth_proj = coords**-1*projection_temp*coords
+        quotient_basis = Util.find_complement(triv_coords)
+        coordsMW = quotient_basis*orth_proj
+        A = coordsMW*matrix(self.neron_severi)
+        return A*self.intersection_product*A.transpose()
 
+    @property
+    def types(self):
+        if not hasattr(self, "_types"):
+            self._types = [EllipticSingularities.monodromy_class(M) for M in self.monodromy_matrices]
+        return self._types
+
+    @property
+    def holomorphic_forms(self):
+        if not hasattr(self, "_holomorphic_forms"):
+            L = self._family.picard_fuchs_equation(vector([1,0]))
+            t = L.base_ring().gens()[0]
+
+            bs = []
+            rs = []
+            roots = L.leading_coefficient().roots(QQbar, multiplicities=False)
+            for r in roots:
+                if r in self.critical_points:
+                    i = self.critical_points.index(r)
+                    ty, M, n = self.types[i]
+                    bs += [self.b(L, r, ty, n)]
+                else:
+                    bs += [self.b(L, r, "I", 0)]
+                rs += [self.rnorm(L, r)]
+
+            L2 = L.annihilator_of_composition(1/t)
+            if L2.leading_coefficient()(0) ==0:
+                r = "infinity"
+                roots += [r]
+                if r in self.critical_points:
+                    i = self.critical_points.index(r)
+                    ty, M, n = self.types[i]
+                    bs += [self.b(L2, 0, ty, n)]
+                else:
+                    bs += [self.b(L2, 0, "I", 0)]
+                rs += [self.rnorm(L2, 0)]
+            ords = [0  if r!="infinity" else -2*2 for r in roots]
+            
+            div = - vector(rs) - vector(bs) + vector(ords)
+            div
+
+            Z = 1
+            pols = []
+            degrees = []
+            for i, r in enumerate(roots):
+                if r=="infinity":
+                    continue
+                pol = r.minpoly()
+                if pol in pols:
+                    assert degrees[pols.index(pol)] == div[i]
+                    continue
+                pols += [pol]
+                degrees += [div[i]]
+                Z = Z*pol**(-div[i])
+            Z = Z(t)
+
+            Dt = L.parent().gens()[0]
+            W = (Dt + L.coefficients()[1]/L.coefficients()[2]).rational_solutions()[0][0]
+
+            assert sum(div) ==0, "Multiple or no holomorphic forms, not implemented yet"
+
+            self._holomorphic_forms = [-Z/W]
+        return self._holomorphic_forms
+    
+    def rnorm(self, L, p):
+        R = L.base_ring()
+        t = R.gens()[0]
+        return floor((L.local_basis_monomials(p)[0]**12)(t=t).degree(t)/12)
+    
+    def b(self, L, p, ty, n):
+        if ty=="I" and n>0:
+            return -1
+        R = L.base_ring()
+        t, Dt = R.gens()[0], L.parent().gens()[0]
+        m = L.local_basis_monomials(p)[1] / L.local_basis_monomials(p)[0]
+        m=m(t=t+p)
+        if ty=="I":
+            l = (R(m).degree()-2)
+            if l==-1:
+                return 0
+            else:
+                return l+1
+        if ty=="II":
+            return (R(m**6).degree()-2)/6
+        if ty=="III":
+            return (R(m**4).degree()-2)/4
+        if ty=="IV":
+            return (R(m**3).degree()-2)/3
+        if ty=="I*":
+            if n==0:
+                return (R(m**2).degree()-2)/2
+            else:
+                return -1
+        if ty=="II*":
+            return (R(m**6).degree()-4)/6 - 1
+        if ty=="III*":
+            return (R(m**4).degree()-2)/4 - 1
+        if ty=="IV*":
+            return (R(m**3).degree()-1)/3 - 1

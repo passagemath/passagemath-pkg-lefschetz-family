@@ -37,7 +37,9 @@ class RootsBraid(object):
         # assert P.is_homogeneous(), "nonhomogeneous defining polynomial"
         
         self.edges = edges
-        self.P = P
+        R = PolynomialRing(QQ, ['u','t'])
+        u,t = R.gens()
+        self.P = P(u,t)
         self.additional_points=additional_points
         self.npoints = self.P.degree(self.P.parent().gens()[1]) + len(self.additional_points)
         self._maximalstep = 1/1000
