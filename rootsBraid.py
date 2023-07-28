@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 
 
 class RootsBraid(object):
-    def __init__(self, P, edges, basepoint, additional_points=[]):
+    def __init__(self, P, edges, basepoint=None, additional_points=[]):
         """P, a polynomial in two variables u and t.
 
         This class computes the braid group of roots (in t) of P(u) as u moves along a path
@@ -48,6 +48,8 @@ class RootsBraid(object):
         self.xs = list(self.freeGroup.gens())
         self.additional_points=additional_points
 
+        self.hasbasepoint = basepoint != None
+            
         self.basepoint = basepoint
 
 
@@ -105,7 +107,10 @@ class RootsBraid(object):
                 mtc.add_edge(e)
         # then we add the path to the basepoint
         vertices = [i for i in range(self.npoints)]
-        vertices.sort(key=(lambda v: Util.simple_rational(abs(CC(section[v]-self.basepoint)), 10e-10)))
+        if self.hasbasepoint:
+            vertices.sort(key=(lambda v: Util.simple_rational(abs(CC(section[v]-self.basepoint)), 10e-10)))
+        else:
+            vertices.sort(key=(lambda v: (section[v].real(), -section[v].imag()))) # the fixed basepoint is also specific to example
         mtc.add_edge([self.npoints,vertices[0]])
         return mtc
 
@@ -284,10 +289,15 @@ class RootsBraid(object):
                 cycle.reverse()
             ci = cycle.index(e[0])
             cycle = cycle[ci:] + cycle[:ci]
-            # xmax=Util.simple_rational(max([s.real() for s in section]), 0.1)
-            # xmin=Util.simple_rational(min([s.real() for s in section]), 0.1)
-            # ymax=Util.simple_rational(max([s.imag() for s in section]), 0.1)
-            clockwise = Util.is_clockwise([section[i] if i!=self.npoints else self.basepoint for i in cycle])
+
+            if self.hasbasepoint:
+                clockwise = Util.is_clockwise([section[i] if i!=self.npoints else self.basepoint for i in cycle])
+            else:
+                xmax=Util.simple_rational(max([s.real() for s in section]), 0.1)
+                xmin=Util.simple_rational(min([s.real() for s in section]), 0.1)
+                ymax=Util.simple_rational(max([s.imag() for s in section]), 0.1)
+                clockwise = Util.is_clockwise([section[i] if i!=self.npoints else 2*xmin-xmax+ymax*I/5 for i in cycle])
+
             
             # logger.info("Clockwise cycle" if clockwise else "Counterclockwise cycle")
 

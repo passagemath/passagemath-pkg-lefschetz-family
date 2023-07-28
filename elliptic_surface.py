@@ -547,11 +547,12 @@ class EllipticSurface(object):
     
     @property
     def mordell_weil_lattice(self):
-        ess_coords = matrix(self.neron_severi).solve_left(self.essential_lattice)
-        triv_coords = matrix(self.neron_severi).solve_left(matrix(self.trivial_lattice))
+        ess_coords = matrix(self.neron_severi).solve_left(self.essential_lattice).change_ring(ZZ)
+        triv_coords = matrix(self.neron_severi).solve_left(matrix(self.trivial_lattice)).change_ring(ZZ)
         coords = block_matrix([[ess_coords],[triv_coords]])
         projection_temp = block_diagonal_matrix([identity_matrix(len(self.essential_lattice.rows())), zero_matrix(len(self.trivial_lattice))])
         orth_proj = coords**-1*projection_temp*coords
+
         quotient_basis = Util.find_complement(triv_coords)
         coordsMW = quotient_basis*orth_proj
         A = coordsMW*matrix(self.neron_severi)

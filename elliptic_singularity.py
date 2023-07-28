@@ -16,7 +16,7 @@ from sage.functions.other import ceil
 from sage.arith.misc import gcd
 
 from sage.symbolic.relation import solve
-from sage.symbolic.expression import SR
+from sage.symbolic.ring import SR
 
 from voronoi import FundamentalGroupVoronoi
 from integrator import Integrator

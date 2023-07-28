@@ -12,6 +12,8 @@ from sage.matrix.constructor import matrix
 from sage.matrix.special import block_matrix
 from sage.matrix.special import identity_matrix
 
+from sage.misc.prandom import randint
+
 
 import logging
 
@@ -149,7 +151,7 @@ class Util(object):
     
     @classmethod
     def letter(cls, w,i):
-        return w.syllables()[i][0]^(w.syllables()[i][1]/abs(w.syllables()[i][1]))
+        return w.syllables()[i][0]**(w.syllables()[i][1]/abs(w.syllables()[i][1]))
 
     @classmethod
     def invert_morphism(cls, phi, ts = None):
@@ -161,14 +163,14 @@ class Util(object):
         while not Util.is_simple([phi(t) for t in ts]):
             managed = False
             for i, t in enumerate(ts):
-                print(i)
-                print(phi(t))
+                # print(i)
+                # print(phi(t))
                 others = [t for j,t in enumerate(ts) if i != j]
                 while len(phi(t).syllables())!=1:
-                    options = [t*t2 for t2 in others if Util.letter(phi(t2),0) == Util.letter(phi(t),-1)^-1]
-                    options += [t*t2^-1 for t2 in others if Util.letter(phi(t2^-1),0) == Util.letter(phi(t),-1)^-1]
-                    options += [t2*t for t2 in others if Util.letter(phi(t2),-1) == Util.letter(phi(t),0)^-1]
-                    options += [t2^-1*t for t2 in others if Util.letter(phi(t2^-1),-1) == Util.letter(phi(t),0)^-1]
+                    options = [t*t2 for t2 in others if Util.letter(phi(t2),0) == Util.letter(phi(t),-1)**-1]
+                    options += [t*t2**-1 for t2 in others if Util.letter(phi(t2**-1),0) == Util.letter(phi(t),-1)**-1]
+                    options += [t2*t for t2 in others if Util.letter(phi(t2),-1) == Util.letter(phi(t),0)**-1]
+                    options += [t2**-1*t for t2 in others if Util.letter(phi(t2**-1),-1) == Util.letter(phi(t),0)**-1]
                     if len(options)==0:
                         break
                     options = [o for o in options if phi(o)!=phi(1)]
@@ -180,17 +182,17 @@ class Util(object):
                     else:
                         break
                 ts[i] = t
-                print(phi(t))
-                print("\n")
+                # print(phi(t))
+                # print("\n")
             if not managed:
                 for j, wi in enumerate(ts):
                     for i in range(j+1, len(ts)):
-                        if Util.letter(phi(wi),0) != Util.letter(phi(wi),-1)^-1 and len(phi(wi).syllables())!=1:
-                            while Util.letter(phi(wi),0) == Util.letter(phi(ts[i]),-1)^-1 or Util.letter(phi(wi),0) == Util.letter(phi(ts[i]),0):
-                                if Util.letter(phi(wi),0) == Util.letter(phi(ts[i]),-1)^-1:
+                        if Util.letter(phi(wi),0) != Util.letter(phi(wi),-1)**-1 and len(phi(wi).syllables())!=1:
+                            while Util.letter(phi(wi),0) == Util.letter(phi(ts[i]),-1)**-1 or Util.letter(phi(wi),0) == Util.letter(phi(ts[i]),0):
+                                if Util.letter(phi(wi),0) == Util.letter(phi(ts[i]),-1)**-1:
                                     ts[i] = ts[i]*wi
                                 if Util.letter(phi(wi),0) == Util.letter(phi(ts[i]),0):
-                                    ts[i] = wi^-1*ts[i]
+                                    ts[i] = wi**-1*ts[i]
                 if pcutoff>5:
                     return ts
                 pcutoff+=1
@@ -199,8 +201,8 @@ class Util(object):
         tfin = [None]*len(ts)
         for t in ts:
             x, power = phi(t).syllables()[0]
-            tfin[phi.codomain().gens().index(x)] = t^power
-        return phi.codomain
+            tfin[phi.codomain().gens().index(x)] = t**power
+        return phi.codomain().hom(tfin)
 
     @classmethod
     def find_complement(cls, B):

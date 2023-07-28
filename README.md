@@ -17,6 +17,9 @@ Sage 9.0 and above is recommended. Furthermore, this package has the following d
 
 - [Ore Algebra](https://github.com/mkauers/ore_algebra).
 - [numperiods](https://gitlab.inria.fr/lairez/numperiods).
+- The [delaunay-triangulation](https://pypi.org/project/delaunay-triangulation/) package from PyPI.
+
+
 
 ## Usage
 The first step is to define the polynomial $P$ defining the projective hypersurface $X=V(P)$. For instance, the following gives the Fermat elliptic curve:
