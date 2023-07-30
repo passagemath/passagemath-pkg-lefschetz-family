@@ -87,6 +87,25 @@ class FundamentalGroupVoronoi(object):
             self._qpoints = [self.rationalize(p) for p in self.points]
         return self._qpoints
 
+    @property
+    def duality(self):
+        if not hasattr(self, "_duality"):
+            duality= [[] for e in self.edges]
+            for c, pol in self.polygons:
+                for e in pol:
+                    duality[self.edges.index(e)] += [Util.select_closest_index(self.points, c)]
+            duality = [[self.edges[i], d] for i, d in enumerate(duality) if len(d)==2]
+            for i,du in enumerate(duality):
+                e,d = du
+                dc = [self.qpoints[k] for k in d]
+                ec = [self.vertices[k] for k in e]
+                z1 = ec[1]-ec[0]
+                z2 = dc[1]-dc[0]
+                if z1.real()*z2.imag() - z2.real()*z1.imag()>0:
+                    duality[i] = [list(reversed(e)), d]
+            duality = duality + [[list(reversed(e)), list(reversed(d))] for e,d in duality]
+            self._duality = duality
+        return self._duality
 
     @property
     def graph(self):

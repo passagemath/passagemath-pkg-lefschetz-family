@@ -127,7 +127,6 @@ class Util(object):
     @classmethod
     def is_clockwise(cls, l):
         CC=ComplexField(500)
-        # find index of element in l that is closest to e for abs
         smally = min(l, key=lambda v:(CC(v).imag(), CC(v).real()))
         i = l.index(smally)
         n = l[i+1 if i+1<len(l) else 0]
@@ -194,7 +193,7 @@ class Util(object):
                                 if Util.letter(phi(wi),0) == Util.letter(phi(ts[i]),0):
                                     ts[i] = wi**-1*ts[i]
                 if pcutoff>5:
-                    return ts
+                    break
                 pcutoff+=1
             else:
                 pcutoff = max(0, pcutoff-1)

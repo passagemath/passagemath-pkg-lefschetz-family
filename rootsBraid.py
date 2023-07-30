@@ -14,6 +14,7 @@ from sage.rings.complex_mpfr import ComplexField
 from sage.groups.free_group import FreeGroup
 from sage.misc.flatten import flatten
 from sage.schemes.curves.zariski_vankampen import followstrand
+from sage.functions.other import arg
 
 from sage.parallel.decorate import parallel
 
@@ -249,10 +250,7 @@ class RootsBraid(object):
     def normalize_edge(self, e):
         return (e[0], e[1]) if e[0]<=e[1] else (e[1], e[0])
 
-    def braid_action(self,g1,g2, section):
-        """ computes the isomorphism elements characterizing the change from graph g1 to graph g2
-        """
-        iso = self.freeGroup.hom(self.xs)
+    def edge_difference(self, g1, g2):
         removed_edges = []
         added_edges = []
         for e in g1.edges():
@@ -261,6 +259,14 @@ class RootsBraid(object):
         for e in g2.edges():
             if not g1.has_edge(e):
                 added_edges+=[e]
+        return removed_edges, added_edges
+    
+    def braid_action(self,g1,g2, section):
+        """ computes the isomorphism elements characterizing the change from graph g1 to graph g2
+        """
+        iso = self.freeGroup.hom(self.xs)
+        removed_edges, added_edges = self.edge_difference(g1, g2)
+
         # logger.info("Starting from graph with edges (%d, %d), (%d, %d), (%d, %d)."% tuple(flatten([[e[0], e[1]] for e in g1.edges()])))
         for e in removed_edges:
             # logger.info("Removing edge (%d,%d)."%(e[0], e[1]))
@@ -270,6 +276,7 @@ class RootsBraid(object):
 
             if not e[0] in gx.connected_component_containing_vertex(self.npoints):
                 e = (e[1], e[0])
+
             for ea in added_edges:
                 ga = copy(gx)
                 ga.add_edge(ea)
@@ -286,6 +293,7 @@ class RootsBraid(object):
 
             ci = cycle.index(e[0])
             if cycle[ci+1 if ci+1<len(cycle) else 0] == e[1]:
+
                 cycle.reverse()
             ci = cycle.index(e[0])
             cycle = cycle[ci:] + cycle[:ci]
@@ -326,14 +334,52 @@ class RootsBraid(object):
                         afterEdges+=[e2]
             e = self.normalize_edge(e)
 
+            inside = []
+            outside = []
+            for j in range(len(cycle)):
+                before, current, after = [cycle[l%len(cycle)] for l in [j-1, j, j+1]] 
+                neighbours = self.neighbours(ga, current, section)
+                neighbours = neighbours[neighbours.index(before):] + neighbours[:neighbours.index(before)]
+                if clockwise:
+                    inside += [[current, v] for v in neighbours[neighbours.index(after)+1:]]
+                    outside += [[current, v] for v in neighbours[1:neighbours.index(after)]]
+                else:
+                    inside += [[current, v] for v in neighbours[1:neighbours.index(after)]]
+                    outside += [[current, v] for v in neighbours[neighbours.index(after)+1:]]
+            # then add all the edges rooted at points of inside
+            inside2 = []
+            for ei in inside:
+                gtempx = copy(ga)
+                gtempx.delete_vertex(ei[0])
+                inside2 += self.ordered_edges(gtempx.subgraph(gtempx.connected_component_containing_vertex(ei[1])))
+                inside2 += [self.normalize_edge(ei)]
+
+            outside2 = []
+            for ei in outside:
+                gtempx = copy(ga)
+                gtempx.delete_vertex(ei[0])
+                outside2 += self.ordered_edges(gtempx.subgraph(gtempx.connected_component_containing_vertex(ei[1])))
+                outside2 += [self.normalize_edge(ei)]
+            # print(inside2)
+
+            basepointisinside = self.hasbasepoint and self.npoints in flatten(inside2) and self.npoints not in cycle
+            otherside = outside2 if basepointisinside else inside2
+            sameside = inside2 if basepointisinside else outside2
+            # print(cycle, sorted(set(flatten(inside2))), sorted(set(flatten(outside2))), basepointisinside)
 
             res = []
             ini = self.ordered_edges(g1)
             fin = self.ordered_edges(gx)
             xr= self.xs[fin.index(ea)]
 
+            # print(beforeEdges1+beforeEdges2+afterEdges+otherside+sameside + [e])
+            print("bp inside," if basepointisinside else "bp outside,", "clockwise" if clockwise else "anticlockwise")
+            print("sameside and otherside")
+            print([ini.index(e) for e in sameside])
+            print([ini.index(e) for e in otherside])
+
             for e2 in ini:
-                if clockwise:
+                if (clockwise and not basepointisinside) or (not clockwise and basepointisinside):
                     if e2 in beforeEdges1:
                         res+=[self.xs[fin.index(e2)]*xr]
                     elif e2 in beforeEdges2:
@@ -342,8 +388,12 @@ class RootsBraid(object):
                         res+=[self.xs[fin.index(e2)]**-1*xr]
                     elif e2 == e:
                         res+=[xr]
-                    else:
+                    elif e2 in otherside:
+                        res+=[xr**-1*self.xs[fin.index(e2)]*xr]
+                    elif e2 in sameside:
                         res+=[self.xs[fin.index(e2)]]
+                    else:
+                        print("unrecognized edge")
                 else:
                     if e2 in beforeEdges1:
                         res+=[xr*self.xs[fin.index(e2)]]
@@ -353,8 +403,12 @@ class RootsBraid(object):
                         res+=[xr*self.xs[fin.index(e2)]**-1]
                     elif e2 == e:
                         res+=[xr]
-                    else:
+                    elif e2 in otherside:
+                        res+=[xr*self.xs[fin.index(e2)]*xr**-1]
+                    elif e2 in sameside:
                         res+=[self.xs[fin.index(e2)]]
+                    else:
+                        print("unrecognized edge")
 
             iso = self.freeGroup.hom([self.freeGroup.hom(res)(iso(x)) for x in self.xs])
             g1=gx
@@ -375,6 +429,17 @@ class RootsBraid(object):
 
 
 
+    def neighbours(self, g, v, section):
+        neighbours = g.neighbors(v)
+        if self.hasbasepoint:
+            section = section + [self.basepoint]
+        else:
+            xmax=Util.simple_rational(max([s.real() for s in section]), 0.1)
+            xmin=Util.simple_rational(min([s.real() for s in section]), 0.1)
+            ymax=Util.simple_rational(max([s.imag() for s in section]), 0.1)
+            section += [2*xmin-xmax+ymax*I/5]
+        neighbours.sort(key=lambda v2:-arg(section[v2] - section[v]))
+        return neighbours
 
 
 
