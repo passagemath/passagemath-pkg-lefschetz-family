@@ -209,3 +209,12 @@ class Util(object):
         quotient = identity_matrix(D.ncols())[D.nrows():]*V**-1
         assert block_matrix([[B],[quotient]]).det() in [-1,1], "cannot find complement, are you sure sublattice is primitive?"
         return quotient
+    
+    @classmethod
+    def middle(self, w):
+        syls = w.syllables()
+        syls = syls[:len(syls)//2]
+        conj = w.parent(1)
+        for l, p in syls:
+            conj = conj*l**p
+        return conj

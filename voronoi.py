@@ -125,7 +125,7 @@ class FundamentalGroupVoronoi(object):
         if not hasattr(self, "_loop_points"):
             loop_points = []
             for i, loop in enumerate(self.loops):
-                loop_point = min(loop[1:], key=lambda v:self.tree.distance(v,0))
+                loop_point = min(loop[1:], key=lambda v:self.tree.distance(v,0, by_weight=True))
                 index = loop.index(loop_point)
                 if index!=0:
                     loop = loop[index:-1] + loop[:index] + [loop[index]]
@@ -292,6 +292,19 @@ class FundamentalGroupVoronoi(object):
                     if e0 != e1:
                         edges += [[vertices.index(e0),vertices.index(e1)]]
                 polygons += [[center, edges]]
+            
+            for i, polygon in enumerate(polygons):
+                center, edges = polygon
+                if center != self.points[0]:
+                    continue
+                newedges = []
+                for edge in edges:
+                    for c, e2 in polygons:
+                        if c!=center and edge in e2:
+                            newedges += [edge]
+                            break
+                polygons[i] = [center, newedges]
+
 
             self._vertices = vertices
             self._polygons = polygons

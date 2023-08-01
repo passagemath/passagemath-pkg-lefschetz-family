@@ -360,23 +360,20 @@ class RootsBraid(object):
                 gtempx.delete_vertex(ei[0])
                 outside2 += self.ordered_edges(gtempx.subgraph(gtempx.connected_component_containing_vertex(ei[1])))
                 outside2 += [self.normalize_edge(ei)]
-            # print(inside2)
 
             basepointisinside = self.hasbasepoint and self.npoints in flatten(inside2) and self.npoints not in cycle
             otherside = outside2 if basepointisinside else inside2
             sameside = inside2 if basepointisinside else outside2
-            # print(cycle, sorted(set(flatten(inside2))), sorted(set(flatten(outside2))), basepointisinside)
 
             res = []
             ini = self.ordered_edges(g1)
             fin = self.ordered_edges(gx)
             xr= self.xs[fin.index(ea)]
 
-            # print(beforeEdges1+beforeEdges2+afterEdges+otherside+sameside + [e])
-            print("bp inside," if basepointisinside else "bp outside,", "clockwise" if clockwise else "anticlockwise")
-            print("sameside and otherside")
-            print([ini.index(e) for e in sameside])
-            print([ini.index(e) for e in otherside])
+            # print("bp inside," if basepointisinside else "bp outside,", "clockwise" if clockwise else "anticlockwise")
+            # print("sameside and otherside")
+            # print([ini.index(e) for e in sameside])
+            # print([ini.index(e) for e in otherside])
 
             for e2 in ini:
                 if (clockwise and not basepointisinside) or (not clockwise and basepointisinside):
