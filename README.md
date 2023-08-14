@@ -42,7 +42,7 @@ See [the computation of the periods of the Fermat quartic surface](https://nbvie
 
 ### Options
 The object `LefschetzFamily` can be called with several options:
-- `method` (`"voronoi"` by default/`"delaunay"`): the method used for computing a basis of homotopy. `voronoi` uses integration along paths in the voronoi graph of the critical points, whereas `delaunay` uses integration along paths along the delaunay triangulation of the critical points. In practice, `delaunay` is more efficient for low dimension and low order varieties (such as degree 3 curves and surfaces, and degree 4 curves). This gain in performance is however hindered in higher dimensions because of the algebraic complexity of the critical points (which are defined as roots of high order polynomials, with very large integer coefficients). <b>`"delaunay"` method is not working for now</b>
+- `method` (`"voronoi"` by default/`"delaunay"`/`"delaunay_dual"`): the method used for computing a basis of homotopy. `voronoi` uses integration along paths in the voronoi graph of the critical points; `delaunay` uses integration along paths along the delaunay triangulation of the critical points; `delaunay_dual` paths are along the segments connecting the barycenter of a triangle of the Delaunay triangulation to the middle of one of its edges. In practice, `delaunay` is more efficient for low dimension and low order varieties (such as degree 3 curves and surfaces, and degree 4 curves). This gain in performance is however hindered in higher dimensions because of the algebraic complexity of the critical points (which are defined as roots of high order polynomials, with very large integer coefficients). <b>`"delaunay"` method is not working for now</b>
 - `nbits` (positive integer, `400` by default): the number of bits of precision used as input for the computations. If a computation fails to recover the integral  monodromy matrices, you should try to increase this precision. The output precision seems to be roughly linear with respect to the input precision.
 - `debug` (boolean, `False` by default): whether coherence checks should be done earlier rather than late. Set to true only if the computation fails.
 - `singular` (boolean, `False` by default): whether the variety is singular. <b>Not implemented yet</b>
@@ -72,7 +72,7 @@ Cohomology related properties:
 
 Period related properties
 - `period_matrix`: the period matrix of the blowup of $X$ in the aforementioned bases `homology` and `cohomology`
-- `simple_periods`: the periods of the first element of `cohomology` in the basis `homology`.
+- `simple_periods`: the periods of the first element of `cohomology` in the basis `homology`. <b>TODO: give holomorphic periods</b>
 
 Miscellaneous properties:
 - `dim`: the dimension of $X$.
