@@ -577,10 +577,10 @@ class EllipticSurface(object):
                 if r in self.critical_points:
                     i = self.critical_points.index(r)
                     ty, M, n = self.types[i]
-                    bs += [self.b(L, r, ty, n)]
+                    bs += [self._b(L, r, ty, n)]
                 else:
-                    bs += [self.b(L, r, "I", 0)]
-                rs += [self.rnorm(L, r)]
+                    bs += [self._b(L, r, "I", 0)]
+                rs += [self._rnorm(L, r)]
 
             L2 = L.annihilator_of_composition(1/t)
             if L2.leading_coefficient()(0) ==0:
@@ -589,10 +589,10 @@ class EllipticSurface(object):
                 if r in self.critical_points:
                     i = self.critical_points.index(r)
                     ty, M, n = self.types[i]
-                    bs += [self.b(L2, 0, ty, n)]
+                    bs += [self._b(L2, 0, ty, n)]
                 else:
-                    bs += [self.b(L2, 0, "I", 0)]
-                rs += [self.rnorm(L2, 0)]
+                    bs += [self._b(L2, 0, "I", 0)]
+                rs += [self._rnorm(L2, 0)]
             ords = [0  if r!="infinity" else -2*2 for r in roots]
             
             div = - vector(rs) - vector(bs) + vector(ords)
@@ -618,15 +618,17 @@ class EllipticSurface(object):
 
             assert sum(div) ==0, "Multiple or no holomorphic forms, not implemented yet"
 
-            self._holomorphic_forms = [-Z/W]
+            self._holomorphic_forms = [-Z/W*t**i for i in range(0, sum(div)+1)]
         return self._holomorphic_forms
     
-    def rnorm(self, L, p):
+    @classmethod
+    def _rnorm(self, L, p):
         R = L.base_ring()
         t = R.gens()[0]
         return floor((L.local_basis_monomials(p)[0]**12)(t=t).degree(t)/12)
     
-    def b(self, L, p, ty, n):
+    @classmethod
+    def _b(self, L, p, ty, n):
         if ty=="I" and n>0:
             return -1
         R = L.base_ring()

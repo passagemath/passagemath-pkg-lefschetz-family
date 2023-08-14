@@ -29,7 +29,7 @@ class Context(object):
 
         if not method in [None, "voronoi", "delaunay_dual"]:
             raise ValueError("method", method)
-        self.method = "delaunay_dual" if method==None else method
+        self.method = "voronoi" if method==None else method
 
         if not isinstance(singular, bool):
             raise TypeError("singular", type(singular))
