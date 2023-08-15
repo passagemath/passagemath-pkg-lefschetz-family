@@ -69,20 +69,28 @@ class LefschetzFamily(object):
         return self._intersection_product
 
     @property
+    def period_matrix_extensions(self):
+        if not hasattr(self, '_period_matrix_extensions'):
+            homology_mat = matrix(self.extensions).transpose()
+            integrated_thimbles =  matrix(self.integrated_thimbles([i for i in range(len(self.cohomology))]))
+            self._period_matrix_extensions = integrated_thimbles*homology_mat
+        return self._period_matrix_extensions
+
+    @property
     def period_matrix(self):
         if not hasattr(self, '_period_matrix'):
             if self.dim==0:
                 R = self.P.parent()
                 affineR = PolynomialRing(QQbar, 'X')
                 affineProjection = R.hom([affineR.gens()[0],1], affineR)
-                period_matrix = matrix([self._residue_form(affineProjection(b), affineProjection(self.P), (b.degree()+len(R.gens()))//self.P.degree(), self.homology) for b in self.cohomology]).change_ring(self.ctx.CBF)
+                period_matrix = matrix([self._residue_form(affineProjection(b), affineProjection(self.P), (b.degree()+len(R.gens()))//self.P.degree(), self.extensions) for b in self.cohomology]).change_ring(self.ctx.CBF)
                 period_matrix = block_matrix([[period_matrix],[matrix([[1]*self.degree])]])
                 self._period_matrix=period_matrix
             else:
-                homology_mat = matrix(self.homology).transpose()
-                integrated_thimbles =  matrix(self.integrated_thimbles([i for i in range(len(self.cohomology))]))
-                self._period_matrix = integrated_thimbles*homology_mat
-
+                if self.dim%2 ==1:
+                    self._period_matrix = self.period_matrix_extensions # TODO remove exceptional divisors and add fibre class
+                else:
+                    self._period_matrix = self.period_matrix_extensions # TODO remove exceptional divisors
         return self._period_matrix
 
     @property
@@ -91,7 +99,7 @@ class LefschetzFamily(object):
             if self.dim==0:
                 self._simple_periods = self.period_matrix
             else:
-                self._simple_periods = matrix(self.integrated_thimbles([0]))*matrix(self.homology).transpose()
+                self._simple_periods = matrix(self.integrated_thimbles([0]))*matrix(self.extensions).transpose()
         return self._simple_periods
 
 
@@ -193,7 +201,7 @@ class LefschetzFamily(object):
             assert self.picard_fuchs_equation(i).order()== len(self.family.basis),"Picard-Fuchs equation is not cyclic, cannot use it to compute monodromy"
             transition_matrices= self.transition_matrices([i])[0]
 
-            n = len(self.fiber.homology) 
+            n = len(self.fiber.extensions) 
             
             integration_correction = diagonal_matrix([1/ZZ(factorial(k)) for k in range(n+1 if self.dim%2==0 else n)])
             derivatives_at_basepoint = self.derivatives_values_at_basepoint(i)
@@ -264,35 +272,35 @@ class LefschetzFamily(object):
                 Mtot=M*Mtot
             phi = matrix(phi).transpose().change_ring(ZZ)
             if not self.ctx.debug:
-                assert Mtot == identity_matrix(len(self.fiber.homology)), "Monodromy around infinity is nontrivial, most likely because the paths do not actually compose to the loop around infinity"
+                assert Mtot == identity_matrix(len(self.fiber.extensions)), "Monodromy around infinity is nontrivial, most likely because the paths do not actually compose to the loop around infinity"
             self._infinity_loops = phi.rows()
 
         return self._infinity_loops
     
     @property
-    def extensions(self):
-        if not hasattr(self, '_extensions'):
+    def kernel_boundary(self):
+        if not hasattr(self, '_kernel_boundary'):
             delta = matrix(self.vanishing_cycles).change_ring(ZZ)
-            self._extensions = delta.kernel()
+            self._kernel_boundary = delta.kernel()
 
-        return self._extensions
+        return self._kernel_boundary
     
 
     @property
-    def homology(self):
-        if not hasattr(self, '_homology'):
+    def extensions(self):
+        if not hasattr(self, '_extensions'):
             if self.dim==0:
                 R = self.P.parent()
                 affineR = PolynomialRing(QQbar, 'X')
                 affineProjection = R.hom([affineR.gens()[0],1], affineR)
-                self._homology = [e[0] for e in affineProjection(self.P).roots()]
+                self._extensions = [e[0] for e in affineProjection(self.P).roots()]
 
             else:
                 r = len(self.monodromy_matrices)
                 
                 begin = time.time()
                 # compute representants of the quotient H(Y)/imtau
-                D, U, V = self.extensions.matrix().smith_form()
+                D, U, V = self.kernel_boundary.matrix().smith_form()
                 B = D.solve_left(matrix(self.infinity_loops)*V).change_ring(ZZ)*U
                 Brows=B.row_space()
                 compl = [[0 for i in range(Brows.degree())]]
@@ -307,16 +315,27 @@ class LefschetzFamily(object):
                     if rank+N == Brows.degree():
                         break
                 quotient_basis=matrix(compl[1:])
-                self._homology = (quotient_basis*self.extensions.matrix()).rows() # NB this is the homology of Y, to recover the homology of X we need to remove the kernel of the period matrix
+                self._extensions = (quotient_basis*self.kernel_boundary.matrix()).rows() # NB this is the homology of Y, to recover the homology of X we need to remove the kernel of the period matrix
                 
                 end = time.time()
                 duration_str = time.strftime("%H:%M:%S",time.gmtime(end-begin))
                 logger.info("[%d] Reconstructed homology from monodromy -- total time: %s."% (self.dim, duration_str))
 
-        return self._homology
+        return self._extensions
 
     @property
+    def thimble_extensions(self):
+        """returns a list of elements of the form `[boundary, extension]` such that extension is the extension of a thimble of the fiber of the fiber along the loop around infinity. 
+        `boundary` is the boundary of the extended thimble. 
+        The list consisting of the `boundary`s forms a basis of the image of the boundary map."""
+        if not hasattr(self, '_thimble_extensions'):
+            assert self.dim<=2, "Not implemented yet"
+            self._thimble_extensions = []
+        return self._thimble_extensions
+    
+    @property
     def exceptional_divisors(self):
+        """Returns the coordinates of the exceptional divisors in the basis of homology of the modification."""
         if not hasattr(self, '_exceptional_divisors'):
             assert self.dim<=2, "Not implemented yet"
             self._exceptional_divisors = []
@@ -431,7 +450,7 @@ class LefschetzFamily(object):
         if not hasattr(self, '_integrated_thimbles'):
             self._integrated_thimbles = [None for i in range(len(self.cohomology))]
         
-        s=len(self.fiber.homology)
+        s=len(self.fiber.extensions)
         r=len(self.thimbles)
 
         for i2 in range(len(l)):
@@ -456,7 +475,7 @@ class LefschetzFamily(object):
             self._coordinates = [None for i in range(len(self.cohomology))]
 
         if not self._coordinatesQ[i]:
-            s=len(self.fiber.homology)
+            s=len(self.fiber.extensions)
             RtoS = self._RtoS()
             w = self.cohomology[i]
             wt = self._restrict_form(w)
@@ -471,7 +490,7 @@ class LefschetzFamily(object):
 
     def derivatives_values_at_basepoint(self, i):
         RtoS = self._RtoS()
-        s=len(self.fiber.homology)
+        s=len(self.fiber.extensions)
 
 
         w = self.cohomology[i]
@@ -484,7 +503,7 @@ class LefschetzFamily(object):
     def _compute_intersection_product(self):
         r=len(self.thimbles)
         inter_prod_thimbles = matrix([[self._compute_intersection_product_thimbles(i,j) for j in range(r)] for i in range(r)])
-        intersection_11 = (-1)**(self.dim-1) * (matrix(self.homology)*inter_prod_thimbles*matrix(self.homology).transpose()).change_ring(ZZ)
+        intersection_11 = (-1)**(self.dim-1) * (matrix(self.extensions)*inter_prod_thimbles*matrix(self.extensions).transpose()).change_ring(ZZ)
         if self.dim%2==0:
             intersection_02 = zero_matrix(2,2)
             intersection_02[0,1], intersection_02[1,0] = 1,1
@@ -570,3 +589,14 @@ class LefschetzFamily(object):
                 self._basepoint = Util.simple_rational(xmin - (xmax-xmin)*shift, (xmax-xmin)/10)
         return self._basepoint
 
+    def lift(self, v):
+        v = matrix(self.extensions + self.infinity_loops).solve_left(v)
+        add = [] if self.dim %2 ==1 else [0,0]
+        return vector(list(v)[:-len(self.infinity_loops)] + add)
+    
+    @property
+    def fibre_class(self):
+        return vector([0]*len(self.extensions) + [1,0])
+    @property
+    def section(self):
+        return vector([0]*len(self.extensions) + [0,1])

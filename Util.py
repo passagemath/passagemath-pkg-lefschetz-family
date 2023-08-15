@@ -49,6 +49,10 @@ class Util(object):
 
     @classmethod
     def simplify_path(cls, p):
+        """Given a list of numbers p, returns a ``simplification'' of p, removing all the backtracking
+        
+        For example, `simplify_path([1,2,3,2,1,4,5,1]) == [1,4,5,1]`
+        """
         i=1
         res = list(p)
         while i<len(res)-1:
@@ -69,10 +73,12 @@ class Util(object):
 
     @classmethod
     def monomials(cls, ring, degree):
+        """Given a polynomial ring and an integer d, returns all the monomials of the ring with degree d."""
         return [ring.monomial(*m) for m in list(IntegerVectors(degree, ring.ngens()))]
 
     @classmethod
     def xgcd_list(cls, l):
+        """Given a list of integers l, return a double consisting of the gcd of these numbers and the coefficients of a Bezout relation."""
         if len(l)==0:
             return 0, []
         if len(l)==1:
@@ -91,6 +97,7 @@ class Util(object):
 
     @classmethod
     def path(cls, path, x):
+        """Given a list of complex numbers path, and a number 0<x<1, return the path(x) where path is seen as a path [0,1]\\to C."""
         CC=ComplexField(500)
         dtot = sum([CC(abs(p1-p2)) for (p1,p2) in zip(path[:-1], path[1:])])
         dmin, dmax = 0, CC(abs(path[0]-path[1]))
@@ -106,6 +113,7 @@ class Util(object):
 
     @classmethod
     def select_closest(cls, l, e):
+        """Given a list of complex numbers l and a complex number e, return the element e2 of l minimizing abs(e2-e)"""
         # find element in l that is closest to e for abs
         CC=ComplexField(500)
         r = l[0]
@@ -116,6 +124,7 @@ class Util(object):
 
     @classmethod
     def select_closest_index(cls, l, e):
+        """Given a list of complex numbers l and a complex number e, return the index i minimizing abs(l[i]-e)"""
         # find index of element in l that is closest to e for abs
         CC=ComplexField(500)
         r = 0
@@ -126,6 +135,7 @@ class Util(object):
 
     @classmethod
     def is_clockwise(cls, l):
+        """Given a list of complex numbers describing a convex polygon, return whether the points are clockwise."""
         CC=ComplexField(500)
         smally = min(l, key=lambda v:(CC(v).imag(), CC(v).real()))
         i = l.index(smally)
@@ -143,6 +153,7 @@ class Util(object):
 
     @classmethod
     def is_simple(cls, l):
+        """Given a list of words l, return whether every word in the list consists of a single letter."""
         for w in l:
             if len(w.syllables()) != 1:
                 return False
@@ -150,10 +161,13 @@ class Util(object):
     
     @classmethod
     def letter(cls, w,i):
+        """Given a word w and an integer i, yields the i-th letter of w."""
         return w.syllables()[i][0]**(w.syllables()[i][1]/abs(w.syllables()[i][1]))
 
     @classmethod
     def invert_morphism(cls, phi, ts = None):
+        """Given an invertible free group morphism phi, computes its inverse. 
+        Optionally, you can give generators ts of a subgroup (as a list of words) to compute the inverse of the restriction of phi on \\langle ts \\rangle (assuming it is invertible)."""
         # I have no idea if this terminates -- if it does it should not take very long
         pmax=20
         pcutoff=0
@@ -205,6 +219,7 @@ class Util(object):
 
     @classmethod
     def find_complement(cls, B):
+        """Given an m x n integer valued matrix B with n>m, computes an (n-m) x n matrix A such that the matrix block_matrix([[A],[B]]) is invertible over the integers"""
         D, U, V = B.smith_form()
         quotient = identity_matrix(D.ncols())[D.nrows():]*V**-1
         assert block_matrix([[B],[quotient]]).det() in [-1,1], "cannot find complement, are you sure sublattice is primitive?"
@@ -212,6 +227,7 @@ class Util(object):
     
     @classmethod
     def middle(self, w):
+        """Given a word w of odd length 2n+1, yields the word consisting of the first n letters of w."""
         syls = w.syllables()
         syls = syls[:len(syls)//2]
         conj = w.parent(1)

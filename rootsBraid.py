@@ -370,11 +370,6 @@ class RootsBraid(object):
             fin = self.ordered_edges(gx)
             xr= self.xs[fin.index(ea)]
 
-            # print("bp inside," if basepointisinside else "bp outside,", "clockwise" if clockwise else "anticlockwise")
-            # print("sameside and otherside")
-            # print([ini.index(e) for e in sameside])
-            # print([ini.index(e) for e in otherside])
-
             for e2 in ini:
                 if (clockwise and not basepointisinside) or (not clockwise and basepointisinside):
                     if e2 in beforeEdges1:

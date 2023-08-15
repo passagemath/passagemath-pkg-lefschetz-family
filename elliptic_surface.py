@@ -138,7 +138,7 @@ class EllipticSurface(object):
     @property
     def monodromy_matrices(self):
         if not hasattr(self, '_monodromy_matrices'):
-            n = len(self.fiber.homology) 
+            n = len(self.fiber.extensions) 
             
             cyclic_form = self.cyclic_form
             w = cyclic_form[0]*self.P + cyclic_form[1]*self.fiber.cohomology[1]
@@ -234,7 +234,7 @@ class EllipticSurface(object):
         if not hasattr(self,'_fiber'):
             self._fiber = LefschetzFamily(self.P(self.basepoint), nbits=self.ctx.nbits)
             if self._fiber.intersection_product == matrix([[0,-1], [1,0]]):
-                self._fiber._homology = list(reversed(self._fiber.homology))
+                self._fiber._extensions = list(reversed(self._fiber.extensions))
                 del self._fiber._intersection_product
             assert self._fiber.intersection_product == matrix([[0,1], [-1,0]])
         return self._fiber
@@ -416,7 +416,7 @@ class EllipticSurface(object):
     def integrated_thimbles(self):
         if not hasattr(self, '_integrated_thimbles'):
         
-            s=len(self.fiber.homology)
+            s=len(self.fiber.extensions)
             r=len(self.thimbles)
             
             pM = self.fiber.period_matrix
@@ -436,7 +436,7 @@ class EllipticSurface(object):
 
 
     def derivatives_values_at_basepoint(self, w):
-        s=len(self.fiber.homology)
+        s=len(self.fiber.extensions)
 
         derivatives = [self.P.parent()(0), w]
         for k in range(s-1):
