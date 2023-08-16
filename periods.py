@@ -24,6 +24,8 @@ from sage.matrix.special import zero_matrix
 from sage.arith.functions import lcm
 from ore_algebra.analytic.differential_operator import DifferentialOperator
 
+from sage.modules.free_quadratic_module_integer_symmetric import IntegralLattice
+
 from sage.misc.prandom import randint
 
 from voronoi import FundamentalGroupVoronoi
@@ -59,19 +61,46 @@ class LefschetzFamily(object):
     
     
     @property
+    def intersection_product_modification(self):
+        if not hasattr(self,'_intersection_product_modification'):
+            assert self.dim!=0, "no modification in dimension 0"
+            self._intersection_product_modification=self._compute_intersection_product_modification()
+        return self._intersection_product_modification
+    
+    @property
     def intersection_product(self):
         if not hasattr(self,'_intersection_product'):
-            # assert self.dim==0, "No way to compute intersection product in positive dimension yet"
             if self.dim==0:
                 self._intersection_product=identity_matrix(self.degree)
+            elif self.dim==1:
+                self._intersection_product=self.intersection_product_modification
             else:
-                self._intersection_product=self._compute_intersection_product()
+                homology = matrix(self.homology)
+                IP = homology*self.intersection_product_modification*homology.transpose()
+                assert IP.det() in [1,-1], "intersection product is not unitary"
+                self._intersection_product = IP
         return self._intersection_product
 
     @property
-    def period_matrix_extensions(self):
+    def homology(self):
+        """An embedding of the homology of the hypersurface in the homology of the modification."""
+        if not hasattr(self,'_homology'):
+            if self.dim in [0,1]:
+                self._homology = identity_matrix(len(self.extensions)).rows()
+            else:
+                IL = IntegralLattice(self.intersection_product_modification)
+                self._homology = IL.orthogonal_complement(self.exceptional_divisors).basis()
+        return self._homology
+    
+    def lift_modification(self, v):
+        """Given a vector v, return the orthogonal projection of the homology of the modification on the homology of the hypersurface"""
+        return vector(list(matrix(self.homology + self.exceptional_divisors).solve_left(v))[:len(self.homology)])
+
+    @property
+    def period_matrix_modification(self):
         if not hasattr(self, '_period_matrix_extensions'):
-            homology_mat = matrix(self.extensions).transpose()
+            add = [vector([0]*len(self.thimbles))]*2 if self.dim%2 ==0 else []
+            homology_mat = matrix(self.extensions + add).transpose()
             integrated_thimbles =  matrix(self.integrated_thimbles([i for i in range(len(self.cohomology))]))
             self._period_matrix_extensions = integrated_thimbles*homology_mat
         return self._period_matrix_extensions
@@ -86,13 +115,12 @@ class LefschetzFamily(object):
                 period_matrix = matrix([self._residue_form(affineProjection(b), affineProjection(self.P), (b.degree()+len(R.gens()))//self.P.degree(), self.extensions) for b in self.cohomology]).change_ring(self.ctx.CBF)
                 period_matrix = block_matrix([[period_matrix],[matrix([[1]*self.degree])]])
                 self._period_matrix=period_matrix
+            elif self.dim%2 ==1:
+                self._period_matrix = self.period_matrix_modification*matrix(self.homology).transpose()
             else:
-                if self.dim%2 ==1:
-                    self._period_matrix = self.period_matrix_extensions # TODO remove exceptional divisors and add fibre class
-                else:
-                    self._period_matrix = self.period_matrix_extensions # TODO remove exceptional divisors
+                self._period_matrix = block_matrix([[self.period_matrix_modification*matrix(self.homology).transpose()], [matrix(self.intersection_product*self.lift_modification(self.fibre_class))]])
         return self._period_matrix
-
+    
     @property
     def simple_periods(self):
         if not hasattr(self, '_simple_periods'):
@@ -325,20 +353,37 @@ class LefschetzFamily(object):
 
     @property
     def thimble_extensions(self):
-        """returns a list of elements of the form `[boundary, extension]` such that extension is the extension of a thimble of the fiber of the fiber along the loop around infinity. 
+        """Returns a list of elements of the form `[boundary, extension]` such that `extension` is the extension of a thimble of the fiber of the fiber along the loop around infinity. 
         `boundary` is the boundary of the extended thimble. 
-        The list consisting of the `boundary`s forms a basis of the image of the boundary map."""
+        The list consisting of the `boundary`s forms a basis of the image of the boundary map.
+        `extension` if defined only up to an infinity loop."""
         if not hasattr(self, '_thimble_extensions'):
             assert self.dim<=2, "Not implemented yet"
             self._thimble_extensions = []
         return self._thimble_extensions
     
     @property
+    def invariant(self): # TODO : in dim >0 this is just the fibre. 
+        if not hasattr(self, '_invariant'):
+            self._invariant = vector(Util.find_complement(matrix([chain for chain, _ in self.thimble_extensions])))
+        return self._invariant
+
+    @property
     def exceptional_divisors(self):
         """Returns the coordinates of the exceptional divisors in the basis of homology of the modification."""
         if not hasattr(self, '_exceptional_divisors'):
-            assert self.dim<=2, "Not implemented yet"
-            self._exceptional_divisors = []
+            if self.dim%2 ==1:
+                exceptional_divisors = [self.lift(extension) for _, extensions in self.thimble_extensions]
+                chains = matrix([chain for chain, _ in self.thimble_extensions])
+            else:
+                exceptional_divisors = []
+                for chain, extension in self.thimble_extensions:
+                    exceptional_divisor = self.lift(extension)
+                    exceptional_divisor -= self.fibre_class * (chain*self.fiber.fiber.intersection_product*self.invariant)
+                    exceptional_divisors += [exceptional_divisor]
+                exceptional_divisors += [self.section]
+                chains = matrix([chain for chain, _ in self.thimble_extensions] + [self.invariant])
+            self._exceptional_divisors = (chains**(-1)*matrix(exceptional_divisors)).rows()
         return self._exceptional_divisors
 
     @property
@@ -500,7 +545,7 @@ class LefschetzFamily(object):
             derivatives += [self._derivative(derivatives[-1], RtoS(self.P))] 
         return self.family._coordinates(derivatives, self.basepoint)
 
-    def _compute_intersection_product(self):
+    def _compute_intersection_product_modification(self):
         r=len(self.thimbles)
         inter_prod_thimbles = matrix([[self._compute_intersection_product_thimbles(i,j) for j in range(r)] for i in range(r)])
         intersection_11 = (-1)**(self.dim-1) * (matrix(self.extensions)*inter_prod_thimbles*matrix(self.extensions).transpose()).change_ring(ZZ)

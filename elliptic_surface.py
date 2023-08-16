@@ -616,7 +616,7 @@ class EllipticSurface(object):
             Dt = L.parent().gens()[0]
             W = (Dt + L.coefficients()[1]/L.coefficients()[2]).rational_solutions()[0][0]
 
-            assert sum(div) ==0, "Multiple or no holomorphic forms, not implemented yet"
+            # assert sum(div) ==0, "Multiple or no holomorphic forms, not implemented yet"
 
             self._holomorphic_forms = [-Z/W*t**i for i in range(0, sum(div)+1)]
         return self._holomorphic_forms
