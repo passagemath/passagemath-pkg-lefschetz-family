@@ -358,7 +358,7 @@ class LefschetzFamily(object):
         The list consisting of the `boundary`s forms a basis of the image of the boundary map.
         `extension` if defined only up to an infinity loop."""
         if not hasattr(self, '_thimble_extensions'):
-            assert self.dim<=2, "Not implemented yet"
+            assert self.dim<2, "Not implemented yet"
             self._thimble_extensions = []
         return self._thimble_extensions
     
