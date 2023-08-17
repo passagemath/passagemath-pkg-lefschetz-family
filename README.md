@@ -93,7 +93,7 @@ Middle term goals include:
 - [ ] Having own implementation of 2D voronoi graphs/Delaunay triangulation
 
 Long term goals include:
-- [ ] Computing periods of elliptic fibrations.
+- [x] Computing periods of elliptic fibrations.
 - [ ] Tackling higher dimensional varieties (most notably cubics in $\mathbb P^5$).
 - [ ] Computing periods of singular varieties.
 - [ ] Computing periods of complete intersections.

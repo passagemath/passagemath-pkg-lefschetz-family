@@ -35,9 +35,6 @@ class RootsBraid(object):
         This class computes the braid group of roots (in t) of P(u) as u moves along a path
         """
         
-        # assert P.is_homogeneous(), "nonhomogeneous defining polynomial"
-        
-        self.edges = edges
         R = PolynomialRing(QQ, ['u','t'])
         u,t = R.gens()
         self.P = P(u,t)
@@ -47,11 +44,22 @@ class RootsBraid(object):
 
         self.freeGroup = FreeGroup(self.npoints)
         self.xs = list(self.freeGroup.gens())
-        self.additional_points=additional_points
+        # self.additional_points=additional_points
 
-        self.hasbasepoint = basepoint != None
-            
+        self.hasbasepoint = (basepoint != None)
         self.basepoint = basepoint
+
+        self.edges = []
+        self.vertices = []
+        for e in edges:
+            if e[0] not in self.vertices:
+                self.vertices += [e[0]]
+            if e[1] not in self.vertices:
+                self.vertices += [e[1]]
+            e2 = [self.vertices.index(v) for v in e]
+            if e2 not in self.edges and list(reversed(e2)) not in self.edges:
+                self.edges+=[e2]
+
 
 
     @property
@@ -63,38 +71,59 @@ class RootsBraid(object):
             self._singularities = Qu(discrP).roots(QQbar, multiplicities=False)
         return self._singularities
     
+    def system(self, i):
+        """The configuration of roots at self.vertices[i]"""
+        if not hasattr(self,'_systems'):
+            self._systemsQ = [False]*len(self.vertices)
+            self._systems = [None]*len(self.vertices)
+        if not self._systemsQ[i]:
+            CC=ComplexField(500)
+            Qt=PolynomialRing(QQ[I], 't')
+            p = self.vertices[i]
+            u,t = self.P.parent()('u'),self.P.parent()('t')
+            roots = Qt(self.P(u=p)).roots(QQbar, multiplicities=False)
+            roots = [CC(r)for r in roots]
+            roots.sort(key=lambda z: (z.real(), z.imag()))
+            self._systems[i] = roots
+            self._systemsQ[i] = True
+        return self._systems[i]
 
     def braid(self, e):
         if not hasattr(self,'_braid'):
-            self._braid = [None]*len(self.edges)
+            self._braid = [(None, None)]*len(self.edges)
             self._braidQ = [False]*len(self.edges)
-        i=self.edge(e)
+        # e = [Util.select_closest(self.vertices, p) for p in e]
+        i, inverse = self.edge(e)
         if not self._braidQ[i]:
-            CC=ComplexField(500)
-            Qt=PolynomialRing(QQ[I], 't')
-            u,t = self.P.parent()('u'),self.P.parent()('t')
             logger.info("[%d] Computing braid along edge %d."% (os.getpid(), i))
-            roots=  Qt(self.P(u=e[0])).roots(QQbar, multiplicities=False)
+
+            roots = self.system(e[0])
             res=[]
             j=0
             for r in roots:   
                 j+=1
                 # logger.info("[%d] Computing thread %d of edge %d."% (os.getpid(), j, i))
-                line = followstrand(self.P, [z.minpoly()(self.P.parent().gens()[1]) for z in self.additional_points], e[0], e[1],r, 50)
+                line = followstrand(self.P, [z.minpoly()(self.P.parent().gens()[1]) for z in self.additional_points], self.vertices[e[0]], self.vertices[e[1]],r, 50)
                 res+=  [[[c[0], c[1]+I*c[2]] for c in line]]
-            res.sort(key=lambda thread: (CC(thread[0][1].real()), CC(thread[0][1].imag())))
-            self._braid[i] = res
+
+            resinverse = [list(reversed([[1-t, x] for t, x in thread])) for thread in res]
+            rootsinverse = self.system(e[1])
+            endthreads = [thread[0][1] for thread in resinverse]
+            order = [Util.select_closest_index(endthreads, r) for r in rootsinverse]
+            resinverse = [resinverse[i] for i in order]
+            
+            self._braid[i] = (resinverse, res) if inverse else (res, resinverse)
             self._braidQ[i] = True
 
-        return self._braid[i]
+        return self._braid[i][1 if inverse else 0]
 
-    def interpolate(self, path, t):
+    def interpolate(self, thread, t):
         if t==1:
-            return path[-1][1]
-        for i in range(len(path)-1,-1,-1):
-            if t>=path[i][0]:
+            return thread[-1][1]
+        for i in range(len(thread)-1,-1,-1):
+            if t>=thread[i][0]:
                 break
-        t0,x0, t1,x1 = path[i][0], path[i][1], path[i+1][0], path[i+1][1]
+        t0,x0, t1,x1 = thread[i][0], thread[i][1], thread[i+1][0], thread[i+1][1]
         return ((t1-t)*x0+ (t-t0)*x1)/(t1-t0)
 
 
@@ -116,63 +145,21 @@ class RootsBraid(object):
         return mtc
 
     def edge(self, e):
-        return self.edges.index([e[0], e[1]])
-
-
-    def transition_isomorphism(self,e1,e2):
-        if not hasattr(self,'_transition_isomorphism'):
-            self._transition_isomorphism = [[None for i in range(len(self.edges))] for j in range(len(self.edges))]
-            self._transition_isomorphismQ = [[False for i in range(len(self.edges))] for j in range(len(self.edges))]
-        
-        i1 = self.edge(e1)
-        i2 = self.edge(e2)
-        if not self._transition_isomorphismQ[i1][i2]:
-            logger.info("Computing transition isomorphism between edges %d and %d."% (i1,i2))
-
-            braid1 = self.braid(e1)
-            braid2 = self.braid(e2)
-
-            section1 = self.braid_section(braid1, 1)
-            section2 = self.braid_section(braid2, 0)
-
-            perm = [Util.select_closest_index(section2,c) for c in section1]+[self.npoints] # this is fine because they are equal (although their presentation might differ)
-            
-            mtc1 = self.minimal_cover_tree(section1)
-            mtc2 = self.minimal_cover_tree(section2)
-
-            mtcn = Graph(self.npoints+1)
-            for e in mtc1.edges():
-                mtcn.add_edge((perm[e[0]], perm[e[1]]))
-
-            oe1, oe2=self.ordered_edges(mtc1),self.ordered_edges(mtcn)
-            perm_edge = [oe2.index(self.normalize_edge((perm[e[0]],perm[e[1]]))) for e in oe1]
-            transition_iso = self.freeGroup.hom([self.xs[i] for i in perm_edge])
-            self._transition_isomorphism[i1][i2] = self.braid_action(mtcn, mtc2, section2)*transition_iso
-            self._transition_isomorphismQ[i1][i2] = True
-        return self._transition_isomorphism[i1][i2]
+        """Given an edge e, returns (i, False) if self.edges[i]==e and (i, True) if self.edges[i]==list(reversed(e))"""
+        if [e[0], e[1]] in self.edges:
+            return self.edges.index([e[0], e[1]]), False
+        if [e[1], e[0]] in self.edges:
+            return self.edges.index([e[1], e[0]]), True
+        raise Exception("edge is not in edge list")
 
     def braid_section(self, braid, t):
+        """Given a braid (a list of threads) and 0<t<1, returns the section of the braid at t."""
         section = []
         for thread in braid:
             section += [self.interpolate(thread, t)]
         return section+self.additional_points
 
-    def compute_all_isomorphisms(self):
-        if not hasattr(self,'_isomorphisms'):
-            self._isomorphisms=[None]*len(self.edges)
-            self._isomorphismsQ=[False]*len(self.edges)
-        missing_edges = [i for i in range(len(self.edges)) if not self._isomorphismsQ[i]]
-        res = sorted(self._compute_all_isomorphisms([(i, self.edges[i]) for i in missing_edges]))
-        for r in res:
-            i=r[0][0][0]
-            self._isomorphisms[i] = r[1]
-            self._isomorphismsQ[i] = True
-        return
-
-    @parallel
-    def _compute_all_isomorphisms(self,i,e):
-        braid = self.braid(e)
-        logger.info("[%d] Computing isomorphism of edge %d."% (os.getpid(), i))
+    def raffine_braid(self, braid):
         ts=[]
         for thread in braid:
             for p in thread:
@@ -184,73 +171,82 @@ class RootsBraid(object):
                 t0+=self._maximalstep
                 ts.append(t0)
         ts.sort()
-        sections = [self.braid_section(braid, t) for t in ts]
-
-        mtcs = [self.minimal_cover_tree(section) for section in sections]
-
-        iso = self.freeGroup.hom(self.xs)
-        for k in range(len(mtcs)-1):
-            mtc1 = mtcs[k]
-            mtc2 = mtcs[k+1]
-            if mtc1!=mtc2:
-                logger.info("[%d] Encountered distinct minimal covering trees between sections %d and %d (out of %d). Computing transition."% (os.getpid(), k, k+1, len(ts)))
-                iso = self.braid_action(mtc1, mtc2, sections[k])*iso
-                iso = self.freeGroup.hom([iso(x) for x in self.xs])
-        return iso
-                
-
+        return [self.braid_section(braid, t) for t in ts]
 
 
     def isomorphisms(self, e):
         if not hasattr(self,'_isomorphisms'):
-            self._isomorphisms=[None]*len(self.edges)
+            self._isomorphisms=[[None, None]]*len(self.edges)
             self._isomorphismsQ=[False]*len(self.edges)
-        i = self.edge(e)
+        i, inverse = self.edge(e)
         if not self._isomorphismsQ[i]:
-            braid = self.braid(e)
             logger.info("[%d] Computing isomorphism of edge %d."% (os.getpid(), i))
-            ts=[]
-            for thread in braid:
-                for p in thread:
-                    ts+=[p[0]]
-            ts = list(set(ts))
-            ts.sort()
-            for t0,t1 in zip(ts[:-1], ts[1:]):
-                while t1-t0>1.1*self._maximalstep:
-                    t0+=self._maximalstep
-                    ts.append(t0)
-            ts.sort()
-            sections = [self.braid_section(braid, t) for t in ts]
+            CC=ComplexField(500)
+
+            braid = self.braid(e)
+            sections = self.raffine_braid(braid)
 
             mtcs = [self.minimal_cover_tree(section) for section in sections]
 
+            mtcinit = self.minimal_cover_tree(self.system(e[0]) + self.additional_points)
+
             iso = self.freeGroup.hom(self.xs)
+            if mtcs[0] != mtcinit:
+                logger.info("[%d] Encountered distinct minimal covering trees between beginning of braid %d and standard configuration."% (os.getpid(), i))
+                iso = self.braid_action(mtcinit, mtcs[0], sections[0])
+
             for k in range(len(mtcs)-1):
                 mtc1 = mtcs[k]
-                mtc2 = mtcs[k+1]
-                if mtc1!=mtc2:
-                    logger.info("[%d] Encountered distinct minimal covering trees between sections %d and %d (out of %d). Computing transition."% (os.getpid(), k, k+1, len(ts)))
-                    iso = self.braid_action(mtc1, mtc2, sections[k])*iso
+                mtcfin = mtcs[k+1]
+                if mtc1!=mtcfin:
+                    logger.info("[%d] Encountered distinct minimal covering trees between sections %d and %d (out of %d)."% (os.getpid(), k, k+1, len(mtcs)))
+                    iso = self.braid_action(mtc1, mtcfin, sections[k])*iso
                     iso = self.freeGroup.hom([iso(x) for x in self.xs])
-            self._isomorphismsQ[i]=True
-            self._isomorphisms[i]=iso
-        return self._isomorphisms[i]
+
+            section1 = sections[-1]
+            section2 = self.system(e[1]) + self.additional_points
+
+            perm = [Util.select_closest_index(section2,c) for c in section1]+[self.npoints] # this is fine because they are equal (although their presentation might differ)
+            
+            mtc1 = mtcs[-1]
+            mtcfin = self.minimal_cover_tree(section2)
+
+            mtcn = Graph(self.npoints+1)
+            for e in mtc1.edges():
+                mtcn.add_edge((perm[e[0]], perm[e[1]]))
+
+            oe1, oe2 = self.ordered_edges(mtc1), self.ordered_edges(mtcn)
+            perm_edge = [oe2.index(self.normalize_edge((perm[e[0]],perm[e[1]]))) for e in oe1]
+            transition_iso = self.freeGroup.hom([self.xs[i] for i in perm_edge])
+            if mtcn!=mtcfin:
+                logger.info("[%d] Encountered distinct minimal covering trees between end of braid %d and standard configuration."% (os.getpid(), i))
+                transition_iso = self.braid_action(mtcn, mtcfin, section2)*transition_iso
+
+            iso = transition_iso*iso
+            iso = self.freeGroup.hom([iso(x) for x in self.xs])
+
+            self._isomorphisms[i] = [None, iso] if inverse else [iso, None]
+            self._isomorphismsQ[i] = True
+
+        if self._isomorphisms[i][1 if inverse else 0] == None:
+            logger.info("[%d] Inverting isomorphism of edge %d."% (os.getpid(), i))
+            self._isomorphisms[i][1 if inverse else 0] = Util.invert_morphism(self._isomorphisms[i][0 if inverse else 1])
+
+        return self._isomorphisms[i][1 if inverse else 0]
     
     def isomorphism_along_path(self,path):
-        path_edges = [path[i:i+2] for i in range(len(path)-1)]
+        """Given a path `path`, computes the braid (as an isomorphism on the fundamental group of the punctured plane) along `path`"""
+        path = [Util.select_closest_index(self.vertices, p)  for p in path]
+        edges = [path[i:i+2] for i in range(len(path)-1)] # TODO try product([self.isomorphism(e) for e in list(reversed(path_edges))])
         
-        iso = self.isomorphisms(path_edges[0])
-        for i in range(len(path_edges)-1):
-            iso = self.isomorphisms(path_edges[i+1])*self.transition_isomorphism(path_edges[i], path_edges[i+1])*iso
+        iso = self.isomorphisms(edges[0])
+        for e in edges[1:]:
+            iso = self.isomorphisms(e)*iso
             iso = self.freeGroup.hom([iso(x) for x in self.xs])
-        iso = self.transition_isomorphism(path_edges[-1], path_edges[0])*iso
-        iso = self.freeGroup.hom([iso(x) for x in self.xs])
         return iso
 
-    def normalize_edge(self, e):
-        return (e[0], e[1]) if e[0]<=e[1] else (e[1], e[0])
-
     def edge_difference(self, g1, g2):
+        """Given two graphs g1, g2, yields the lists `removed_edges, added_edges` such that `removed_edges` is the edges in `g1` and not in `g2`, and `added_edges` the opposite."""
         removed_edges = []
         added_edges = []
         for e in g1.edges():
@@ -412,27 +408,62 @@ class RootsBraid(object):
         return (e[0], e[1]) if e[0]<=e[1] else (e[1], e[0])
 
     def ordered_edges(self, gr):
-        res = [(e[0], e[1]) for e in gr.edges()]
-        for e in res:
-            if e[0]>e[1]:
-                e[0],e[1]=e[1],e[0]
+        res = [self.normalize_edge(e) for e in gr.edges()]
         res.sort()
         return res
-
-
-
+    
     def neighbours(self, g, v, section):
         neighbours = g.neighbors(v)
         if self.hasbasepoint:
-            section = section + [self.basepoint]
+            section2 = section + [self.basepoint]
         else:
             xmax=Util.simple_rational(max([s.real() for s in section]), 0.1)
             xmin=Util.simple_rational(min([s.real() for s in section]), 0.1)
             ymax=Util.simple_rational(max([s.imag() for s in section]), 0.1)
-            section += [2*xmin-xmax+ymax*I/5]
-        neighbours.sort(key=lambda v2:-arg(section[v2] - section[v]))
+            section2 = section + [2*xmin-xmax+ymax*I/5]
+        neighbours.sort(key=lambda v2:-arg(section2[v2] - section2[v]))
         return neighbours
 
 
+# TODO rewrite this to be able to compute the isomorphisms in parallel
 
-        
+    # def compute_all_isomorphisms(self):
+    #     if not hasattr(self,'_isomorphisms'):
+    #         self._isomorphisms=[None]*len(self.edges)
+    #         self._isomorphismsQ=[False]*len(self.edges)
+    #     missing_edges = [i for i in range(len(self.edges)) if not self._isomorphismsQ[i]]
+    #     res = sorted(self._compute_all_isomorphisms([(i, self.edges[i]) for i in missing_edges]))
+    #     for r in res:
+    #         i=r[0][0][0]
+    #         self._isomorphisms[i] = r[1]
+    #         self._isomorphismsQ[i] = True
+    #     return
+
+    # @parallel
+    # def _compute_all_isomorphisms(self,i,e):
+    #     braid = self.braid(e)
+    #     logger.info("[%d] Computing isomorphism of edge %d."% (os.getpid(), i))
+    #     ts=[]
+    #     for thread in braid:
+    #         for p in thread:
+    #             ts+=[p[0]]
+    #     ts = list(set(ts))
+    #     ts.sort()
+    #     for t0,t1 in zip(ts[:-1], ts[1:]):
+    #         while t1-t0>1.1*self._maximalstep:
+    #             t0+=self._maximalstep
+    #             ts.append(t0)
+    #     ts.sort()
+    #     sections = [self.braid_section(braid, t) for t in ts]
+
+    #     mtcs = [self.minimal_cover_tree(section) for section in sections]
+
+    #     iso = self.freeGroup.hom(self.xs)
+    #     for k in range(len(mtcs)-1):
+    #         mtc1 = mtcs[k]
+    #         mtc2 = mtcs[k+1]
+    #         if mtc1!=mtc2:
+    #             logger.info("[%d] Encountered distinct minimal covering trees between sections %d and %d (out of %d). Computing transition."% (os.getpid(), k, k+1, len(ts)))
+    #             iso = self.braid_action(mtc1, mtc2, sections[k])*iso
+    #             iso = self.freeGroup.hom([iso(x) for x in self.xs])
+    #     return iso
