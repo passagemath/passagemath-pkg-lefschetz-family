@@ -50,7 +50,7 @@ See [the computation of the periods of the Fermat quartic surface](https://nbvie
 The object `Hypersurface` can be called with several options:
 - `method` (`"voronoi"` by default/`"delaunay"`/`"delaunay_dual"`): the method used for computing a basis of homotopy. `voronoi` uses integration along paths in the voronoi graph of the critical points; `delaunay` uses integration along paths along the delaunay triangulation of the critical points; `delaunay_dual` paths are along the segments connecting the barycenter of a triangle of the Delaunay triangulation to the middle of one of its edges. In practice, `delaunay` is more efficient for low dimension and low order varieties (such as degree 3 curves and surfaces, and degree 4 curves). This gain in performance is however hindered in higher dimensions because of the algebraic complexity of the critical points (which are defined as roots of high order polynomials, with very large integer coefficients). <b>`"delaunay"` method is not working for now</b>
 - `nbits` (positive integer, `400` by default): the number of bits of precision used as input for the computations. If a computation fails to recover the integral  monodromy matrices, you should try to increase this precision. The output precision seems to be roughly linear with respect to the input precision.
-- `debug` (boolean, `False` by default): whether coherence checks should be done earlier rather than late. Set to true only if the computation fails.
+- `debug` (boolean, `False` by default): whether coherence checks should be done earlier rather than late. We recommend setting to true only if the computation failed in normal mode.
 <!-- - `singular` (boolean, `False` by default): whether the variety is singular. <b>Not implemented yet</b> -->
 
 #### Properties
@@ -77,7 +77,7 @@ Homology related properties:
 - `intersection_product_modification`: the intersection product of $H_n(Y)$.
 - `fibre_class`: the class of the fibre in $H_n(Y)$.
 - `section`: the class of a section in $H_n(Y)$.
-- `thimble_extensions`: couples `(t, T)` such that `T` is the homology class in $H_n(Y)$ representing the extension of a thimble $\Delta \in H_{n-1}(X_b, X_{bb'})$ over all of $\mathbb P^1$, with $\delta\Delta =$`t`. Futhermore, the `t`s define a basis of the boundary map $\delta$. <b>(WIP)</b>
+- `thimble_extensions`: couples `(t, T)` such that `T` is the homology class in $H_n(Y)$ representing the extension of a thimble $\Delta \in H_{n-1}(X_b, X_{bb'})$ over all of $\mathbb P^1$, with $\delta\Delta =$`t`. Futhermore, the `t`s define a basis of the boundary map $\delta$.
 - `invariant`: the intersection of `section` with the fibre above the basepoint, as a cycle in $H_{n-2}({X_b}_{b'})$.
 - `exceptional_divisors`: the exceptional cycles coming from the modification $Y\to X$, given in the basis `homology_modification`.
 - `homology`: a basis of $H_n(X)$, given as its embedding in $H_2(Y)$.
@@ -87,17 +87,22 @@ Homology related properties:
 
 Cohomology related properties:
 - `cohomology`: a basis of $PH^n(X)$, represented by the numerators of the rational fractions.
+- `holomorphic_forms`: the indices of the forms in `cohomology` that form a basis of holomorphic forms.
 - `picard_fuchs_equation(i)`: the picard fuchs equation of the parametrization of i-th element of `cohomology` by the fibration
 
 Period related properties
-- `period_matrix`: the period matrix of the blowup of $X$ in the aforementioned bases `homology` and `cohomology`
-- `simple_periods`: the periods of the first element of `cohomology` in the basis `homology`. <b>TODO: give holomorphic periods</b>
+- `period_matrix`: the period matrix of $X$ in the aforementioned bases `homology` and `cohomology`
+- `period__matrix_modification`: the period matrix of the modification $Y$ in the aforementioned bases `homology_modification` and `cohomology`
+- `holomorphic_periods`: the periods of `holomorphic_forms` in the basis `homology`.
+- `holomorphic_periods`: the periods of the pushforwards of `holomorphic_forms` in the basis `homology_modification`. 
 
 Miscellaneous properties:
 - `P`: the defining equation of $X$.
 - `dim`: the dimension of $X$.
 - `degree`: the degree of $X$.
 - `ctx`: the options of $X$, see related section above.
+
+The computation of the exceptional divisors can be costly, and is not always necessary. For example, the Picard rank of a quartic surface can be recovered with `holomorphic_periods_modification`.
 
 ### EllipticSurface
 
@@ -166,7 +171,7 @@ For any question, bug or remark, please contact [eric.pichon@polytechnique.edu](
 ## Roadmap
 Near future milestones:
 - [x] Encapsulate integration step in its own class
-- [ ] Certified computation of the exceptional divisors
+- [x] Certified computation of the exceptional divisors
 - [ ] Making Delaunay triangulation functional again
 - [x] Saving time on differential operator by precomputing cache before parallelization
 

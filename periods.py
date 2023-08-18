@@ -99,12 +99,12 @@ class Hypersurface(object):
 
     @property
     def period_matrix_modification(self):
-        if not hasattr(self, '_period_matrix_extensions'):
+        if not hasattr(self, '_period_matrix_modification'):
             add = [vector([0]*len(self.thimbles))]*2 if self.dim%2 ==0 else []
             homology_mat = matrix(self.extensions + add).transpose()
             integrated_thimbles =  matrix(self.integrated_thimbles([i for i in range(len(self.cohomology))]))
-            self._period_matrix_extensions = integrated_thimbles*homology_mat
-        return self._period_matrix_extensions
+            self._period_matrix_modification = integrated_thimbles*homology_mat
+        return self._period_matrix_modification
 
     @property
     def period_matrix(self):
@@ -123,14 +123,30 @@ class Hypersurface(object):
         return self._period_matrix
     
     @property
+    def simple_periods_modification(self):
+        if not hasattr(self, '_simple_periods_modification'):
+            if self.dim==0:
+                self._simple_periods_modification = self.period_matrix
+            else:
+                add = [vector([0]*len(self.thimbles))]*2 if self.dim%2 ==0 else []
+                homology_mat = matrix(self.extensions + add).transpose()
+                self._simple_periods_modification = matrix(self.integrated_thimbles(self.holomorphic_forms))*homology_mat
+        return self._simple_periods_modification
+    @property
     def simple_periods(self):
         if not hasattr(self, '_simple_periods'):
             if self.dim==0:
-                self._simple_periods = self.period_matrix
+                self._simple_periods=self.period_matrix
             else:
-                self._simple_periods = matrix(self.integrated_thimbles([0]))*matrix(self.extensions).transpose()
+                self._simple_periods = self.simple_periods_modification*matrix(self.homology).transpose()
         return self._simple_periods
 
+    @property
+    def holomorphic_forms(self):
+        if not hasattr(self, "_holomorphic_forms"):
+            mindeg = min([m.degree() for m in self.cohomology])
+            self._holomorphic_forms = [i for i, m in enumerate(self.cohomology) if m.degree()==mindeg]
+        return self._holomorphic_forms
 
 
     @property

@@ -198,8 +198,8 @@ class RootsBraid(object):
 
     def isomorphisms(self, e):
         if not hasattr(self,'_isomorphisms'):
-            self._isomorphisms=[[None, None]]*len(self.edges)
-            self._isomorphismsQ=[False]*len(self.edges)
+            self._isomorphisms = [[None, None] for i in range(len(self.edges))]
+            self._isomorphismsQ = [False]*len(self.edges)
         i, inverse = self.edge(e)
         if not self._isomorphismsQ[i]:
             logger.info("[%d] Computing isomorphism of edge %d."% (os.getpid(), i))
@@ -207,7 +207,7 @@ class RootsBraid(object):
 
             iso = self._compute_isomorphism(e)
 
-            self._isomorphisms[i] = [None, iso] if inverse else [iso, None]
+            self._isomorphisms[i][1 if inverse else 0] = iso
             self._isomorphismsQ[i] = True
 
         if self._isomorphisms[i][1 if inverse else 0] == None:
@@ -218,7 +218,7 @@ class RootsBraid(object):
 
     def compute_all_isomorphisms(self):
         if not hasattr(self,'_isomorphisms'):
-            self._isomorphisms = [(None, None)]*len(self.edges)
+            self._isomorphisms = [[None, None] for i in range(len(self.edges))]
             self._isomorphismsQ = [False]*len(self.edges)
         self.compute_all_braids()
         begin = time.time()
