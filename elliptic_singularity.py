@@ -22,7 +22,7 @@ from voronoi import FundamentalGroupVoronoi
 from integrator import Integrator
 from Util import Util
 from Context import Context
-from periods import LefschetzFamily
+from periods import Hypersurface
 
 import logging
 import time

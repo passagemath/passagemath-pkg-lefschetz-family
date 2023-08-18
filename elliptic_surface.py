@@ -30,7 +30,7 @@ from voronoi import FundamentalGroupVoronoi
 from integrator import Integrator
 from Util import Util
 from Context import Context
-from periods import LefschetzFamily
+from periods import Hypersurface
 
 import logging
 import time
@@ -117,11 +117,10 @@ class EllipticSurface(object):
         return self._discriminant
     
     @property
-    def critical_points(self):
-        if not hasattr(self,'_critical_points'):
-            self._critical_points=self.discriminant.roots(QQbar, multiplicities=False)
-            # self._critical_points=self.picard_fuchs_equation.leading_coefficient().roots(QQbar, multiplicities=False)
-        return self._critical_points
+    def critical_values(self):
+        if not hasattr(self,'_critical_values'):
+            self._critical_values=self.discriminant.roots(QQbar, multiplicities=False)
+        return self._critical_values
     
     @property
     def monodromy_matrices(self):
@@ -147,7 +146,7 @@ class EllipticSurface(object):
             for M in Ms:
                 Mtot=M*Mtot
             if Mtot!=identity_matrix(2):
-                self._critical_points = self.critical_points+["infinity"]
+                self._critical_values = self.critical_values+["infinity"]
                 transition_matrix_infinity = 1
                 for M in self.cyclic_transition_matrices:
                     transition_matrix_infinity = M*transition_matrix_infinity
@@ -224,7 +223,7 @@ class EllipticSurface(object):
     @property
     def fiber(self):
         if not hasattr(self,'_fiber'):
-            self._fiber = LefschetzFamily(self.P(self.basepoint), nbits=self.ctx.nbits)
+            self._fiber = Hypersurface(self.P(self.basepoint), nbits=self.ctx.nbits)
             if self._fiber.intersection_product == matrix([[0,-1], [1,0]]):
                 self._fiber._extensions = list(reversed(self._fiber.extensions))
                 del self._fiber._intersection_product
@@ -286,7 +285,7 @@ class EllipticSurface(object):
             for i in range(2):
                 v = vector([1 if k==i else 0 for k in range(2)])
                 coefs = []
-                for j in range(len(self.critical_points)):
+                for j in range(len(self.critical_values)):
                     M = self.monodromy_matrices[j]
                     if len(self.permuting_cycles[j])==0:
                         continue
@@ -359,7 +358,7 @@ class EllipticSurface(object):
             for L in self.picard_fuchs_equations:
                 L = L* L.parent().gens()[0]
                 transition_matrices += [self.integrate(L)]
-                if "infinity" in self.critical_points:
+                if "infinity" in self.critical_values:
                     transition_matrix_infinity = 1
                     for M in transition_matrices[-1]:
                         transition_matrix_infinity = M*transition_matrix_infinity
@@ -479,14 +478,14 @@ class EllipticSurface(object):
         if not hasattr(self,'_fundamental_group'):
             begin = time.time()
 
-            fundamental_group = FundamentalGroupVoronoi(self.critical_points, self.basepoint) # access future delaunay implem here
+            fundamental_group = FundamentalGroupVoronoi(self.critical_values, self.basepoint) # access future delaunay implem here
             fundamental_group.sort_loops()
 
             end = time.time()
             duration_str = time.strftime("%H:%M:%S",time.gmtime(end-begin))
             logger.info("Fundamental group computed in %s."% (duration_str))
 
-            self._critical_points = fundamental_group.points[1:]
+            self._critical_values = fundamental_group.points[1:]
             self._fundamental_group = fundamental_group
         return self._fundamental_group
 
@@ -503,7 +502,7 @@ class EllipticSurface(object):
     def basepoint(self):
         if  not hasattr(self, '_basepoint'):
             shift = 1
-            reals = [self.ctx.CF(c).real() for c in self.critical_points]
+            reals = [self.ctx.CF(c).real() for c in self.critical_values]
             xmin, xmax = min(reals), max(reals)
             self._basepoint = Util.simple_rational(xmin - (xmax-xmin)*shift, (xmax-xmin)/10)
         return self._basepoint
@@ -579,8 +578,8 @@ class EllipticSurface(object):
             rs = []
             roots = L.leading_coefficient().roots(QQbar, multiplicities=False)
             for r in roots:
-                if r in self.critical_points:
-                    i = self.critical_points.index(r)
+                if r in self.critical_values:
+                    i = self.critical_values.index(r)
                     ty, M, n = self.types[i]
                     bs += [self._b(L, r, ty, n)]
                 else:
@@ -591,8 +590,8 @@ class EllipticSurface(object):
             if L2.leading_coefficient()(0) ==0:
                 r = "infinity"
                 roots += [r]
-                if r in self.critical_points:
-                    i = self.critical_points.index(r)
+                if r in self.critical_values:
+                    i = self.critical_values.index(r)
                     ty, M, n = self.types[i]
                     bs += [self._b(L2, 0, ty, n)]
                 else:

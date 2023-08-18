@@ -39,7 +39,7 @@ import time
 logger = logging.getLogger(__name__)
 
 
-class LefschetzFamily(object):
+class Hypersurface(object):
     def __init__(self, P, fibration=None, compute_fundamental_group=True, **kwds):
         """P, a homogeneous polynomial defining a smooth hypersurface X in P^{n+1}.
 
@@ -197,8 +197,8 @@ class LefschetzFamily(object):
         return self._fibration
 
     @property
-    def critical_points(self):
-        if not hasattr(self,'_critical_points'):
+    def critical_values(self):
+        if not hasattr(self,'_critical_values'):
             R = self.P.parent()
             _vars = [v for v in R.gens()]
             forms=[v.dot_product(vector(_vars)) for v in self.fibration[:2]]
@@ -218,8 +218,8 @@ class LefschetzFamily(object):
             if not self.ctx.debug:
                 for e in roots_with_multiplicity:
                     assert e[1]==1, "double critical values, fibration is not Lefschetz"
-            self._critical_points=[e[0] for e in roots_with_multiplicity]
-        return self._critical_points
+            self._critical_values=[e[0] for e in roots_with_multiplicity]
+        return self._critical_values
     
     @property
     def monodromy_matrices(self):
@@ -258,7 +258,7 @@ class LefschetzFamily(object):
             evaluate_at_basepoint = RtoS.codomain().hom([self.basepoint], RtoS.codomain().base_ring())
             P = evaluate_at_basepoint(RtoS(self.P))
             fibration  = self._restrict_fibration() if self.ctx.long_fibration else None
-            self._fiber = LefschetzFamily(P, fibration = fibration, method=self.ctx.method, nbits=self.ctx.nbits, long_fibration=self.ctx.long_fibration, depth=self.ctx.depth+1)
+            self._fiber = Hypersurface(P, fibration = fibration, method=self.ctx.method, nbits=self.ctx.nbits, long_fibration=self.ctx.long_fibration, depth=self.ctx.depth+1)
 
         return self._fiber
 
@@ -596,18 +596,18 @@ class LefschetzFamily(object):
         if not hasattr(self,'_fundamental_group'):
             begin = time.time()
             if self.ctx.method == 'voronoi':# access future delaunay implem here
-                fundamental_group = FundamentalGroupVoronoi(self.critical_points, self.basepoint)
+                fundamental_group = FundamentalGroupVoronoi(self.critical_values, self.basepoint)
             elif self.ctx.method == 'delaunay_dual':
-                fundamental_group = FundamentalGroupDelaunayDual(self.critical_points, self.basepoint)
+                fundamental_group = FundamentalGroupDelaunayDual(self.critical_values, self.basepoint)
             else:
-                fundamental_group = FundamentalGroupVoronoi(self.critical_points, self.basepoint)
+                fundamental_group = FundamentalGroupVoronoi(self.critical_values, self.basepoint)
             fundamental_group.sort_loops()
 
             end = time.time()
             duration_str = time.strftime("%H:%M:%S",time.gmtime(end-begin))
             logger.info("[%d] Fundamental group computed in %s."% (self.dim, duration_str))
 
-            self._critical_points = fundamental_group.points[1:]
+            self._critical_values = fundamental_group.points[1:]
             self._fundamental_group = fundamental_group
         return self._fundamental_group
 
@@ -629,7 +629,7 @@ class LefschetzFamily(object):
                 self._basepoint=ZZ(0)
             else:
                 shift = 1
-                reals = [self.ctx.CF(c).real() for c in self.critical_points]
+                reals = [self.ctx.CF(c).real() for c in self.critical_values]
                 xmin, xmax = min(reals), max(reals)
                 self._basepoint = Util.simple_rational(xmin - (xmax-xmin)*shift, (xmax-xmin)/10)
         return self._basepoint
