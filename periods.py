@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+from exceptionalDivisorComputer import ExceptionalDivisorComputer
 from delaunay_dual import FundamentalGroupDelaunayDual
 import sage.all
 
@@ -85,7 +86,7 @@ class Hypersurface(object):
     def homology(self):
         """An embedding of the homology of the hypersurface in the homology of the modification."""
         if not hasattr(self,'_homology'):
-            if self.dim in [0,1]:
+            if self.dim<2:
                 self._homology = identity_matrix(len(self.extensions)).rows()
             else:
                 IL = IntegralLattice(self.intersection_product_modification)
@@ -229,7 +230,7 @@ class Hypersurface(object):
             assert self.picard_fuchs_equation(i).order()== len(self.family.basis),"Picard-Fuchs equation is not cyclic, cannot use it to compute monodromy"
             transition_matrices= self.transition_matrices([i])[0]
 
-            n = len(self.fiber.extensions) 
+            n = len(self.fiber.homology) 
             
             integration_correction = diagonal_matrix([1/ZZ(factorial(k)) for k in range(n+1 if self.dim%2==0 else n)])
             derivatives_at_basepoint = self.derivatives_values_at_basepoint(i)
@@ -300,7 +301,7 @@ class Hypersurface(object):
                 Mtot=M*Mtot
             phi = matrix(phi).transpose().change_ring(ZZ)
             if not self.ctx.debug:
-                assert Mtot == identity_matrix(len(self.fiber.extensions)), "Monodromy around infinity is nontrivial, most likely because the paths do not actually compose to the loop around infinity"
+                assert Mtot == identity_matrix(len(self.fiber.homology)), "Monodromy around infinity is nontrivial, most likely because the paths do not actually compose to the loop around infinity"
             self._infinity_loops = phi.rows()
 
         return self._infinity_loops
@@ -358,9 +359,42 @@ class Hypersurface(object):
         The list consisting of the `boundary`s forms a basis of the image of the boundary map.
         `extension` if defined only up to an infinity loop."""
         if not hasattr(self, '_thimble_extensions'):
-            assert self.dim<2, "Not implemented yet"
-            self._thimble_extensions = []
+            if self.dim<2:
+                self._thimble_extensions = []
+            else:
+                distinct_vanishing_cycles = []
+                for i, v in enumerate(self.fiber.vanishing_cycles):
+                    if v not in matrix([self.fiber.vanishing_cycles[j] for j in distinct_vanishing_cycles]).image():
+                        distinct_vanishing_cycles+=[i]
+                distinct_vanishing_cycles
+
+                chains = [self.fiber.vanishing_cycles[i] for i in distinct_vanishing_cycles]
+
+                thimble_extensions = zero_matrix(len(distinct_vanishing_cycles),len(self.thimbles))
+                for j in distinct_vanishing_cycles:
+                    u=vector([0]*len(self.fiber.thimbles))
+                    u[j]=1
+                    for i, M in enumerate(self.thimble_monodromy):
+                        v = (M-1)*u
+                        v = self.fiber.lift(v)
+                        u = M*u
+                        c = v/self.vanishing_cycles[i]
+                        thimble_extensions[j,i] = c
+                thimble_extensions = thimble_extensions.rows()
+                self._thimble_extensions = list(zip(chains, thimble_extensions))
         return self._thimble_extensions
+
+    @property
+    def thimble_monodromy(self):
+        if not hasattr(self, "_thimble_monodromy"):
+            logger.info("Computing thimble monodromy with braids, this may take a while.")
+            begin = time.time()
+            self._EDC = ExceptionalDivisorComputer(self)
+            self._thimble_monodromy = self._EDC.thimble_monodromy
+            end = time.time()
+            duration_str = time.strftime("%H:%M:%S",time.gmtime(end-begin))
+            logger.info("Thimble monodromy computed in %s.", duration_str)
+        return self._thimble_monodromy
     
     @property
     def invariant(self): # TODO : in dim >0 this is just the fibre. 
@@ -495,7 +529,7 @@ class Hypersurface(object):
         if not hasattr(self, '_integrated_thimbles'):
             self._integrated_thimbles = [None for i in range(len(self.cohomology))]
         
-        s=len(self.fiber.extensions)
+        s=len(self.fiber.homology)
         r=len(self.thimbles)
 
         for i2 in range(len(l)):
@@ -520,7 +554,7 @@ class Hypersurface(object):
             self._coordinates = [None for i in range(len(self.cohomology))]
 
         if not self._coordinatesQ[i]:
-            s=len(self.fiber.extensions)
+            s=len(self.fiber.homology)
             RtoS = self._RtoS()
             w = self.cohomology[i]
             wt = self._restrict_form(w)
@@ -535,7 +569,7 @@ class Hypersurface(object):
 
     def derivatives_values_at_basepoint(self, i):
         RtoS = self._RtoS()
-        s=len(self.fiber.extensions)
+        s=len(self.fiber.homology)
 
 
         w = self.cohomology[i]
