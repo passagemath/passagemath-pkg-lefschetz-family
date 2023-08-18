@@ -130,10 +130,14 @@ Fibration related properties, in positive dimension:
 
 Homology related properties:
 - `extensions`: the extensions of the fibration.
+- `extensions_morsification`: the extensions of the morsification of the fibration.
+- `homology`: the homology of $X$.
 - `singular_components`: a list of lists of combinations of thimbles of the morsification, such that the elements of `singular_components[i]` form a basis of the singular components of the fibre above `critical_values[i]`. To get their coordinates in the basis `homology`, use `X.lift(X.singular_components[i][j])`.
 - `fibre_class`: the class of the fibre in `homology`.
 - `section`: the class of the zero section in `homology`.
 - `intersection_product`: the intersection matrix of the surface in the basis `homology`.
+- `morsify`: a map taking a combination of extensions and returning its coordinates on the basis of thimbles of the morsification.
+- `lift`: a map taking a combination of thimbles of the morsification with empty boundary and returning its class in `homology`.
 
 Cohomology related properties:
 - `holomorphic_forms`: a basis of rational functions $f(t)$ such that $f(t) \operatorname{Res}\frac{\Omega_2}{P_t}\wedge\mathrm dt$ is a holomorphic form of $S$.
@@ -144,7 +148,6 @@ Period related properties:
 - `effective_periods`: the holomorphic periods $X$ in the bases `self.effective_lattice` and `self.holomorphic_forms`
 
 Lattices. Unless stated otherwise, lattices are given the coordinates of a basis in the basis `homology`.
-
 - `effective_lattice`: The lattice of effective cycles of $X$, consisting of the concatenation of `extensions`, `singular_components`, `fibre_class` and `section`.
 - `neron_severi`: the Néron-Severi group of $X$.
 - `trivial`: the trivial lattice.
