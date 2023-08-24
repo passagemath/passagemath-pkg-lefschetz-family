@@ -19,7 +19,7 @@ from sage.functions.other import arg
 from sage.parallel.decorate import parallel
 
 
-from Util import Util
+from .util import Util
 
 import logging
 import time

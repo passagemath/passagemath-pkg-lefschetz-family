@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 
-from elliptic_singularity import EllipticSingularities
 import sage.all
 
 from numperiods import Family
@@ -26,11 +25,12 @@ from sage.misc.flatten import flatten
 
 from sage.modules.free_quadratic_module_integer_symmetric import IntegralLattice
 
-from voronoi import FundamentalGroupVoronoi
-from integrator import Integrator
-from Util import Util
-from Context import Context
-from periods import Hypersurface
+from .voronoi import FundamentalGroupVoronoi
+from .integrator import Integrator
+from .util import Util
+from .context import Context
+from .hypersurface import Hypersurface
+from .ellipticSingularity import EllipticSingularities
 
 import logging
 import time
@@ -39,7 +39,7 @@ logger = logging.getLogger(__name__)
 
 
 class EllipticSurface(object):
-    def __init__(self, P,basepoint=None, **kwds):
+    def __init__(self, P, basepoint=None, **kwds) -> None:
         """P, a homogeneous polynomial defining an.
 
         This class aims at computing an effective basis of the homology group H_n(X), 
@@ -142,7 +142,7 @@ class EllipticSurface(object):
             if not self.ctx.debug:
                 Ms = [M.change_ring(ZZ) for M in Ms]
             
-            Mtot=1
+            Mtot=identity_matrix(2)
             for M in Ms:
                 Mtot=M*Mtot
             if Mtot!=identity_matrix(2):
@@ -221,7 +221,7 @@ class EllipticSurface(object):
         return self._monodromy_matrices_morsification
 
     @property
-    def fiber(self):
+    def fiber(self) -> Hypersurface:
         if not hasattr(self,'_fiber'):
             self._fiber = Hypersurface(self.P(self.basepoint), nbits=self.ctx.nbits)
             if self._fiber.intersection_product == matrix([[0,-1], [1,0]]):
@@ -292,7 +292,7 @@ class EllipticSurface(object):
                     coefs += list(matrix([(M-1)*t for t in self.permuting_cycles[j]]).solve_left((M-1)*v))
                     v = self.monodromy_matrices[j]*v
                 infinity_cycles+=[vector(coefs)]
-            self._infinity_loops = matrix(infinity_cycles).rows()
+            self._infinity_loops = matrix(infinity_cycles).change_ring(ZZ).rows()
         return self._infinity_loops
 
     @property
@@ -306,12 +306,12 @@ class EllipticSurface(object):
             delta = matrix(flatten(self.vanishing_cycles_morsification)).change_ring(ZZ)
             kerdelta = delta.kernel().matrix()
             D, U, V = kerdelta.smith_form()
-            B = D.solve_left(matrix(infinity_loops + singular_components)*V).change_ring(ZZ)*U
+            B = D.solve_left(matrix(infinity_loops)*V).change_ring(ZZ)*U
             quotient_basis = Util.find_complement(B)
             if quotient_basis.nrows()==0:
-                self._extensions_morsification = kerdelta.submatrix(0,0,0).rows() + singular_components
+                self._extensions_morsification = kerdelta.submatrix(0,0,0).rows()
             else:
-                self._extensions_morsification = (quotient_basis*kerdelta).rows() + singular_components
+                self._extensions_morsification = (quotient_basis*kerdelta).rows()
         return self._extensions_morsification
     
     @property
@@ -580,7 +580,7 @@ class EllipticSurface(object):
             for r in roots:
                 if r in self.critical_values:
                     i = self.critical_values.index(r)
-                    ty, M, n = self.types[i]
+                    ty, _, n = self.types[i]
                     bs += [self._b(L, r, ty, n)]
                 else:
                     bs += [self._b(L, r, "I", 0)]
@@ -592,7 +592,7 @@ class EllipticSurface(object):
                 roots += [r]
                 if r in self.critical_values:
                     i = self.critical_values.index(r)
-                    ty, M, n = self.types[i]
+                    ty, _, n = self.types[i]
                     bs += [self._b(L2, 0, ty, n)]
                 else:
                     bs += [self._b(L2, 0, "I", 0)]
@@ -600,7 +600,6 @@ class EllipticSurface(object):
             ords = [0  if r!="infinity" else -2*2 for r in roots]
             
             div = - vector(rs) - vector(bs) + vector(ords)
-            div
 
             Z = 1
             pols = []
@@ -626,17 +625,17 @@ class EllipticSurface(object):
         return self._holomorphic_forms
     
     @classmethod
-    def _rnorm(self, L, p):
+    def _rnorm(cls, L, p):
         R = L.base_ring()
         t = R.gens()[0]
         return floor((L.local_basis_monomials(p)[0]**12)(t=t).degree(t)/12)
     
     @classmethod
-    def _b(self, L, p, ty, n):
+    def _b(cls, L, p, ty, n):
         if ty=="I" and n>0:
             return -1
         R = L.base_ring()
-        t, Dt = R.gens()[0], L.parent().gens()[0]
+        t = R.gens()[0]
         m = L.local_basis_monomials(p)[1] / L.local_basis_monomials(p)[0]
         m=m(t=t+p)
         if ty=="I":

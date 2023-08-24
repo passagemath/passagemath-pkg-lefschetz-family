@@ -7,7 +7,7 @@ from sage.groups.free_group import FreeGroup
 
 from sage.rings.complex_mpfr import ComplexField
 
-from Util import Util
+from .util import Util
 
 import logging
 
@@ -87,8 +87,10 @@ class Translator(object):
         return self._Bduality
 
     def wordA(self, path):
+        """Given a path of A, return its word in terms of the tree"""
         return self.word(path, self.A.duality, self.edges_tree, self.alphabet)
     def wordB(self, path):
+        """Given a path of B, return its word in terms of the tree"""
         return self.word(path, self.Bduality, self.edges_tree, self.alphabet)
     
     @classmethod

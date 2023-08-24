@@ -15,9 +15,7 @@ from sage.graphs.spanning_tree import boruvka
 
 import os
 
-
-
-from Util import Util
+from .util import Util
 
 class FundamentalGroupVoronoi(object):
     def __init__(self, points, basepoint, border=5):
@@ -70,7 +68,7 @@ class FundamentalGroupVoronoi(object):
                 for e in polygon:
                     if e not in edges and [e[1], e[0]] not in edges:
                         edges += [e]
-                if center == self.vertices[0]:
+                if center == self.qpoints[0]:
                     connection_to_basepoint = min([i for i in flatten(polygon)], key=lambda i: abs(self.vertices[0] - self.vertices[i]))
             edges += [[0, connection_to_basepoint]]
             edges.sort(reverse=True, key=lambda e:(self.vertices[e[0]].real()-self.vertices[e[1]].real())**2 + (self.vertices[e[0]].imag()-self.vertices[e[1]].imag())**2)
@@ -241,7 +239,7 @@ class FundamentalGroupVoronoi(object):
     @property
     def polygons(self): # this interfacing with VoronoiDiagram is so ugly
         if not hasattr(self, "_polygons"):
-            vertices = [self.points[0]]
+            vertices = [self.qpoints[0]]
             rootapprox = [p for p in self.qpoints] # there should be a `copy` function
 
             qpoints = [self.complex_number_to_point(z) for z in self.qpoints]
@@ -303,6 +301,17 @@ class FundamentalGroupVoronoi(object):
                         if c!=center and edge in e2:
                             newedges += [edge]
                             break
+                G = Graph(edges)
+                G2 = Graph(newedges)
+                while G2.connected_components_number()>1:
+                    v1 = G2.connected_components()[0][0]
+                    v2 = G2.connected_components()[1][0]
+                    sp = G.shortest_path(v1, v2)
+                    edges = [sp[i:i+2] for i in range(len(sp)-1)]
+                    for e in edges:
+                        if e not in newedges:
+                            newedges += [e]
+                            G2.add_edge(e)
                 polygons[i] = [center, newedges]
 
 

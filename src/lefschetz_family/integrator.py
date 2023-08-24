@@ -9,7 +9,7 @@ from sage.parallel.decorate import parallel
 from ore_algebra.analytic.differential_operator import DifferentialOperator
 
 
-from Util import Util
+from .util import Util
 
 import logging
 import os

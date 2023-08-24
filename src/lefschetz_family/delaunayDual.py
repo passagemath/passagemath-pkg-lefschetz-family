@@ -15,9 +15,7 @@ from delaunay_triangulation import triangulate
 
 import os
 
-
-
-from Util import Util
+from .util import Util
 
 class FundamentalGroupDelaunayDual(object):
     def __init__(self, points, basepoint, border=5):

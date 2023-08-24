@@ -2,15 +2,26 @@
 
 
 ## Description
-This Sage package provides a means of efficiently computing periods of complex projective hypersurfaces with certified rigorous precision bounds.
+This Sage package provides a means of efficiently computing periods of complex projective hypersurfaces and elliptic surfaces over $\mathbb P^1$ with certified rigorous precision bounds.
 It implements the methods described in [https://arxiv.org/abs/2306.05263](https://arxiv.org/abs/2306.05263).
 Here is a runtime benchmark for various examples:
 | Variety (generic) 	| Time (on 4 M1 cores) 	|
 |-------------------	|----------------------	|
-| Elliptic curve    	| 7 seconds            	|
-| Quartic curve     	| 4 minutes            	|
-| Cubic surface     	| 4 minutes 20         	|
+| Elliptic curve    	| 8 seconds            	|
+| Quartic curve     	| 5 minutes            	|
+| Cubic surface     	| 5 minutes         	|
 | Quartic surface   	| 1 hour (for holomorphic periods)        	|
+| Cubic threefold   	| 1 hour (for holomorphic periods)        	|
+
+## How to install
+Follow the installation procedure of [the numperiods package](https://gitlab.inria.fr/lairez/numperiods), then run
+```
+sage -pip install lefschetz-family
+```
+or
+```
+sage -pip install --user lefschetz-family
+```
 
 ## Requirements
 Sage 9.0 and above is recommended. Furthermore, this package has the following dependencies:
@@ -32,7 +43,7 @@ P = X**3+Y**3+Z**3
 ```
 Then the following creates an object representing the hypersurface:
 ```python
-from period import LefschetzFamily
+from lefschetz_family import Hypersurface
 X = Hypersurface(P)
 ```
 The period matrix of $X$ is the simply given by:
@@ -114,7 +125,7 @@ P = X^2*Y+Y^2*Z+Z^2*X+t*X*Y*Z
 ```
 Then the following creates an object representing the hypersurface:
 ```python
-from period import LefschetzFamily
+from lefschetz_family import EllipticSurface
 X = EllipticSurface(P)
 ```
 
@@ -172,15 +183,16 @@ For any question, bug or remark, please contact [eric.pichon@polytechnique.edu](
 Near future milestones:
 - [x] Encapsulate integration step in its own class
 - [x] Certified computation of the exceptional divisors
-- [ ] Making Delaunay triangulation functional again
 - [x] Saving time on differential operator by precomputing cache before parallelization
+- [x] Computing periods of elliptic fibrations.
 
 Middle term goals include:
+- [ ] Making Delaunay triangulation functional again
 - [ ] Having own implementation of 2D voronoi graphs/Delaunay triangulation
 
 Long term goals include:
-- [x] Computing periods of elliptic fibrations.
-- [ ] Tackling higher dimensional varieties (most notably cubics in $\mathbb P^5$).
+- [x] Tackling cubic threefolds.
+- [x] Generic code for all dimensions.
 - [ ] Computing periods of singular varieties.
 - [ ] Computing periods of complete intersections.
 - [ ] Computing periods of weighted projective hypersurfaces, notably double covers of $\mathbb P^2$ ramified along a cubic.

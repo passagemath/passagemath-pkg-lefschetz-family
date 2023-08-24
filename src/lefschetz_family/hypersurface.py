@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
 
-from exceptionalDivisorComputer import ExceptionalDivisorComputer
-from delaunay_dual import FundamentalGroupDelaunayDual
 import sage.all
 
 from numperiods import Family
@@ -25,14 +23,14 @@ from sage.matrix.special import zero_matrix
 from sage.arith.functions import lcm
 from ore_algebra.analytic.differential_operator import DifferentialOperator
 
-from sage.modules.free_quadratic_module_integer_symmetric import IntegralLattice
-
 from sage.misc.prandom import randint
 
-from voronoi import FundamentalGroupVoronoi
-from integrator import Integrator
-from Util import Util
-from Context import Context
+from .voronoi import FundamentalGroupVoronoi
+from .integrator import Integrator
+from .util import Util
+from .context import Context
+from .exceptionalDivisorComputer import ExceptionalDivisorComputer
+from .delaunayDual import FundamentalGroupDelaunayDual
 
 import logging
 import time
@@ -89,8 +87,9 @@ class Hypersurface(object):
             if self.dim<2:
                 self._homology = identity_matrix(len(self.extensions)).rows()
             else:
-                IL = IntegralLattice(self.intersection_product_modification)
-                self._homology = IL.orthogonal_complement(self.exceptional_divisors).basis()
+                product_with_exdiv = self.intersection_product_modification*matrix(self.exceptional_divisors).transpose()
+                product_with_exdiv = product_with_exdiv.change_ring(ZZ)
+                self._homology = product_with_exdiv.kernel().basis()
         return self._homology
     
     def lift_modification(self, v):
@@ -268,7 +267,7 @@ class Hypersurface(object):
         return self._monodromy_matrices
     
     @property
-    def fiber(self):
+    def fiber(self) -> 'Hypersurface':
         assert self.dim!=0, "Variety of dimension 0 does not have a fiber"
         if not hasattr(self,'_fiber'):
             RtoS = self._RtoS()
@@ -382,8 +381,7 @@ class Hypersurface(object):
                 for i, v in enumerate(self.fiber.vanishing_cycles):
                     if v not in matrix([self.fiber.vanishing_cycles[j] for j in distinct_vanishing_cycles]).image():
                         distinct_vanishing_cycles+=[i]
-                distinct_vanishing_cycles
-
+                        
                 chains = [self.fiber.vanishing_cycles[i] for i in distinct_vanishing_cycles]
 
                 thimble_extensions = zero_matrix(len(distinct_vanishing_cycles),len(self.thimbles))
@@ -403,7 +401,7 @@ class Hypersurface(object):
     @property
     def thimble_monodromy(self):
         if not hasattr(self, "_thimble_monodromy"):
-            logger.info("Computing thimble monodromy with braids, this may take a while.")
+            logger.info("[%d] Computing thimble monodromy with braids, this may take a while."% self.dim)
             begin = time.time()
             self._EDC = ExceptionalDivisorComputer(self)
             self._thimble_monodromy = self._EDC.thimble_monodromy
@@ -423,7 +421,7 @@ class Hypersurface(object):
         """Returns the coordinates of the exceptional divisors in the basis of homology of the modification."""
         if not hasattr(self, '_exceptional_divisors'):
             if self.dim%2 ==1:
-                exceptional_divisors = [self.lift(extension) for _, extensions in self.thimble_extensions]
+                exceptional_divisors = [self.lift(extension) for _, extension in self.thimble_extensions]
                 chains = matrix([chain for chain, _ in self.thimble_extensions])
             else:
                 exceptional_divisors = []
@@ -439,10 +437,10 @@ class Hypersurface(object):
     @property
     def _restriction_variable(self):
         if not hasattr(self, "__restriction_variable"):
-            for varid in range(self.dim+2):
-                if self.fibration[0][varid] !=0:
+            for i in range(self.dim+2):
+                if self.fibration[0][i] !=0:
                     break
-            self.__restriction_variable = varid
+            self.__restriction_variable = i # type: ignore
         return self.__restriction_variable
 
     def _RtoS(self):
@@ -563,7 +561,7 @@ class Hypersurface(object):
     
     # Integration methods
 
-    def derivatives_coordinates(self, i):
+    def derivatives_coordinates(self, i:int ):
         if not hasattr(self, '_coordinatesQ'):
             self._coordinatesQ = [False for i in range(len(self.cohomology))]
         if not hasattr(self, '_coordinates'):
@@ -583,7 +581,7 @@ class Hypersurface(object):
         return self._coordinates[i]
 
 
-    def derivatives_values_at_basepoint(self, i):
+    def derivatives_values_at_basepoint(self, i: int):
         RtoS = self._RtoS()
         s=len(self.fiber.homology)
 
@@ -607,7 +605,7 @@ class Hypersurface(object):
         else:
             return intersection_11
         
-    def _compute_intersection_product_thimbles(self,i,j):
+    def _compute_intersection_product_thimbles(self, i, j):
         vi = self.thimbles[i][0]
         Mi = self.monodromy_matrices[i]
         vj = self.thimbles[j][0]
