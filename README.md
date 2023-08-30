@@ -8,8 +8,8 @@ Here is a runtime benchmark for various examples:
 | Variety (generic) 	| Time (on 4 M1 cores) 	|
 |-------------------	|----------------------	|
 | Elliptic curve    	| 8 seconds            	|
-| Quartic curve     	| 5 minutes            	|
-| Cubic surface     	| 5 minutes         	|
+| Quartic curve     	| 8 minutes            	|
+| Cubic surface     	| 6 minutes         	|
 | Quartic surface   	| 1 hour (for holomorphic periods)        	|
 | Cubic threefold   	| 1 hour (for holomorphic periods)        	|
 
@@ -51,8 +51,10 @@ The period matrix of $X$ is the simply given by:
 X.period_matrix
 ```
 
-See [the computation of the periods of the Fermat quartic surface](https://nbviewer.org/urls/gitlab.inria.fr/epichonp/eplt-support/-/raw/main/Fermat_periods.ipynb) for a usage example.
-
+The module automatically uses available cores for computing numerical integrations and braids of roots. For this, the sage session needs to be made aware of the available cores. This can be done by adding the following line of code before launching the computation (replace `10` by the number of cores you want to use).
+```
+os.environ["SAGE_NUM_THREADS"] = '10'
+```
 
 See [the computation of the periods of the Fermat quartic surface](https://nbviewer.org/urls/gitlab.inria.fr/epichonp/eplt-support/-/raw/main/Fermat_periods.ipynb) for a usage example.
 
@@ -88,7 +90,7 @@ Homology related properties:
 - `intersection_product_modification`: the intersection product of $H_n(Y)$.
 - `fibre_class`: the class of the fibre in $H_n(Y)$.
 - `section`: the class of a section in $H_n(Y)$.
-- `thimble_extensions`: couples `(t, T)` such that `T` is the homology class in $H_n(Y)$ representing the extension of a thimble $\Delta \in H_{n-1}(X_b, X_{bb'})$ over all of $\mathbb P^1$, with $\delta\Delta =$`t`. Futhermore, the `t`s define a basis of the boundary map $\delta$.
+- `thimble_extensions`: couples `(t, T)` such that `T` is the homology class in $H_n(Y)$ representing the extension of a thimble $\Delta \in H_{n-1}(X_b, X_{bb'})$ over all of $\mathbb P^1$, with $\delta\Delta =$`t`. Futhermore, the `t`s define a basis of the image of the boundary map $\delta$.
 - `invariant`: the intersection of `section` with the fibre above the basepoint, as a cycle in $H_{n-2}({X_b}_{b'})$.
 - `exceptional_divisors`: the exceptional cycles coming from the modification $Y\to X$, given in the basis `homology_modification`.
 - `homology`: a basis of $H_n(X)$, given as its embedding in $H_2(Y)$.

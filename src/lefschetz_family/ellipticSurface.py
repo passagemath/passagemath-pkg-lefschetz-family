@@ -63,6 +63,7 @@ class EllipticSurface(object):
         self._family = Family(self.P)
 
         if basepoint!= None: # it is useful to be able to specify the basepoint to avoid being stuck in arithmetic computations if critical values have very large modulus
+            assert basepoint not in self.critical_values, "basepoint is not regular"
             self._basepoint=basepoint
         if not self.ctx.debug:
             fg = self.fundamental_group # this allows reordering the critical points straight away and prevents shenanigans. There should be a better way to do this
@@ -128,15 +129,16 @@ class EllipticSurface(object):
             n = len(self.fiber.extensions) 
             
             cyclic_form = self.cyclic_form
-            w = cyclic_form[0]*self.P + cyclic_form[1]*self.fiber.cohomology[1]
+            w = cyclic_form[0]*self.P + cyclic_form[1]*self.family.coho1.basis()[1]
 
             integration_correction = diagonal_matrix([1/ZZ(factorial(k)) for k in range(n+1)])
             derivatives_at_basepoint = self.derivatives_values_at_basepoint(w)
-            initial_conditions = integration_correction* derivatives_at_basepoint
+            cohomology_fiber_to_family = self.family._coordinates([self.family.pol.parent()(w) for w in self.fiber.cohomology], self.basepoint)
+
+            initial_conditions = integration_correction * derivatives_at_basepoint * cohomology_fiber_to_family.inverse()
             initial_conditions = initial_conditions.submatrix(1,0)
 
             cohomology_monodromies = [initial_conditions**(-1)*M.submatrix(1,1)*initial_conditions for M in self.cyclic_transition_matrices]
-
 
             Ms = [(self.fiber.period_matrix**(-1)*M*self.fiber.period_matrix) for M in cohomology_monodromies]
             if not self.ctx.debug:
@@ -422,8 +424,9 @@ class EllipticSurface(object):
             _integrated_thimbles_all=[]
             for transition_matrices, w in zip(self.transition_matrices, self.holomorphic_forms):
                 derivatives_at_basepoint = self.derivatives_values_at_basepoint(w)
+                cohomology_fiber_to_family = self.family._coordinates([self.family.pol.parent()(w) for w in self.fiber.cohomology], self.basepoint)
                 
-                initial_conditions = integration_correction* derivatives_at_basepoint*pM
+                initial_conditions = integration_correction * derivatives_at_basepoint * cohomology_fiber_to_family.inverse() * pM
                 _integrated_thimbles = []
                 for i,ps in enumerate(self.permuting_cycles):
                     _integrated_thimbles += [(transition_matrices[i]*initial_conditions*p)[0] for p in ps]

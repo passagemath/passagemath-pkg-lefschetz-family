@@ -61,6 +61,7 @@ class Hypersurface(object):
     
     @property
     def intersection_product_modification(self):
+        """The intersection matrix of the modification of the hypersurface"""
         if not hasattr(self,'_intersection_product_modification'):
             assert self.dim!=0, "no modification in dimension 0"
             self._intersection_product_modification=self._compute_intersection_product_modification()
@@ -68,6 +69,7 @@ class Hypersurface(object):
     
     @property
     def intersection_product(self):
+        """The intersection matrix of the hypersurface"""
         if not hasattr(self,'_intersection_product'):
             if self.dim==0:
                 self._intersection_product=identity_matrix(self.degree)
@@ -98,6 +100,7 @@ class Hypersurface(object):
 
     @property
     def period_matrix_modification(self):
+        """The period matrix of the modification of the hypersurface"""
         if not hasattr(self, '_period_matrix_modification'):
             add = [vector([0]*len(self.thimbles))]*2 if self.dim%2 ==0 else []
             homology_mat = matrix(self.extensions + add).transpose()
@@ -107,6 +110,7 @@ class Hypersurface(object):
 
     @property
     def period_matrix(self):
+        """The period matrix of the hypersurface"""
         if not hasattr(self, '_period_matrix'):
             if self.dim==0:
                 R = self.P.parent()
@@ -123,6 +127,7 @@ class Hypersurface(object):
     
     @property
     def simple_periods_modification(self):
+        """The holomorphic period matrix of the modification of the hypersurface"""
         if not hasattr(self, '_simple_periods_modification'):
             if self.dim==0:
                 self._simple_periods_modification = self.period_matrix
@@ -133,6 +138,7 @@ class Hypersurface(object):
         return self._simple_periods_modification
     @property
     def simple_periods(self):
+        """The holomorphic period matrix of the hypersurface"""
         if not hasattr(self, '_simple_periods'):
             if self.dim==0:
                 self._simple_periods=self.period_matrix
@@ -142,6 +148,7 @@ class Hypersurface(object):
 
     @property
     def holomorphic_forms(self):
+        """The list of indices i such that self.cohomology[i] is holomorphic."""
         if not hasattr(self, "_holomorphic_forms"):
             mindeg = min([m.degree() for m in self.cohomology])
             self._holomorphic_forms = [i for i, m in enumerate(self.cohomology) if m.degree()==mindeg]
@@ -249,7 +256,8 @@ class Hypersurface(object):
             
             integration_correction = diagonal_matrix([1/ZZ(factorial(k)) for k in range(n+1 if self.dim%2==0 else n)])
             derivatives_at_basepoint = self.derivatives_values_at_basepoint(i)
-            initial_conditions = integration_correction* derivatives_at_basepoint
+            cohomology_fiber_to_family = self.family._coordinates([self.family.pol.parent()(w) for w in self.fiber.cohomology], self.basepoint)
+            initial_conditions = integration_correction* derivatives_at_basepoint * cohomology_fiber_to_family.inverse()
             initial_conditions = initial_conditions.submatrix(1,0)
 
             cohomology_monodromies = [initial_conditions**(-1)*M.submatrix(1,1)*initial_conditions for M in transition_matrices]
@@ -550,11 +558,12 @@ class Hypersurface(object):
             i= l[i2]
             if not self._integrated_thimblesQ[i]:
                 derivatives_at_basepoint = self.derivatives_values_at_basepoint(i)
+                cohomology_fiber_to_family = self.family._coordinates([self.family.pol.parent()(w) for w in self.fiber.cohomology], self.basepoint)
                 integration_correction = diagonal_matrix([1/ZZ(factorial(k)) for k in range(s+1 if self.dim%2==0 else s)])
                 pM = self.fiber.period_matrix
                 if self.dim%2==1:
                     pM = pM.submatrix(0,0,s-1)
-                initial_conditions = integration_correction* derivatives_at_basepoint*pM
+                initial_conditions = integration_correction * derivatives_at_basepoint * cohomology_fiber_to_family.inverse() * pM
                 self._integrated_thimbles[i]=[(transition_matrices[i2][j]*initial_conditions*self.permuting_cycles[j])[0] for j in range(r)]
                 self._integrated_thimblesQ[i] = True
         return [self._integrated_thimbles[i] for i in l]
