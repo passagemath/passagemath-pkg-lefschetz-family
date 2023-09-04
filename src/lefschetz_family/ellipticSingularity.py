@@ -19,7 +19,6 @@ from sage.symbolic.relation import solve
 from sage.symbolic.ring import SR
 
 import logging
-import time
 
 logger = logging.getLogger(__name__)
 
@@ -91,11 +90,15 @@ class EllipticSingularities(object):
         v = ZZ(gcd(vanishing))
         vanishing = vanishing/v
         vanishing = vanishing.change_ring(ZZ)
-        compl = (M-1).solve_right(vanishing*v)
+        D, U, V = (M-1).smith_form()
+        compl = V*vector([1,0])
+        if (M-1)*compl != vanishing*v:
+            compl = -compl
+        assert (M-1)*compl == vanishing*v, "could not find permuting vector"
         bc = matrix([vanishing, compl]).transpose()
         if bc.det()!=1:
             bc = matrix([-vanishing, compl]).transpose()
-        assert bc.det()==1
+        assert bc.det()==1, "could not find permuting vector"
         return bc, v
     
     @classmethod
@@ -104,11 +107,15 @@ class EllipticSingularities(object):
         v = ZZ(gcd(vanishing))
         vanishing = vanishing/v
         vanishing = vanishing.change_ring(ZZ)
-        compl = (M+1).solve_right(vanishing*v)
+        D, U, V = (M+1).smith_form()
+        compl = V*vector([1,0])
+        if (M+1)*compl != vanishing*v:
+            compl = -compl
+        assert (M+1)*compl == vanishing*v, "could not find permuting vector"
         bc = matrix([vanishing, compl]).transpose()
         if bc.det()!=1:
             bc = matrix([-vanishing, compl]).transpose()
-        assert bc.det()==1
+        assert bc.det()==1, "could not find permuting vector"
         return bc, v
     
     @classmethod

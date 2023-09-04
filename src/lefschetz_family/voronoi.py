@@ -145,6 +145,7 @@ class FundamentalGroupVoronoi(object):
             for i in range(len(self.points)-1):
                 pointed_loops += [self.paths[i][:-1] + self.loops[i] + list(reversed(self.paths[i][:-1]))]
             self._pointed_loops = pointed_loops
+            del self._voronoi_diagram
         return self._pointed_loops
     
     

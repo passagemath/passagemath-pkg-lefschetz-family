@@ -249,7 +249,7 @@ class Hypersurface(object):
         assert self.dim!=0, "Cannot compute monodromy matrices in dimension 0"
         if not hasattr(self, '_monodromy_matrices'):
             i=0
-            assert self.picard_fuchs_equation(i).order()== len(self.family.basis),"Picard-Fuchs equation is not cyclic, cannot use it to compute monodromy"
+            assert self.picard_fuchs_equation(i).order()== len(self.family.basis), "Picard-Fuchs equation is not cyclic, cannot use it to compute monodromy"
             transition_matrices= self.transition_matrices([i])[0]
 
             n = len(self.fiber.homology) 
@@ -642,7 +642,7 @@ class Hypersurface(object):
     def _residue_form(self, A, P, k, alphas): 
         """ returns the formal residue of A/P^k at alpha for alpha in alphas """
         G,U,V = xgcd(P, P.derivative())
-        assert G==1
+        assert G==1, "P is not squarefree"
         if k==1:
             return [V(alpha)*A(alpha) for alpha in alphas]
         return self._residue_form(A*U/(k-1)+(A*V).derivative()/(k-1)**2, P, k-1, alphas)
