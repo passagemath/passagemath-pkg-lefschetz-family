@@ -8,6 +8,8 @@ from sage.matrix.special import identity_matrix
 from sage.parallel.decorate import parallel
 from ore_algebra.analytic.differential_operator import DifferentialOperator
 
+from sage.rings.integer_ring import Z
+
 
 from .util import Util
 
@@ -76,6 +78,8 @@ class Integrator(object):
             integrated_edges_temp= [None]*N
 
             for [inp, _], ntm in integration_result:
+                if ntm == 'NO DATA': # why is this not a result of @parallel?
+                    logger.warning("failed to integrate operator")
                 integrated_edges_temp[inp[0][0]] = ntm # there should be a cleaner way to do this
 
             integrated_edges = [None]*len(self.voronoi.edges)
@@ -95,7 +99,7 @@ class Integrator(object):
         return self._integrated_edges
     
     @classmethod
-    @parallel
+    @parallel(timeout=600)
     def _integrate_edge(cls, i, L, l, nbits=300, maxtries=5, verbose=False):
         """ Returns the numerical transition matrix of L along l, adapted to computations of Voronoi. Accepts l=[]
         """
@@ -103,9 +107,10 @@ class Integrator(object):
         tries = 1
         bounds_prec=256
         begin = time.time()
+        eps = Z(2)**(-Z(nbits))
         while True:
             # try:
-            ntm = L.numerical_transition_matrix(l, eps=2**(-nbits), assume_analytic=True, bounds_prec=bounds_prec) if l!= [] else identity_matrix(L.order()) 
+            ntm = L.numerical_transition_matrix(l, eps=eps, assume_analytic=True, bounds_prec=bounds_prec) if l!= [] else identity_matrix(L.order()) 
             ntmi = ntm**-1 # checking the matrix is precise enough to be inverted
             # except Exception as e: # TODO: manage different types of exceptions
             #     tries+=1

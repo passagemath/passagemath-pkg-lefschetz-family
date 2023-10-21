@@ -76,19 +76,19 @@ class EllipticSurface(object):
         return self._intersection_product
 
     @property
-    def effective_periods(self):
-        if not hasattr(self, '_effective_periods'):
+    def primary_periods(self):
+        if not hasattr(self, '_primary_periods'):
             homology_mat = matrix(self.extensions).transpose()
             integrated_thimbles =  matrix(self.integrated_thimbles)
-            self._effective_periods = integrated_thimbles*homology_mat
+            self._primary_periods = integrated_thimbles*homology_mat
 
-        return self._effective_periods
+        return self._primary_periods
     
     @property
     def periods_matrix(self):
         if not hasattr(self, '_periods_matrix'):
-            periods_tot = block_matrix([[self.effective_periods, zero_matrix(len(self.holomorphic_forms), len(flatten(self.singular_components))+2)]])
-            self._periods_matrix = periods_tot*matrix(self.effective_lattice).transpose()**-1
+            periods_tot = block_matrix([[self.primary_periods, zero_matrix(len(self.holomorphic_forms), len(flatten(self.singular_components))+2)]])
+            self._periods_matrix = periods_tot*matrix(self.primary_lattice).transpose()**-1
         return self._periods_matrix
 
     @property
@@ -332,13 +332,12 @@ class EllipticSurface(object):
         return self._extensions
 
     @property
-    def effective_lattice(self):
-        if not hasattr(self, '_effective_lattice'):
-            #TODO give elements of effective lattice in terms of homology
+    def primary_lattice(self):
+        if not hasattr(self, '_primary_lattice'):
             extensions = [self.lift(self.morsify(v)) for v in self.extensions]
             singular_components =[self.lift(v) for v in flatten(self.singular_components, max_level=2)]
-            self._effective_lattice = extensions + singular_components + self.homology[-2:]
-        return self._effective_lattice
+            self._primary_lattice = extensions + singular_components + [self.fibre_class, self.section]
+        return self._primary_lattice
    
     def lift(self, v):
         """Given a combination of thimbles of morsification, gives the corresponding homology class"""
@@ -532,10 +531,10 @@ class EllipticSurface(object):
     
     @property
     def fibre_class(self):
-        return self._homology[-2]
+        return self.homology[-2]
     @property
     def section(self):
-        return self._homology[-1]
+        return self.homology[-1]
     
     @property
     def mordell_weil(self):

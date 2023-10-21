@@ -187,6 +187,7 @@ Near future milestones:
 - [x] Certified computation of the exceptional divisors
 - [x] Saving time on differential operator by precomputing cache before parallelization
 - [x] Computing periods of elliptic fibrations.
+- [ ] Removing dependancy on `numperiods`.
 
 Middle term goals include:
 - [ ] Making Delaunay triangulation functional again
