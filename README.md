@@ -12,6 +12,7 @@ Here is a runtime benchmark for various examples:
 | Cubic surface     	| 3 minutes         	|
 | Quartic surface   	| 1 hour*        	|
 | Cubic threefold   	| 1 hour*        	|
+
 *for holomorphic periods
 
 This package is a successor to the [numperiods](https://gitlab.inria.fr/lairez/numperiods) package by Pierre Lairez. It contains files taken from this package, that have sometimes been slightly modified to accomodate for new usage. 
