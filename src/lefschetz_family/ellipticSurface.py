@@ -2,8 +2,9 @@
 
 import sage.all
 
-from numperiods import Family
-from numperiods import IntegerRelations
+
+from .numperiods.family import Family
+from .numperiods.integerRelations import IntegerRelations
 from ore_algebra import *
 
 from sage.modules.free_module_element import vector

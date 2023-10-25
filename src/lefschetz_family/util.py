@@ -176,8 +176,6 @@ class Util(object):
         while not Util.is_simple([phi(t) for t in ts]):
             managed = False
             for i, t in enumerate(ts):
-                # print(i)
-                # print(phi(t))
                 others = [t for j,t in enumerate(ts) if i != j]
                 while len(phi(t).syllables())!=1:
                     options = [t*t2 for t2 in others if Util.letter(phi(t2),0) == Util.letter(phi(t),-1)**-1]
@@ -195,8 +193,6 @@ class Util(object):
                     else:
                         break
                 ts[i] = t
-                # print(phi(t))
-                # print("\n")
             if not managed:
                 for j, wi in enumerate(ts):
                     for i in range(j+1, len(ts)):

@@ -2,8 +2,8 @@
 
 import sage.all
 
-from numperiods import Family
-from numperiods import Cohomology
+from .numperiods.family import Family
+from .numperiods.cohomology import Cohomology
 from ore_algebra import *
 
 from sage.modules.free_module_element import vector
@@ -653,6 +653,7 @@ class Hypersurface(object):
     def fundamental_group(self):
         assert self.dim>0, "Dimension 0 vartiety has no fibration"
         if not hasattr(self,'_fundamental_group'):
+            logger.info("[%d] Computing fundamental group with %d critical values."% (self.dim, len(self.critical_values)))
             begin = time.time()
             if self.ctx.method == 'voronoi':# access future delaunay implem here
                 fundamental_group = FundamentalGroupVoronoi(self.critical_values, self.basepoint)

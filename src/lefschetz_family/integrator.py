@@ -99,7 +99,7 @@ class Integrator(object):
         return self._integrated_edges
     
     @classmethod
-    @parallel(timeout=600)
+    @parallel
     def _integrate_edge(cls, i, L, l, nbits=300, maxtries=5, verbose=False):
         """ Returns the numerical transition matrix of L along l, adapted to computations of Voronoi. Accepts l=[]
         """

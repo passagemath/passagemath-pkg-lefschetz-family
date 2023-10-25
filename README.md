@@ -5,16 +5,19 @@
 This Sage package provides a means of efficiently computing periods of complex projective hypersurfaces and elliptic surfaces over $\mathbb P^1$ with certified rigorous precision bounds.
 It implements the methods described in [https://arxiv.org/abs/2306.05263](https://arxiv.org/abs/2306.05263).
 Here is a runtime benchmark for various examples:
-| Variety (generic) 	| Time (on 4 M1 cores) 	|
+| Variety (generic) 	| Time (on 10 M1 cores) 	|
 |-------------------	|----------------------	|
-| Elliptic curve    	| 8 seconds            	|
+| Elliptic curve    	| 10 seconds            	|
 | Quartic curve     	| 8 minutes            	|
-| Cubic surface     	| 6 minutes         	|
-| Quartic surface   	| 1 hour (for holomorphic periods)        	|
-| Cubic threefold   	| 1 hour (for holomorphic periods)        	|
+| Cubic surface     	| 3 minutes         	|
+| Quartic surface   	| 1 hour*        	|
+| Cubic threefold   	| 1 hour*        	|
+*for holomorphic periods
+
+This package is a successor to the [numperiods](https://gitlab.inria.fr/lairez/numperiods) package by Pierre Lairez. It contains files taken from this package, that have sometimes been slightly modified to accomodate for new usage. 
 
 ## How to install
-Follow the installation procedure of [the numperiods package](https://gitlab.inria.fr/lairez/numperiods), then run
+To install the package, run
 ```
 sage -pip install lefschetz-family
 ```
@@ -23,11 +26,12 @@ or
 sage -pip install --user lefschetz-family
 ```
 
+Alternatively, download this repository and add the main folder to your `system.path`
+
 ## Requirements
 Sage 9.0 and above is recommended. Furthermore, this package has the following dependencies:
 
 - [Ore Algebra](https://github.com/mkauers/ore_algebra).
-- [numperiods](https://gitlab.inria.fr/lairez/numperiods).
 - The [delaunay-triangulation](https://pypi.org/project/delaunay-triangulation/) package from PyPI.
 
 
