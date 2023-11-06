@@ -10,7 +10,7 @@ from sage.rings.rational_field import QQ
 from sage.rings.qqbar import QQbar
 from sage.matrix.special import zero_matrix
 
-from numperiods import interpolation
+from .numperiods import interpolation
 
 from sage.symbolic.constants import I
 from sage.groups.free_group import FreeGroup
