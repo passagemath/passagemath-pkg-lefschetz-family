@@ -27,7 +27,7 @@ or
 sage -pip install --user lefschetz-family
 ```
 
-Alternatively, download this repository and add the main folder to your `system.path`
+Alternatively, download this repository and add the path to the main folder to your `sys.path`
 
 ## Requirements
 Sage 9.0 and above is recommended. Furthermore, this package has the following dependencies:
@@ -57,14 +57,14 @@ X.period_matrix
 ```
 
 The module automatically uses available cores for computing numerical integrations and braids of roots. For this, the sage session needs to be made aware of the available cores. This can be done by adding the following line of code before launching the computation (replace `10` by the number of cores you want to use).
-```
+```python
 os.environ["SAGE_NUM_THREADS"] = '10'
 ```
 
 See [the computation of the periods of the Fermat quartic surface](https://nbviewer.org/urls/gitlab.inria.fr/epichonp/eplt-support/-/raw/main/Fermat_periods.ipynb) for a usage example.
 
 
-### Options
+#### Options
 The object `Hypersurface` can be called with several options:
 - `method` (`"voronoi"` by default/`"delaunay"`/`"delaunay_dual"`): the method used for computing a basis of homotopy. `voronoi` uses integration along paths in the voronoi graph of the critical points; `delaunay` uses integration along paths along the delaunay triangulation of the critical points; `delaunay_dual` paths are along the segments connecting the barycenter of a triangle of the Delaunay triangulation to the middle of one of its edges. In practice, `delaunay` is more efficient for low dimension and low order varieties (such as degree 3 curves and surfaces, and degree 4 curves). This gain in performance is however hindered in higher dimensions because of the algebraic complexity of the critical points (which are defined as roots of high order polynomials, with very large integer coefficients). <b>`"delaunay"` method is not working for now</b>
 - `nbits` (positive integer, `400` by default): the number of bits of precision used as input for the computations. If a computation fails to recover the integral  monodromy matrices, you should try to increase this precision. The output precision seems to be roughly linear with respect to the input precision.
@@ -109,10 +109,10 @@ Cohomology related properties:
 - `picard_fuchs_equation(i)`: the picard fuchs equation of the parametrization of i-th element of `cohomology` by the fibration
 
 Period related properties
-- `period_matrix`: the period matrix of $X$ in the aforementioned bases `homology` and `cohomology`
-- `period__matrix_modification`: the period matrix of the modification $Y$ in the aforementioned bases `homology_modification` and `cohomology`
+- `period_matrix`: the period matrix of $X$ in the aforementioned bases `homology` and `cohomology`, as well as the cohomology class of the linear section in even dimension
+- `period_matrix_modification`: the period matrix of the modification $Y$ in the aforementioned bases `homology_modification` and `cohomology`
 - `holomorphic_periods`: the periods of `holomorphic_forms` in the basis `homology`.
-- `holomorphic_periods`: the periods of the pushforwards of `holomorphic_forms` in the basis `homology_modification`. 
+- `holomorphic_periods_modification`: the periods of the pushforwards of `holomorphic_forms` in the basis `homology_modification`. 
 
 Miscellaneous properties:
 - `P`: the defining equation of $X$.
@@ -120,7 +120,7 @@ Miscellaneous properties:
 - `degree`: the degree of $X$.
 - `ctx`: the options of $X$, see related section above.
 
-The computation of the exceptional divisors can be costly, and is not always necessary. For example, the Picard rank of a quartic surface can be recovered with `holomorphic_periods_modification`.
+The computation of the exceptional divisors can be costly, and is not always necessary. For example, the Picard rank of a quartic surface can be recovered with `holomorphic_periods_modification` alone.
 
 ### EllipticSurface
 
@@ -192,7 +192,7 @@ Near future milestones:
 - [x] Certified computation of the exceptional divisors
 - [x] Saving time on differential operator by precomputing cache before parallelization
 - [x] Computing periods of elliptic fibrations.
-- [ ] Removing dependancy on `numperiods`.
+- [x] Removing dependency on `numperiods`.
 
 Middle term goals include:
 - [ ] Making Delaunay triangulation functional again

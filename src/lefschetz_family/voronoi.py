@@ -19,6 +19,8 @@ from .util import Util
 
 class FundamentalGroupVoronoi(object):
     def __init__(self, points, basepoint, border=5):
+        """FundamentalGroupVoronoi(points, basepoint)
+        """
         assert basepoint not in points
 
         self._points = [basepoint] + points

@@ -40,7 +40,7 @@ logger = logging.getLogger(__name__)
 
 
 class EllipticSurface(object):
-    def __init__(self, P, basepoint=None, **kwds) -> None:
+    def __init__(self, P, basepoint=None, fibration=None, **kwds) -> None:
         """P, a homogeneous polynomial defining an.
 
         This class aims at computing an effective basis of the homology group H_n(X), 
@@ -62,6 +62,7 @@ class EllipticSurface(object):
 
         self._P = P
         self._family = Family(self.P)
+        self._fibration = fibration
 
         if basepoint!= None: # it is useful to be able to specify the basepoint to avoid being stuck in arithmetic computations if critical values have very large modulus
             assert basepoint not in self.critical_values, "basepoint is not regular"
@@ -226,7 +227,7 @@ class EllipticSurface(object):
     @property
     def fiber(self) -> Hypersurface:
         if not hasattr(self,'_fiber'):
-            self._fiber = Hypersurface(self.P(self.basepoint), nbits=self.ctx.nbits)
+            self._fiber = Hypersurface(self.P(self.basepoint), nbits=self.ctx.nbits, fibration=self._fibration)
             if self._fiber.intersection_product == matrix([[0,-1], [1,0]]):
                 self._fiber._extensions = list(reversed(self._fiber.extensions))
                 del self._fiber._intersection_product
@@ -473,7 +474,7 @@ class EllipticSurface(object):
     @classmethod
     def _derivative(self, A, P): 
         """computes the numerator of the derivative of A/P^k"""
-        field = P.parent()
+        field = P.parent().fraction_field()
         return field(A).derivative() - A*P.derivative()         
 
     @property
@@ -603,6 +604,8 @@ class EllipticSurface(object):
             ords = [0  if r!="infinity" else -2*2 for r in roots]
             
             div = - vector(rs) - vector(bs) + vector(ords)
+
+            print(div)
 
             Z = 1
             pols = []

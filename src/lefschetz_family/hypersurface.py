@@ -128,25 +128,25 @@ class Hypersurface(object):
         return self._period_matrix
     
     @property
-    def simple_periods_modification(self):
+    def holomorphic_periods_modification(self):
         """The holomorphic period matrix of the modification of the hypersurface"""
-        if not hasattr(self, '_simple_periods_modification'):
+        if not hasattr(self, '_holomorphic_periods_modification'):
             if self.dim==0:
-                self._simple_periods_modification = self.period_matrix
+                self._holomorphic_periods_modification = self.period_matrix
             else:
                 add = [vector([0]*len(self.thimbles))]*2 if self.dim%2 ==0 else []
                 homology_mat = matrix(self.extensions + add).transpose()
-                self._simple_periods_modification = matrix(self.integrated_thimbles(self.holomorphic_forms))*homology_mat
-        return self._simple_periods_modification
+                self._holomorphic_periods_modification = matrix(self.integrated_thimbles(self.holomorphic_forms))*homology_mat
+        return self._holomorphic_periods_modification
     @property
-    def simple_periods(self):
+    def holomorphic_periods(self):
         """The holomorphic period matrix of the hypersurface"""
-        if not hasattr(self, '_simple_periods'):
+        if not hasattr(self, '_holomorphic_periods'):
             if self.dim==0:
-                self._simple_periods=self.period_matrix
+                self._holomorphic_periods=self.period_matrix
             else:
-                self._simple_periods = self.simple_periods_modification*matrix(self.homology).transpose()
-        return self._simple_periods
+                self._holomorphic_periods = self.holomorphic_periods_modification*matrix(self.homology).transpose()
+        return self._holomorphic_periods
 
     @property
     def holomorphic_forms(self):
@@ -638,7 +638,7 @@ class Hypersurface(object):
     @classmethod
     def _derivative(self, A, P): 
         """computes the numerator of the derivative of A/P^k"""
-        field = P.parent()
+        field = P.parent().fraction_field()
         return field(A).derivative() - A*P.derivative()         
     
     def _residue_form(self, A, P, k, alphas): 
