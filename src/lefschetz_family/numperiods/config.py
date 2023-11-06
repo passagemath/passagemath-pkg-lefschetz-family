@@ -1,4 +1,5 @@
-
+# AUTHORS:
+#   - Pierre Lairez (2019): initial implementation
 
 precision = 2000
 

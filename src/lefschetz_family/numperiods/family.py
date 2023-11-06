@@ -1,5 +1,11 @@
 # -*- coding: utf-8 -*-
 
+# AUTHORS:
+#   - Pierre Lairez (2019): initial implementation
+#   - Eric Pichon-Pharabod (2022): adding the coordinates functionality
+#   - Eric Pichon-Pharabod (2023): adding the `shift` option
+
+
 from sage.arith.misc import random_prime
 from sage.combinat.integer_vector import IntegerVectors
 from sage.geometry.voronoi_diagram import VoronoiDiagram

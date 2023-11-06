@@ -1,4 +1,8 @@
 
+# AUTHORS:
+#   - Pierre Lairez (2019): initial implementation
+
+
 import logging
 
 from sage.matrix.constructor import Matrix

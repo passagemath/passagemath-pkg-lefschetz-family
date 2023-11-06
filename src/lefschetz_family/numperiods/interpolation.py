@@ -1,4 +1,5 @@
-
+# AUTHORS:
+#   - Pierre Lairez (2019): initial implementation
 
 from sage.arith.misc import random_prime
 from sage.functions.other import floor
