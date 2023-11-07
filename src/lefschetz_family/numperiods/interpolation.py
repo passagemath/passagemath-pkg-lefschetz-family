@@ -11,6 +11,7 @@ from sage.matrix.constructor import Matrix
 from sage.modules.free_module_element import vector
 from sage.rings.rational_field import QQ
 from sage.rings.integer_ring import ZZ
+from sage.rings.polynomial.polynomial_ring_constructor import PolynomialRing
 
 from ore_algebra.ore_algebra import DifferentialOperators
 from ore_algebra import ore_operator

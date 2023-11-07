@@ -18,7 +18,9 @@ Here is a runtime benchmark for various examples:
 This package is a successor to the [numperiods](https://gitlab.inria.fr/lairez/numperiods) package by Pierre Lairez. It contains files taken from this package, that have sometimes been slightly modified to accomodate for new usage. 
 
 ## How to install
-To install the package, run
+First following the insteallation procedure of the `ore_alegbra` package at [https://github.com/mkauers/ore_algebra](https://github.com/mkauers/ore_algebra).
+
+Then, run
 ```
 sage -pip install lefschetz-family
 ```
