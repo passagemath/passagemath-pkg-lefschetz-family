@@ -87,11 +87,11 @@ class EllipticSurface(object):
         return self._primary_periods
     
     @property
-    def periods_matrix(self):
-        if not hasattr(self, '_periods_matrix'):
+    def period_matrix(self):
+        if not hasattr(self, '_period_matrix'):
             periods_tot = block_matrix([[self.primary_periods, zero_matrix(len(self.holomorphic_forms), len(flatten(self.singular_components))+2)]])
-            self._periods_matrix = periods_tot*matrix(self.primary_lattice).transpose()**-1
-        return self._periods_matrix
+            self._period_matrix = periods_tot*matrix(self.primary_lattice).transpose()**-1
+        return self._period_matrix
 
     @property
     def P(self):
@@ -514,7 +514,7 @@ class EllipticSurface(object):
     @property
     def neron_severi(self):
         if  not hasattr(self, '_neron_severi'):
-            self._neron_severi = IntegerRelations(self.periods_matrix.transpose()).basis.rows()
+            self._neron_severi = IntegerRelations(self.period_matrix.transpose()).basis.rows()
         return self._neron_severi
     
     @property
@@ -604,8 +604,6 @@ class EllipticSurface(object):
             ords = [0  if r!="infinity" else -2*2 for r in roots]
             
             div = - vector(rs) - vector(bs) + vector(ords)
-
-            print(div)
 
             Z = 1
             pols = []
