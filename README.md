@@ -144,9 +144,9 @@ The options are the same as those for `Hypersurface` (see above).
 
 #### Properties
 
-The object `ElliptcSurface` has several properties.
+The object `EllipticSurface` has several properties.
 Fibration related properties, in positive dimension:
-- `fibration`: the two linear maps defining the map $X\dashrightarrow \mathbb P^1$.
+<!-- - `fibration`: the two linear maps defining the map $X\dashrightarrow \mathbb P^1$. -->
 - `critical_values`: the list critical values  of that map.
 - `basepoint`: the basepoint of the fibration (i.e. a non critical value).
 - `fiber`: the fiber above the basepoint as a `LefschetzFamily` object.
@@ -163,6 +163,7 @@ Homology related properties:
 - `intersection_product`: the intersection matrix of the surface in the basis `homology`.
 - `morsify`: a map taking a combination of extensions and returning its coordinates on the basis of thimbles of the morsification.
 - `lift`: a map taking a combination of thimbles of the morsification with empty boundary and returning its class in `homology`.
+- `types`: `types[i]` is the type of the fibre above `critical_values[i]`. It is given as a triple `t, M, nu` where `t` is the letter of the type of the fibre (`'I'`, `'II'`, etc.), `M` is the $\operatorname{SL}_2(\mathbb Z)$ matrices so that `M**(-1)*monodromy_matrices[i]*M` is the representative $M_T$ of the monodromy class (see Table 1. of the paper), and `nu` is the multiplicity of the fibre in the cases where `t` is `'I'` or `'I*'` (otherwise `nu` is `1`). 
 
 Cohomology related properties:
 - `holomorphic_forms`: a basis of rational functions $f(t)$ such that $f(t) \operatorname{Res}\frac{\Omega_2}{P_t}\wedge\mathrm dt$ is a holomorphic form of $S$.
@@ -172,7 +173,7 @@ Period related properties:
 - `period_matrix`: the holomorphic periods of $X$ in the bases `self.homology` and `self.holomorphic_forms`.
 - `effective_periods`: the holomorphic periods $X$ in the bases `self.effective_lattice` and `self.holomorphic_forms`
 
-Lattices. Unless stated otherwise, lattices are given the coordinates of a basis in the basis `homology`.
+Sublattices of homology. Unless stated otherwise, lattices are given by the coordinates of a basis of the lattice in the basis `homology`:
 - `effective_lattice`: The lattice of effective cycles of $X$, consisting of the concatenation of `extensions`, `singular_components`, `fibre_class` and `section`.
 - `neron_severi`: the Néron-Severi group of $X$.
 - `trivial`: the trivial lattice.
@@ -181,7 +182,7 @@ Lattices. Unless stated otherwise, lattices are given the coordinates of a basis
 - `mordell_weil_lattice`: the intersection matrix of the Mordell-Weil lattice of $X$.
 
 Miscellaneous properties:
-- `dim`: the dimension of $X$.
+<!-- - `dim`: the dimension of $X$. -->
 - `ctx`: the options of $X$, see related section above.
 
 
