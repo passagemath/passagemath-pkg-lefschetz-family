@@ -77,16 +77,24 @@ P = X**3+Y**3+Z**3
 X = Hypersurface(P, nbits=1500)
 X.period_matrix
 ```
-##### Some quartic surface defined by a polynomial with generic coefficients
+##### A quartic K3 surface of Picard rank 3
 This one should take around 1 hour to compute, provided your computer has access to 10 cores.
 ```python
 os.environ["SAGE_NUM_THREADS"] = '10'
 from lefschetz_family import Hypersurface
 R.<W,X,Y,Z> = PolynomialRing(QQ)
-P = 
-fibration = [vector([]), vector([]), vector([])]
+P = (2*X*Y^2*Z + 3*X^2*Z^2 + 5*X*Y*Z^2 - 2*X*Z^3 + 2*Y*Z^3 + Z^4 + X^3*W - 3*X^2*Y*W - X*Y^2*W + Y^3*W - 2*X^2*Z*W - 2*Y^2*Z*W - 2*X*Z^2*W + 2*Y*Z^2*W - X^2*W^2 - X*Y*W^2 - 2*Y^2*W^2 - 2*X*Z*W^2 + 2*Y*W^3 - W^4)*t + X^4 - Y^4 + Z^4 - W^4
+fibration = [vector(ZZ, [10, -8, -2, 7]), vector(ZZ, [1, -1, 5, 10]), vector(ZZ, [-5, 7, 7, 10])]
 X = Hypersurface(P, nbits=1200, fibration=fibration)
-X.holomorphic_periods_modification
+
+periods = X.holomorphic_periods_modification
+
+from lefschetz_family.numperiods.integerRelations import IntegerRelations
+IR = IntegerRelations(X.holomorphic_periods_modification)
+# this is the rank of the transcendental lattice
+transcendental_rank = X.holomorphic_periods_modification.nrows()-IR.basis.rank()
+# The Picard rank is thus
+print("Picard rank:", 22-transcendental_rank)
 ```
 
 #### Options
@@ -164,8 +172,8 @@ X = EllipticSurface(P)
 ```
 #### Copy-paste ready examples
 
-##### NEW RANK RECORDS FOR ELLIPTIC CURVES HAVING RATIONAL TORSION $\mathbb Z/2\mathbb Z$
-We recover the result of Section 9 of [NEW RANK RECORDS FOR ELLIPTIC CURVES HAVING RATIONAL TORSION](https://arxiv.org/pdf/2003.00077.pdf) by Noam D. Elkies and Zev Klagsbrun.
+##### New rank records for elliptic curves having rational torsion, $\mathbb Z/2\mathbb Z$
+We recover the result of Section 9 of [New rank records for elliptic curves having rational torsion](https://arxiv.org/pdf/2003.00077.pdf) by Noam D. Elkies and Zev Klagsbrun.
 
 ```python
 os.environ["SAGE_NUM_THREADS"] = '10'
