@@ -66,6 +66,29 @@ os.environ["SAGE_NUM_THREADS"] = '10'
 See [the computation of the periods of the Fermat quartic surface](https://nbviewer.org/urls/gitlab.inria.fr/epichonp/eplt-support/-/raw/main/Fermat_periods.ipynb) for a usage example.
 
 
+#### Copy-paste ready examples
+
+##### The Fermat elliptic curve
+```python
+os.environ["SAGE_NUM_THREADS"] = '10'
+from lefschetz_family import Hypersurface
+R.<X,Y,Z> = PolynomialRing(QQ)
+P = X**3+Y**3+Z**3
+X = Hypersurface(P, nbits=1500)
+X.period_matrix
+```
+##### Some quartic surface defined by a polynomial with generic coefficients
+This one should take around 1 hour to compute, provided your computer has access to 10 cores.
+```python
+os.environ["SAGE_NUM_THREADS"] = '10'
+from lefschetz_family import Hypersurface
+R.<W,X,Y,Z> = PolynomialRing(QQ)
+P = 
+fibration = [vector([]), vector([]), vector([])]
+X = Hypersurface(P, nbits=1200, fibration=fibration)
+X.holomorphic_periods_modification
+```
+
 #### Options
 The object `Hypersurface` can be called with several options:
 - `method` (`"voronoi"` by default/`"delaunay"`/`"delaunay_dual"`): the method used for computing a basis of homotopy. `voronoi` uses integration along paths in the voronoi graph of the critical points; `delaunay` uses integration along paths along the delaunay triangulation of the critical points; `delaunay_dual` paths are along the segments connecting the barycenter of a triangle of the Delaunay triangulation to the middle of one of its edges. In practice, `delaunay` is more efficient for low dimension and low order varieties (such as degree 3 curves and surfaces, and degree 4 curves). This gain in performance is however hindered in higher dimensions because of the algebraic complexity of the critical points (which are defined as roots of high order polynomials, with very large integer coefficients). <b>`"delaunay"` method is not working for now</b>
@@ -126,6 +149,8 @@ The computation of the exceptional divisors can be costly, and is not always nec
 
 ### EllipticSurface
 
+#### Usage
+
 The defining equation for the elliptic surface should be given as a univariate polynomial over a trivariate polynomial ring. The coefficients should be homogeneous of degree $3$.
 ```python
 R.<X,Y,Z> = PolynomialRing(QQ)
@@ -137,6 +162,63 @@ Then the following creates an object representing the hypersurface:
 from lefschetz_family import EllipticSurface
 X = EllipticSurface(P)
 ```
+#### Copy-paste ready examples
+
+##### NEW RANK RECORDS FOR ELLIPTIC CURVES HAVING RATIONAL TORSION $\mathbb Z/2\mathbb Z$
+We recover the result of Section 9 of [NEW RANK RECORDS FOR ELLIPTIC CURVES HAVING RATIONAL TORSION](https://arxiv.org/pdf/2003.00077.pdf) by Noam D. Elkies and Zev Klagsbrun.
+
+```python
+os.environ["SAGE_NUM_THREADS"] = '10'
+
+from lefschetz_family import EllipticSurface
+
+R.<X,Y,Z> = QQ[]
+S.<t> = R[]
+U.<u> = S[]
+
+A = (u^8 - 18*u^6 + 163*u^4 - 1152*u^2 + 4096)*t^4 + (3*u^7 - 35*u^5 - 120*u^3 + 1536*u)*t^3+ (u^8 - 13*u^6 + 32*u^4 - 152*u^2 + 1536)*t^2 + (u^7 + 3*u^5 - 156*u^3 + 672*u)*t+ (3*u^6 - 33*u^4 + 112*u^2 - 80)
+B1 = (u^2 + u - 8)*t + (-u + 2)
+B3 = (u^2 - u - 8)*t + (u^2 + u - 10)
+B5 = (u^2 - 7*u + 8)*t + (-u^2 + u + 2)
+B7 = (u^2 + 5*u + 8)*t + (u^2 + 3*u + 2)
+B2 = -B1(t=-t,u=-u)
+B4 = -B3(t=-t,u=-u)
+B6 = -B5(t=-t,u=-u)
+B8 = -B7(t=-t,u=-u)
+
+P = -Y^2*Z + X^3 + 2*A*X^2*Z + product([B1, B2, B3, B4, B5, B6, B7, B8])*X*Z^2
+
+surface = EllipticSurface(P(5), nbits=1000)
+surface.mordell_weil
+```
+
+##### K3 surfaces and sphere packings
+This example recovers the result of [K3 surfaces and sphere packings](https://www2.rikkyo.ac.jp/~shioda/papers/K3SP(revised)2.pdf) by Tetsuji Shioda.
+
+```python
+os.environ["SAGE_NUM_THREADS"] = '10'
+from lefschetz_family import EllipticSurface
+
+R.<X,Y,Z> = PolynomialRing(QQ)
+S.<t> = PolynomialRing(R)
+
+# you may modify these parameters
+alpha = 3
+beta = 5
+n = 3
+
+P = -Z*Y**2*t^n + X**3*t^n - 3*alpha*X*Z**2*t**n + (t**(2*n) + 1 - 2*beta*t**n)*Z^3
+
+surface = EllipticSurface(P, nbits=1500)
+
+# this is the Mordell-Weil lattice
+surface.mordell_weil_lattice
+
+# these are the types of the singular fibres
+for t, _, n in surface.types:
+    print(t+str(n) if t in ['I', 'I*'] else t)
+```
+
 
 #### Options
 
