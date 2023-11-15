@@ -11,7 +11,7 @@ Here is a runtime benchmark for various examples:
 | Quartic curve     	| 8 minutes            	|
 | Cubic surface     	| 3 minutes         	|
 | Quartic surface   	| 1 hour*        	|
-| Cubic threefold   	| 1 hour*        	|
+| Cubic threefold   	| 7 hours*        	|
 
 *for holomorphic periods
 
@@ -63,7 +63,7 @@ The module automatically uses available cores for computing numerical integratio
 os.environ["SAGE_NUM_THREADS"] = '10'
 ```
 
-See [the computation of the periods of the Fermat quartic surface](https://nbviewer.org/urls/gitlab.inria.fr/epichonp/eplt-support/-/raw/main/Fermat_periods.ipynb) for a usage example.
+See [the computation of the periods of the Fermat quartic surface](https://nbviewer.org/urls/gitlab.inria.fr/epichonp/eplt-support/-/raw/main/Fermat_periods.ipynb) for a detailed usage example.
 
 
 #### Copy-paste ready examples
