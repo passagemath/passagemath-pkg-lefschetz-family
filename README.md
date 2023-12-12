@@ -19,7 +19,7 @@ This package is a successor to the [numperiods](https://gitlab.inria.fr/lairez/n
 
 ## How to install
 
-Then, run
+In a terminal, run
 ```
 sage -pip install git+https://github.com/mkauers/ore_algebra.git
 sage -pip install lefschetz-family
