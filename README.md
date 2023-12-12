@@ -15,17 +15,18 @@ Here is a runtime benchmark for various examples:
 
 *for holomorphic periods
 
-This package is a successor to the [numperiods](https://gitlab.inria.fr/lairez/numperiods) package by Pierre Lairez. It contains files taken from this package, that have sometimes been slightly modified to accomodate for new usage. 
+This package is a successor to the [numperiods](https://gitlab.inria.fr/lairez/numperiods) package by Pierre Lairez. It contains files taken from this package, that have sometimes been slightly modified to accomodate for new usage.
 
 ## How to install
-First following the insteallation procedure of the `ore_alegbra` package at [https://github.com/mkauers/ore_algebra](https://github.com/mkauers/ore_algebra).
 
 Then, run
 ```
+sage -pip install git+https://github.com/mkauers/ore_algebra.git
 sage -pip install lefschetz-family
 ```
 or
 ```
+sage -pip install --user git+https://github.com/mkauers/ore_algebra.git
 sage -pip install --user lefschetz-family
 ```
 
