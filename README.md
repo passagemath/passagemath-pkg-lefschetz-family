@@ -30,7 +30,7 @@ sage -pip install --user git+https://github.com/mkauers/ore_algebra.git
 sage -pip install --user lefschetz-family
 ```
 
-Alternatively, install the `ore_alegbra` package, available at [https://github.com/mkauers/ore_algebra](https://github.com/mkauers/ore_algebra), download this repository and add the path to the main folder to your `sys.path`
+Alternatively, install the `ore_alegbra` package (available at [https://github.com/mkauers/ore_algebra](https://github.com/mkauers/ore_algebra)), then download this repository and add the path to the main folder to your `sys.path`
 
 ## Requirements
 Sage 9.0 and above is recommended. Furthermore, this package has the following dependencies:
