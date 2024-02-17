@@ -23,7 +23,7 @@ from sage.rings.rational_field import QQ
 from sage.rings.real_double import RDF
 from sage.rings.integer_ring import ZZ
 from sage.rings.real_mpfi import RealIntervalField
-from sage.symbolic.all import I
+from sage.rings.imaginary_unit import I
 
 from ore_algebra import OreAlgebra
 
@@ -40,7 +40,7 @@ logger = logging.getLogger(__name__)
 
 class Family(object):
 
-    def __init__(self, pol, path=None, discoverbasis=False, shift=0):
+    def __init__(self, pol, denom=1, path=None, discoverbasis=False, shift=0):
         """pol is an element of a ring of the form K[x1,...,xn][t]
 
         This class aims at computing in H^n( P^n - V(pol(t)) ).
@@ -59,6 +59,7 @@ class Family(object):
         self.pol = pol
         self.shift = shift
         self.upolring = self.pol.parent().change_ring(self.base_field)
+        self.denom = self.upolring(denom)
 
         if path is None:
             self._path = [ZZ(0),ZZ(1)]
@@ -80,10 +81,10 @@ class Family(object):
 
     @cached_method
     def cohomologyAt(self, t):
-        return cohomology.Cohomology(self.pol(self.pol.base_ring()(t)), shift=self.shift)
+        return cohomology.Cohomology(self.pol(self.pol.base_ring()(t))/self.denom(self.pol.base_ring()(t)), shift=self.shift)
 
     def modulo(self, prime):
-        return Family(FiniteField(prime).one() * self.pol, shift=self.shift)
+        return Family(FiniteField(prime).one() * self.pol, denom=FiniteField(prime).one()*self.denom, shift=self.shift)
 
     def _gaussmanin(self, pt):
         logger.debug("Evaluating cohomology at a point %s" % str(pt))
@@ -92,7 +93,7 @@ class Family(object):
         except cohomology.NotSmoothError:
             raise ZeroDivisionError  # FunctionReconstruction only handles this exception
 
-        der = self.pol.derivative()(pt)
+        der = (self.pol.derivative()(pt)*self.denom(pt) - self.denom.derivative()(pt)*self.pol(pt))/self.denom(pt)**2
         redmul = Matrix([co.coordinates(-b*der) for b in self.basis])
         redb = Matrix([co.coordinates(b) for b in self.basis])
 
@@ -429,65 +430,3 @@ class Family(object):
             return self._path
         else:
             return self._nice_path(only_holomorphic_forms)
-
-    def numerical_transition_matrix(self, only_holomorphic_forms=False):
-
-        if config.fail_fast:
-            signal.alarm(config.time_to_compute_numerical_transition_matrices)
-
-        path = self.path(only_holomorphic_forms)
-
-        pairs = []
-        cydec_gens = self.generators_of_cyclic_decomposition(only_holomorphic_forms)
-        for idx, vec in enumerate(cydec_gens):
-            # Each iteration of this loop appends a pair of matrices (A, B) to
-            # pairs such that A*periodMatAt0 = B*periodMatAt1
-
-            basiselt = vec * vector(self.basis)
-
-            logger.info("Computing numerical transition matrix for %s [%d / %d]."
-                        % (str(basiselt), idx+1, len(cydec_gens)) )
-
-            deq = self.picard_fuchs_equation(vec)
-
-            # For any cycle gamma(t) in V(f_t), y(t) = int(basis[b], gamma(t))
-            # defines an analytic function, solution of deq. The matrix tmat0
-            # maps (by v -> tmat0*v) the initial confitions of y(t) at 0 to the initial
-            # conditions at 1. The initial conditions are the coeffcients of
-            # t^k in y(t) for all root k of the indicial equation.
-            tmat = deq.numerical_transition_matrix(path, assume_analytic=True, squash_intervals=True, eps=QQ(2)**(-config.precision))
-
-            inis = {}
-            for pt in {path[0],path[-1]}:
-                # Integer roots of the indicial equation at pt
-                exponents = sorted(deq.indicial_polynomial(self.upolring.gen() - pt).roots(ZZ, multiplicities=False))
-
-                # pt should be at worse an apparent singularity
-                assert len(exponents) == deq.order()
-
-                ini = []
-                polder = self.pol.derivative()(pt)
-                for r in exponents:
-                    # TODO This formula is only valid when polder does not depend on t
-                    der = basiselt*(-polder)**r / Integer(r).factorial()
-                    ini.append(self.cohomologyAt(pt).coordinates(der))
-
-                inis[pt] = Matrix(ini)
-
-            pairs.append( (tmat*inis[path[0]], inis[path[-1]]) )
-
-        if config.fail_fast:
-            signal.alarm(0)
-
-        left = Matrix.block([[p[0]] for p in pairs])
-        right = Matrix.block([[p[1]] for p in pairs])
-
-        if only_holomorphic_forms:
-            B = Matrix([self.coho1.coordinates(hf) for hf in self.coho1.holomorphic_forms()])
-            righti = right.solve_left(B)
-        else:
-            # This is ensured by cyclic_decomposition
-            assert right.rank() == len(self.basis)
-            righti = right.pseudoinverse(algorithm="exact")
-
-        return righti * left

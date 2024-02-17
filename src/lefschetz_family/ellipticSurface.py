@@ -428,6 +428,7 @@ class EllipticSurface(object):
                 cohomology_fiber_to_family = self.family._coordinates([self.family.pol.parent()(w) for w in self.fiber.cohomology], self.basepoint)
                 
                 initial_conditions = integration_correction * derivatives_at_basepoint * cohomology_fiber_to_family.inverse() * pM
+                initial_conditions = initial_conditions.submatrix(0,0,transition_matrices[0].ncols())
                 _integrated_thimbles = []
                 for i,ps in enumerate(self.permuting_cycles):
                     _integrated_thimbles += [(transition_matrices[i]*initial_conditions*p)[0] for p in ps]
@@ -541,8 +542,8 @@ class EllipticSurface(object):
     @property
     def mordell_weil(self):
         if  not hasattr(self, '_mordell_weil'):
-            NS = matrix(self.neron_severi).image()
-            Triv = NS.submodule(self.trivial_lattice)
+            NS = matrix(self.neron_severi).change_ring(ZZ).image()
+            Triv = NS.submodule(self.trivial_lattice).change_ring(ZZ)
             self._mordell_weil = NS/Triv
         return self._mordell_weil
     
@@ -561,7 +562,8 @@ class EllipticSurface(object):
         projection_temp = block_diagonal_matrix([identity_matrix(len(self.essential_lattice.rows())), zero_matrix(len(self.trivial_lattice))])
         orth_proj = coords**-1*projection_temp*coords
 
-        quotient_basis = Util.find_complement(triv_coords)
+        quotient_basis = Util.find_complement(triv_coords, primitive=False)
+        # quotient_basis = ess_coords
         coordsMW = quotient_basis*orth_proj
         A = coordsMW*matrix(self.neron_severi)
         return A*self.intersection_product*A.transpose()
@@ -576,6 +578,9 @@ class EllipticSurface(object):
     def holomorphic_forms(self):
         if not hasattr(self, "_holomorphic_forms"):
             L = self._family.picard_fuchs_equation(vector([1,0]))
+            if L.order()==1:
+                return self._holomorphic_form_order_1(L)
+            
             t = L.base_ring().gens()[0]
 
             bs = []
@@ -628,6 +633,10 @@ class EllipticSurface(object):
             self._holomorphic_forms = [-Z/W*t**i for i in range(0, sum(div)+1)]
         return self._holomorphic_forms
     
+    @classmethod
+    def _holomorphic_form_order_1(cls, L):
+        return [L.base_ring()(1)]
+
     @classmethod
     def _rnorm(cls, L, p):
         R = L.base_ring()

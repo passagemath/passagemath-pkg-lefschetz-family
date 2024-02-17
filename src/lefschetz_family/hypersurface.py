@@ -119,7 +119,7 @@ class Hypersurface(object):
                 affineProjection = R.hom([affineR.gens()[0],1], affineR)
                 CBF = ComplexBallField(self.ctx.nbits)
                 period_matrix = matrix([self._residue_form(affineProjection(b), affineProjection(self.P), (b.degree()+len(R.gens()))//self.P.degree(), self.extensions) for b in self.cohomology]).change_ring(CBF)
-                period_matrix = block_matrix([[period_matrix],[matrix([[1]*self.degree])]])
+                period_matrix = block_matrix([[period_matrix],[matrix([[CBF(1)]*self.degree])]])
                 self._period_matrix=period_matrix
             elif self.dim%2 ==1:
                 self._period_matrix = self.period_matrix_modification*matrix(self.homology).transpose()

@@ -30,7 +30,7 @@ sage -pip install --user git+https://github.com/mkauers/ore_algebra.git
 sage -pip install --user lefschetz-family
 ```
 
-Alternatively, install the `ore_alegbra` package (available at [https://github.com/mkauers/ore_algebra](https://github.com/mkauers/ore_algebra)), then download this repository and add the path to the main folder to your `sys.path`
+Alternatively, install the `ore_alegbra` package (available at [https://github.com/mkauers/ore_algebra](https://github.com/mkauers/ore_algebra)), then download this repository and add the path to the main folder to your `sys.path`.
 
 ## Requirements
 Sage 9.0 and above is recommended. Furthermore, this package has the following dependencies:
@@ -84,7 +84,7 @@ This one should take around 1 hour to compute, provided your computer has access
 os.environ["SAGE_NUM_THREADS"] = '10'
 from lefschetz_family import Hypersurface
 R.<W,X,Y,Z> = PolynomialRing(QQ)
-P = (2*X*Y^2*Z + 3*X^2*Z^2 + 5*X*Y*Z^2 - 2*X*Z^3 + 2*Y*Z^3 + Z^4 + X^3*W - 3*X^2*Y*W - X*Y^2*W + Y^3*W - 2*X^2*Z*W - 2*Y^2*Z*W - 2*X*Z^2*W + 2*Y*Z^2*W - X^2*W^2 - X*Y*W^2 - 2*Y^2*W^2 - 2*X*Z*W^2 + 2*Y*W^3 - W^4)*t + X^4 - Y^4 + Z^4 - W^4
+P = (2*X*Y^2*Z + 3*X^2*Z^2 + 5*X*Y*Z^2 - 2*X*Z^3 + 2*Y*Z^3 + Z^4 + X^3*W - 3*X^2*Y*W - X*Y^2*W + Y^3*W - 2*X^2*Z*W - 2*Y^2*Z*W - 2*X*Z^2*W + 2*Y*Z^2*W - X^2*W^2 - X*Y*W^2 - 2*Y^2*W^2 - 2*X*Z*W^2 + 2*Y*W^3 - W^4)*2 + X^4 - Y^4 + Z^4 - W^4
 fibration = [vector(ZZ, [10, -8, -2, 7]), vector(ZZ, [1, -1, 5, 10]), vector(ZZ, [-5, 7, 7, 10])]
 X = Hypersurface(P, nbits=1200, fibration=fibration)
 

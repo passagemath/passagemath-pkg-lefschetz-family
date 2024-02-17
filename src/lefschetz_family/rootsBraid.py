@@ -8,7 +8,7 @@ from sage.rings.polynomial.polynomial_ring_constructor import PolynomialRing
 from sage.rings.rational_field import QQ
 from sage.rings.qqbar import QQbar
 from sage.graphs.graph import Graph
-from sage.symbolic.constants import I
+from sage.rings.imaginary_unit import I
 
 from sage.rings.complex_mpfr import ComplexField
 from sage.groups.free_group import FreeGroup

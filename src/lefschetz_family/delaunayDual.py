@@ -5,7 +5,7 @@ import sage.all
 from sage.rings.rational_field import QQ
 from sage.rings.complex_mpfr import ComplexField
 from sage.graphs.graph import Graph
-from sage.symbolic.constants import I
+from sage.rings.imaginary_unit import I
 from sage.functions.other import arg
 
 from sage.misc.flatten import flatten
