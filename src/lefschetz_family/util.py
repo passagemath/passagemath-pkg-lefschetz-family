@@ -173,8 +173,10 @@ class Util(object):
         pcutoff=0
         if ts == None:
             ts = list(phi.domain().gens())
+            logger.info([phi(t) for t in ts])
         while not Util.is_simple([phi(t) for t in ts]):
-            logger.info("inversion reduction",[len(phi(t).syllables()) for t in ts])
+            logger.info("inversion reduction")
+            logger.info([len(phi(t).syllables()) for t in ts])
             # print([phi(t) for t in ts])
             managed = False
             for i, t in enumerate(ts):
