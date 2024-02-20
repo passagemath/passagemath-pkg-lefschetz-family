@@ -123,6 +123,7 @@ class RootsBraid(object):
 
     @parallel
     def _compute_braid(self, e):
+        from sage.schemes.curves.zariski_vankampen import followstrand
         roots = self.system(e[0])
         res=[]
         j=0

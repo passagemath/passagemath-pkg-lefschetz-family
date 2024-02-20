@@ -165,32 +165,37 @@ class Util(object):
         return w.syllables()[i][0]**(w.syllables()[i][1]/abs(w.syllables()[i][1]))
 
     @classmethod
-    def invert_morphism(cls, phi, ts = None):
-        """Given an invertible free group morphism phi, computes its inverse. 
-        Optionally, you can give generators ts of a subgroup (as a list of words) to compute the inverse of the restriction of phi on \\langle ts \\rangle (assuming it is invertible)."""
-        # I have no idea if this terminates -- if it does it should not take very long
-        pmax=20
-        pcutoff=0
+    def compatibility(cls, t1, t2, phi):
+        w1, w2 = phi(t1), phi(t2)
+        res = []
+        if cls.letter(w1, 0) == cls.letter(w2, 0):
+            res += [t2**-1*t1]
+        if cls.letter(w1, -1) == cls.letter(w2, 0)**-1:
+            res += [t1*t2]
+        if cls.letter(w1, 0) == cls.letter(w2, -1)**-1:
+            res += [t2*t1]
+        if cls.letter(w1, -1) == cls.letter(w2, -1):
+            res += [t2*t1**-1]
+        return res
+    
+    @classmethod
+    def easy_simplifications(cls, phi, ts=None):
         if ts == None:
             ts = list(phi.domain().gens())
-            logger.info([phi(t) for t in ts])
-        while not Util.is_simple([phi(t) for t in ts]):
-            logger.info("inversion reduction")
-            logger.info([len(phi(t).syllables()) for t in ts])
-            # print([phi(t) for t in ts])
+        while not cls.is_simple([phi(t) for t in ts]):
             managed = False
-            for i, t in enumerate(ts):
+            for i, t in enumerate(ts): 
                 others = [t for j,t in enumerate(ts) if i != j]
                 while len(phi(t).syllables())!=1:
-                    options = [t*t2 for t2 in others if Util.letter(phi(t2),0) == Util.letter(phi(t),-1)**-1]
-                    options += [t*t2**-1 for t2 in others if Util.letter(phi(t2**-1),0) == Util.letter(phi(t),-1)**-1]
-                    options += [t2*t for t2 in others if Util.letter(phi(t2),-1) == Util.letter(phi(t),0)**-1]
-                    options += [t2**-1*t for t2 in others if Util.letter(phi(t2**-1),-1) == Util.letter(phi(t),0)**-1]
+                    options = [t*t2 for t2 in others if cls.letter(phi(t2),0) == cls.letter(phi(t),-1)**-1]
+                    options += [t*t2**-1 for t2 in others if cls.letter(phi(t2**-1),0) == cls.letter(phi(t),-1)**-1]
+                    options += [t2*t for t2 in others if cls.letter(phi(t2),-1) == cls.letter(phi(t),0)**-1]
+                    options += [t2**-1*t for t2 in others if cls.letter(phi(t2**-1),-1) == cls.letter(phi(t),0)**-1]
                     if len(options)==0:
                         break
                     options = [o for o in options if phi(o)!=phi(1)]
                     options.sort(key = lambda w: len(phi(w).syllables()))
-                    p=randint(1,pmax)
+
                     if len(phi(options[0]).syllables())< len(phi(t).syllables()):
                         t=options[0]
                         managed=True
@@ -198,39 +203,67 @@ class Util(object):
                         break
                 ts[i] = t
             if not managed:
-                for j, wi in enumerate(ts):
-                    for i in range(j+1, len(ts)):
-                        if Util.letter(phi(wi),0) != Util.letter(phi(wi),-1)**-1 and len(phi(wi).syllables())!=1:
-                            something_changed = True
-                            first=True
-                            while something_changed:
-                                something_changed=first
-                                first=False
-                                while Util.letter(phi(wi),0) == Util.letter(phi(ts[i]),-1)**-1 or Util.letter(phi(wi),0) == Util.letter(phi(ts[i]),0):
-                                    if Util.letter(phi(wi),0) == Util.letter(phi(ts[i]),-1)**-1:
-                                        something_changed = True
-                                        ts[i] = ts[i]*wi
-                                    if Util.letter(phi(wi),0) == Util.letter(phi(ts[i]),0):
-                                        something_changed = True
-                                        ts[i] = wi**-1*ts[i]
-                                if something_changed:
-                                    ts[i] = ts[i]**-1
-                                
-                if pcutoff>pmax:
+                break
+        return ts
+
+    @classmethod
+    def lettersof(cls, w):
+        letters = []
+        for x, n in w.syllables():
+            if x not in letters:
+                letters += [x]
+        return letters
+    
+    @classmethod
+    def number_of_occurences(cls, w, x):
+        res = 0
+        for x2,n in w.syllables():
+            if x2 == x:
+                res += abs(n)
+        return res
+    
+    @classmethod
+    def invert_morphism(cls, phi):
+        """Given an invertible free group morphism phi, computes its inverse. 
+        Optionally, you can give generators ts of a subgroup (as a list of words) to compute the inverse of the restriction of phi on \\langle ts \\rangle (assuming it is invertible)."""
+        singlets = []
+        ts = cls.easy_simplifications(phi)
+        xs = list(phi.codomain().gens())
+        xs.sort(key = lambda x: len([t for t in ts if x in cls.lettersof(phi(t))]))
+        replace = [1]
+        while replace != []:
+            done_something = False
+            for x in xs:
+                replace = []
+                tsx = [t for t in ts if x in cls.lettersof(phi(t))]
+                tsx.sort(key = lambda t: cls.number_of_occurences(phi(t), x))
+                for t in tsx[1:]:
+                    for newt in cls.compatibility(tsx[0], t, phi):
+                        if cls.number_of_occurences(phi(newt), x) < cls.number_of_occurences(phi(t), x):
+                            replace += [[t, newt]]
+                            done_something = True
+                            break
+                if done_something:
                     break
-                pcutoff+=1
-                shuffle(ts)
-                ts.sort(key=lambda t: len(phi(t).syllables()))
-            else:
-                pcutoff = max(0, pcutoff-1)
-                
-        assert managed,  "could not reduce further after " + str(pcutoff) + "iterations."
-                
-        tfin = [None]*len(ts)
-        for t in ts:
+
+            for i, t in enumerate(ts):
+                for t2, newt in replace:
+                    if t==t2:
+                        ts[i]=newt
+            for x in xs:
+                tsx = [t for t in ts if x in cls.lettersof(phi(t))]
+                if len(tsx) == 1:
+                    singlets += [ts.pop(ts.index(tsx[0]))]
+            xs.sort(key=lambda x: len([t for t in ts if x in cls.lettersof(phi(t))]))
+        assert len(ts) == 0, "did not manage inversion"
+        res = cls.easy_simplifications(phi, list(reversed(singlets)))
+
+        tfin = [None]*len(res)
+        for t in res:
             x, power = phi(t).syllables()[0]
             tfin[phi.codomain().gens().index(x)] = t**power
-        return phi.codomain().hom(tfin)
+        return  phi.codomain().hom(tfin)
+
 
     @classmethod
     def find_complement(cls, B, primitive=True):
