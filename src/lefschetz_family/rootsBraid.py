@@ -426,7 +426,7 @@ class RootsBraid(object):
                     elif e2 in sameside:
                         res+=[self.xs[fin.index(e2)]]
                     else:
-                        print("unrecognized edge")
+                        logger.warning("unrecognized edge")
                 else:
                     if e2 in beforeEdges1:
                         res+=[xr*self.xs[fin.index(e2)]]
@@ -441,7 +441,7 @@ class RootsBraid(object):
                     elif e2 in sameside:
                         res+=[self.xs[fin.index(e2)]]
                     else:
-                        print("unrecognized edge")
+                        logger.warning("unrecognized edge")
 
             iso = self.freeGroup.hom([self.freeGroup.hom(res)(iso(x)) for x in self.xs])
             g1=gx

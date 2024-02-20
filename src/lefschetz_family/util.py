@@ -12,7 +12,7 @@ from sage.matrix.constructor import matrix
 from sage.matrix.special import block_matrix
 from sage.matrix.special import identity_matrix
 
-from sage.misc.prandom import randint
+from sage.misc.prandom import randint, shuffle
 
 
 import logging
@@ -174,6 +174,8 @@ class Util(object):
         if ts == None:
             ts = list(phi.domain().gens())
         while not Util.is_simple([phi(t) for t in ts]):
+            logger.info("inversion reduction",[len(phi(t).syllables()) for t in ts])
+            # print([phi(t) for t in ts])
             managed = False
             for i, t in enumerate(ts):
                 others = [t for j,t in enumerate(ts) if i != j]
@@ -197,16 +199,31 @@ class Util(object):
                 for j, wi in enumerate(ts):
                     for i in range(j+1, len(ts)):
                         if Util.letter(phi(wi),0) != Util.letter(phi(wi),-1)**-1 and len(phi(wi).syllables())!=1:
-                            while Util.letter(phi(wi),0) == Util.letter(phi(ts[i]),-1)**-1 or Util.letter(phi(wi),0) == Util.letter(phi(ts[i]),0):
-                                if Util.letter(phi(wi),0) == Util.letter(phi(ts[i]),-1)**-1:
-                                    ts[i] = ts[i]*wi
-                                if Util.letter(phi(wi),0) == Util.letter(phi(ts[i]),0):
-                                    ts[i] = wi**-1*ts[i]
-                if pcutoff>5:
+                            something_changed = True
+                            first=True
+                            while something_changed:
+                                something_changed=first
+                                first=False
+                                while Util.letter(phi(wi),0) == Util.letter(phi(ts[i]),-1)**-1 or Util.letter(phi(wi),0) == Util.letter(phi(ts[i]),0):
+                                    if Util.letter(phi(wi),0) == Util.letter(phi(ts[i]),-1)**-1:
+                                        something_changed = True
+                                        ts[i] = ts[i]*wi
+                                    if Util.letter(phi(wi),0) == Util.letter(phi(ts[i]),0):
+                                        something_changed = True
+                                        ts[i] = wi**-1*ts[i]
+                                if something_changed:
+                                    ts[i] = ts[i]**-1
+                                
+                if pcutoff>pmax:
                     break
                 pcutoff+=1
+                shuffle(ts)
+                ts.sort(key=lambda t: len(phi(t).syllables()))
             else:
                 pcutoff = max(0, pcutoff-1)
+                
+        assert managed,  "could not reduce further after " + str(pcutoff) + "iterations."
+                
         tfin = [None]*len(ts)
         for t in ts:
             x, power = phi(t).syllables()[0]
