@@ -283,3 +283,11 @@ class Util(object):
         for l, p in syls:
             conj = conj*l**p
         return conj
+    
+    @classmethod
+    def remove_duplicates(cls, l):
+        l2 = []
+        for e in l:
+            if e not in l2:
+                l2 += [e]
+        return l2

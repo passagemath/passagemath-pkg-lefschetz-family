@@ -61,14 +61,16 @@ class EllipticSurface(object):
         # P = -Y**2*Z + X**3 + weierstrass_coefs[0]*X*Z**2 + weierstrass_coefs[1]*Z**3
 
         self._P = P
-        self._family = Family(self.P)
         self._fibration = fibration
-
+        
         if basepoint!= None: # it is useful to be able to specify the basepoint to avoid being stuck in arithmetic computations if critical values have very large modulus
             assert basepoint not in self.critical_values, "basepoint is not regular"
             self._basepoint=basepoint
+
         if not self.ctx.debug:
             fg = self.fundamental_group # this allows reordering the critical points straight away and prevents shenanigans. There should be a better way to do this
+
+        self._family = Family(self.P, path=[self.basepoint-1, self.basepoint])
     
     
     @property
@@ -100,7 +102,7 @@ class EllipticSurface(object):
     @property
     def picard_fuchs_equations(self):
         if not hasattr(self,'_picard_fuchs_equations'):
-            self._picard_fuchs_equations = [self._family.picard_fuchs_equation(vector([w,0])) for w in self.holomorphic_forms]
+            self._picard_fuchs_equations = [self.family.picard_fuchs_equation(vector([w,0])) for w in self.holomorphic_forms]
         return self._picard_fuchs_equations
     
     @property
@@ -373,7 +375,7 @@ class EllipticSurface(object):
     def cyclic_form(self):
         if not hasattr(self, '_cyclic_form'):
             for v in [[1,0], [0,1], [1,1]]:
-                L = self._family.picard_fuchs_equation(vector(v))
+                L = self.family.picard_fuchs_equation(vector(v))
                 if L.order() == 2:
                     break
             assert L.order() == 2, "could not find cyclic  Picard-Fuchs equation"
@@ -577,7 +579,7 @@ class EllipticSurface(object):
     @property
     def holomorphic_forms(self):
         if not hasattr(self, "_holomorphic_forms"):
-            L = self._family.picard_fuchs_equation(vector([1,0]))
+            L = self.family.picard_fuchs_equation(vector([1,0]))
             if L.order()==1:
                 return self._holomorphic_form_order_1(L)
             

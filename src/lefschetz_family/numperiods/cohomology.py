@@ -19,7 +19,7 @@ class Cohomology(object):
         This class aims at computing in the n-th algebraic de Rham cohomology
         space of P^n - V(f), denoted H^n. Elements of H^n are represented as
         polynomials. A homogeneous polynomial p of degree s*deg(f)-n-1
-        represents the differential form (s-1)! * p dx0...dxn / f^s (that is a
+        represents the differential form [p] = (s-1)! * p dx0...dxn / f^s (that is a
         degree 0 (n+1)-form on A^(n+1)-V(f) which induces a n-form on P^n-V(f).
         """
 

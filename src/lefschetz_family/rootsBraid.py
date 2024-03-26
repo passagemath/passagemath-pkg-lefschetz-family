@@ -94,8 +94,8 @@ class RootsBraid(object):
             self._braid = [(None, None)]*len(self.edges)
             self._braidQ = [False]*len(self.edges)
         begin = time.time()
-        logger.info("Computing all braids.")
-        result = self._compute_braid([e for i, e in enumerate(self.edges) if not self._braidQ[i]])
+        logger.info("Computing all braids (%d in total).", (len(self.edges)))
+        result = self._compute_braid([(e,i) for i, e in enumerate(self.edges) if not self._braidQ[i]])
         for arg, res in result:
             braid, braidinverse = res
             i, _ =  self.edge(arg[0][0])
@@ -122,16 +122,26 @@ class RootsBraid(object):
         return self._braid[i][1 if inverse else 0]
 
     @parallel
-    def _compute_braid(self, e):
+    def _compute_braid(self, e, i):
         from sage.schemes.curves.zariski_vankampen import followstrand
+        logger.info("[%d] Computing braid along edge %d"% (os.getpid(), i))
+        begin = time.time()
         roots = self.system(e[0])
         res=[]
         j=0
+        steps = [begin]
         for r in roots:   
             j+=1
             # logger.info("[%d] Computing thread %d of edge %d."% (os.getpid(), j, i))
             line = followstrand(self.P, [z.minpoly()(self.P.parent().gens()[1]) for z in self.additional_points], self.vertices[e[0]], self.vertices[e[1]],r, 50)
             res+=  [[[c[0], c[1]+I*c[2]] for c in line]]
+            steps += [time.time()]
+        
+        end = time.time()
+        duration = end-begin
+        duration_str = time.strftime("%H:%M:%S",time.gmtime(duration))
+        duration_str_steps = ' '.join([time.strftime("%H:%M:%S",time.gmtime(steps[i]-steps[i-1])) for i in range(1, len(steps))])
+        logger.info("[%d] Finished computation of braid along edge %d. [total time:%s], [per root: %s]."% (os.getpid(), i, duration_str, duration_str_steps))
 
         resinverse = [list(reversed([[1-t, x] for t, x in thread])) for thread in res]
         rootsinverse = self.system(e[1])
