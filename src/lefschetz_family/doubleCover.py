@@ -216,14 +216,14 @@ class DoubleCover(object):
     @property
     def family(self):
         if not hasattr(self,'_family'):
-            denom, RtoS = self._RtoS()
             if self.dim==1:
                 R = PolynomialRing(QQ, ['x0','x1'])
                 S = PolynomialRing(R, 't')
                 t = S.gens()[0]
                 x0,x1 = R.gens()
-                self._family = Family(denom(t+1, 1)**self.degree*x0**2+x1**2*self.P(t+1, 1))
+                self._family = Family(x0**2+x1**2*self.P(t+1, 1))
             else:
+                denom, RtoS = self._RtoS()
                 self._family = Family(RtoS(self.P), denom=denom**self.degree, shift=self.shift)
         return self._family
     
@@ -310,20 +310,20 @@ class DoubleCover(object):
         return self._monodromy_matrices
     
     @property
-    def fiber(self) -> 'DoubleCover':
+    def fiber(self):
         assert self.dim!=0, "Variety of dimension 0 does not have a fiber"
         if not hasattr(self,'_fiber'):
             denom, RtoS = self._RtoS()
-            evaluate_at_basepoint = RtoS.codomain().hom([self.basepoint], RtoS.codomain().base_ring())
-            P = evaluate_at_basepoint(RtoS(self.P))/denom(self.basepoint)**self.degree
-
-            fibration  = self._restrict_fibration() if self.ctx.long_fibration else None
             if self.dim==1:
                 R = PolynomialRing(QQ, ['x0','x1'])
                 x0,x1 = R.gens()
-                alpha = self.P(self.basepoint+1, 1)/denom(self.basepoint+1, 1)**self.degree
-                self._fiber = Hypersurface(x0**2+x1**2*alpha, nbits=self.ctx.nbits)
+                alpha = self.P(self.basepoint+1, 1)
+                # beta = denom(self.basepoint+1)**self.degree
+                self._fiber = Hypersurface(x0**2+alpha*x1**2, nbits=self.ctx.nbits)
             else:
+                evaluate_at_basepoint = RtoS.codomain().hom([self.basepoint], RtoS.codomain().base_ring())
+                P = evaluate_at_basepoint(RtoS(self.P))/denom(self.basepoint)**self.degree
+                fibration  = self._restrict_fibration() if self.ctx.long_fibration else None
                 self._fiber = DoubleCover(P, fibration=fibration, method=self.ctx.method, nbits=self.ctx.nbits, long_fibration=self.ctx.long_fibration, depth=self.ctx.depth+1)
 
         return self._fiber
@@ -558,7 +558,7 @@ class DoubleCover(object):
         deg = A.degree()
         dt = (- a * S(l) + b * S(m))
 
-        return RtoS(A)*dt/denom**(deg+1)
+        return RtoS(A)*dt/denom**(deg+2)
 
     def transition_matrices(self, l):
         if not hasattr(self, '_integratedQ'):
@@ -569,6 +569,7 @@ class DoubleCover(object):
             if not self._integratedQ[i]:
                 L = self.picard_fuchs_equation(i)
                 L = L* L.parent().gens()[0]
+                logger.info("[%d] Integrating operator %d."% (self.dim, i))
                 self._transition_matrices[i] = self.integrate(L)
                 self._integratedQ[i]=True
         return [self._transition_matrices[i] for i in l]
@@ -659,7 +660,7 @@ class DoubleCover(object):
                 return matrix([QQ(w(t=self.basepoint, x1=1))/QQ(2*self.P(self.basepoint+1, 1)) for w in derivatives]).transpose()
         else:
             for k in range(s-1 if self.dim%2==0 else s-2):
-                derivatives += [self._derivative(derivatives[-1], RtoS(self.P))] 
+                derivatives += [self._derivative(derivatives[-1], RtoS(self.P)/denom**self.degree)] 
             return self.family._coordinates(derivatives, self.basepoint)
 
     def _compute_intersection_product_modification(self):
@@ -697,7 +698,7 @@ class DoubleCover(object):
     def _derivative(self, A, P): 
         """computes the numerator of the derivative of A/P^k"""
         field = P.parent()
-        return field(A).derivative() - A*P.derivative()         
+        return A.derivative() - A*P.derivative()         
     
     @property
     def fundamental_group(self):
