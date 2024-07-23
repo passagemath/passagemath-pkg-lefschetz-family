@@ -2,7 +2,6 @@
 
 import sage.all
 
-
 from .numperiods.family import Family
 from .numperiods.integerRelations import IntegerRelations
 from ore_algebra import *
@@ -263,7 +262,7 @@ class EllipticSurface(object):
         if not hasattr(self, '_permuting_cycles_morsification'):
             monodromy_matrices = flatten(self.monodromy_matrices_morsification)
             vanishing = flatten(self.vanishing_cycles_morsification)
-            self._permuting_cycles_morsification = []
+            _permuting_cycles_morsification = []
             for i in range(len(monodromy_matrices)):
                 M = monodromy_matrices[i]
                 D, U, V = (M-1).smith_form()
@@ -271,7 +270,8 @@ class EllipticSurface(object):
                 if (M-1)*p != vanishing[i]:
                     p = -p
                 assert (M-1)*p == vanishing[i]
-                self._permuting_cycles_morsification += [ p ]
+                _permuting_cycles_morsification += [ p ]
+            self._permuting_cycles_morsification = _permuting_cycles_morsification
         return self._permuting_cycles_morsification
 
     @property
@@ -452,7 +452,8 @@ class EllipticSurface(object):
         extensions = matrix(self.extensions_morsification)
         inter_prod_thimbles = matrix([[self._compute_intersection_product_thimbles(i,j) for j in range(r)] for i in range(r)])
         intersection_11 = (-1) * (extensions*inter_prod_thimbles*extensions.transpose()).change_ring(ZZ)
-        intersection_02 = matrix(ZZ, [[0,1],[1,-2]])
+        chi = ZZ((len(self.extensions_morsification)+ZZ(4))/ZZ(12))
+        intersection_02 = matrix(ZZ, [[0,1],[1,-chi]])
         return block_diagonal_matrix(intersection_11, intersection_02)
         
     def _compute_intersection_product_thimbles(self,i,j):

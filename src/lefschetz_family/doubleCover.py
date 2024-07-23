@@ -40,7 +40,7 @@ logger = logging.getLogger(__name__)
 
 
 class DoubleCover(object):
-    def __init__(self, P, fibration=None, compute_fundamental_group=True, **kwds):
+    def __init__(self, P, fibration=None, smooth=True, **kwds):
         """P, a homogeneous polynomial defining a smooth hypersurface X in P^{n+1}.
 
         This class aims at computing an effective basis of the homology group H_n(X), 
@@ -48,7 +48,7 @@ class DoubleCover(object):
         """
         
         self.ctx = Context(**kwds)
-        
+        self.smooth = smooth
         assert P.is_homogeneous(), "nonhomogeneous defining polynomial"
         assert P.degree() %2 ==0, "polynomial does not have even degree"
         self._P = P
@@ -131,12 +131,9 @@ class DoubleCover(object):
     def simple_periods_modification(self):
         """The holomorphic period matrix of the modification of the hypersurface"""
         if not hasattr(self, '_simple_periods_modification'):
-            if self.dim==0:
-                self._simple_periods_modification = self.period_matrix
-            else:
-                add = [vector([0]*len(self.thimbles))]*2 if self.dim%2 ==0 else []
-                homology_mat = matrix(self.extensions + add).transpose()
-                self._simple_periods_modification = matrix(self.integrated_thimbles(self.holomorphic_forms))*homology_mat
+            add = [vector([0]*len(self.thimbles))]*2 if self.dim%2 ==0 else []
+            homology_mat = matrix(self.extensions + add).transpose()
+            self._simple_periods_modification = matrix(self.integrated_thimbles(self.holomorphic_forms))*homology_mat
         return self._simple_periods_modification
     @property
     def simple_periods(self):
@@ -209,6 +206,7 @@ class DoubleCover(object):
     @property
     def cohomology(self):
         if not hasattr(self,'_cohomology'):
+            assert self.smooth,"Cannot compute cohomology of singular double covers (yet)."
             self._cohomology = Cohomology(self.P, shift=self.shift).basis()
         return self._cohomology
     
@@ -251,7 +249,7 @@ class DoubleCover(object):
                 Qt = PolynomialRing(QQ, 't')
                 t = Qt.gens()[0]
                 roots_with_multiplicity = self.P(t+1,1).roots(AlgebraicField())
-                if not self.ctx.debug:
+                if self.smooth and not self.ctx.debug:
                     for _, m in roots_with_multiplicity:
                         assert m==1, "double critical values, fibration is not Lefschetz"
                 self._critical_values=[e for e, _ in roots_with_multiplicity]
@@ -339,11 +337,12 @@ class DoubleCover(object):
     @property
     def permuting_cycles(self):
         if not hasattr(self, '_permuting_cycles'):
-            self._permuting_cycles = [None for i in range(len(self.monodromy_matrices))]
+            res = [None for i in range(len(self.monodromy_matrices))]
             for i in range(len(self.monodromy_matrices)):
                 M = self.monodromy_matrices[i]
                 D, U, V = (M-1).smith_form()
-                self._permuting_cycles[i] = V * vector([1]+[0]*(V.dimensions()[0]-1))
+                res[i] = V * vector([1]+[0]*(V.dimensions()[0]-1))
+            self._permuting_cycles = res
         return self._permuting_cycles
 
     @property
@@ -728,7 +727,7 @@ class DoubleCover(object):
             paths = []
             for path in self.fundamental_group.pointed_loops:
                 paths += [[self.fundamental_group.vertices[v] for v in path]]
-            self._paths= paths
+            self._paths = paths
         return self._paths
 
     @property

@@ -271,7 +271,8 @@ class Hypersurface(object):
             if not self.ctx.debug:
                 Ms = [M.change_ring(ZZ) for M in Ms]
             if not self.ctx.singular and not self.ctx.debug:
-                assert (Ms[i]-1).rank()==1, "If M is a monodromy matrix around a single critical point, M-I should have rank 1"
+                for M in Ms:
+                    assert (M-1).rank()==1, "If M is a monodromy matrix around a single critical point, M-I should have rank 1"
             
             self._monodromy_matrices = Ms
         return self._monodromy_matrices
@@ -678,7 +679,7 @@ class Hypersurface(object):
             paths = []
             for path in self.fundamental_group.pointed_loops:
                 paths += [[self.fundamental_group.vertices[v] for v in path]]
-            self._paths= paths
+            self._paths = paths
         return self._paths
 
     @property

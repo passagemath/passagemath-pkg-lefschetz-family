@@ -202,7 +202,7 @@ surface.mordell_weil
 ```
 
 ##### K3 surfaces and sphere packings
-This example recovers the result of [K3 surfaces and sphere packings](https://www2.rikkyo.ac.jp/~shioda/papers/K3SP(revised)2.pdf) by Tetsuji Shioda.
+This example recovers the result of [K3 surfaces and sphere packings](https://projecteuclid.org/journals/journal-of-the-mathematical-society-of-japan/volume-60/issue-4/K3-surfaces-and-sphere-packings/10.2969/jmsj/06041083.full) by Tetsuji Shioda.
 
 ```python
 os.environ["SAGE_NUM_THREADS"] = '10'
@@ -278,7 +278,7 @@ Miscellaneous properties:
 
 
 ## Contact
-For any question, bug or remark, please contact [eric.pichon@polytechnique.edu](mailto:eric.pichon@polytechnique.edu).
+For any question, bug or remark, please contact [eric.pichon-pharabod@inria.fr](mailto:eric.pichon-pharabod@inria.fr).
 
 ## Roadmap
 Near future milestones:

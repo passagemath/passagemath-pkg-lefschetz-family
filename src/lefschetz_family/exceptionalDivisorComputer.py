@@ -63,19 +63,20 @@ class ExceptionalDivisorComputer(object):
         return self._critical_values_polynomial
     
     @property
-    def fundamental_group_spec(self):
-        if not hasattr(self, "_fundamental_group_spec"):
+    def fundamental_group_critical(self):
+        """This is the fundamental group of C punctured at the points where the critical polynomial has multiple roots."""
+        if not hasattr(self, "_fundamental_group_critical"):
             u, t = self.Qu.gens()
             double_roots = self.Qt((self.critical_values_polynomial*(t-self.variety.fiber.basepoint)).discriminant(t)(u=t)).roots(QQbar, multiplicities=False)
             fg= FundamentalGroupVoronoi(double_roots,self.variety.basepoint)
             fg.sort_loops()
-            self._fundamental_group_spec = fg
-        return self._fundamental_group_spec
+            self._fundamental_group_critical = fg
+        return self._fundamental_group_critical
     
     @property
     def adapted_paths(self):
         if not hasattr(self, "_adapted_paths"):
-            translator = Translator(self.variety.fundamental_group,self.fundamental_group_spec)
+            translator = Translator(self.variety.fundamental_group,self.fundamental_group_critical)
             adapted_paths = [translator.specialize_path(path) for path in self.variety.fundamental_group.pointed_loops]
 
             # the following lines are here to remove loops around infinity. They are not really mandatory.
@@ -107,7 +108,7 @@ class ExceptionalDivisorComputer(object):
                     e = path[i:i+2]
                     if e not in _edges and list(reversed(e)) not in _edges: 
                         _edges += [e]
-            edges_spec = [[self.fundamental_group_spec.vertices[c] for c in e] for e in _edges]
+            edges_spec = [[self.fundamental_group_critical.vertices[c] for c in e] for e in _edges]
             self._edges = edges_spec
         return self._edges
 
@@ -119,8 +120,9 @@ class ExceptionalDivisorComputer(object):
 
     @property
     def marking_init(self):
+        """This is the initial marking at the basepoint"""
         if not hasattr(self, "_marking_init"):
-            i = Util.select_closest_index(self.roots_braid.vertices, self.fundamental_group_spec.points[0])
+            i = Util.select_closest_index(self.roots_braid.vertices, self.fundamental_group_critical.points[0])
             self._marking_init = self.roots_braid.system(i) + self.roots_braid.additional_points
         return self._marking_init
     
@@ -146,7 +148,7 @@ class ExceptionalDivisorComputer(object):
             s_to_FG = [Util.select_closest_index(self.fundamental_group_fibre.points, s) for s in self.marking_init+[fakebp]]
             edges = [list(e[:2]) for e in self.roots_braid.minimal_cover_tree(self.marking_init).edges()]
             for i, e in enumerate(edges): # orient the edges away from basepoint
-                if self.roots_braid.minimal_cover_tree(self.marking_init).distance(e[1],self.roots_braid.npoints) < self.roots_braid.minimal_cover_tree(self.marking_init).distance(e[0],self.roots_braid.npoints):
+                if self.roots_braid.minimal_cover_tree(self.marking_init).distance(e[1], self.roots_braid.npoints) < self.roots_braid.minimal_cover_tree(self.marking_init).distance(e[0],self.roots_braid.npoints):
                     edges[i] = list(reversed(e))
             mtc_init = [[s_to_FG[i] for i in e] for e in edges]
 
@@ -191,7 +193,7 @@ class ExceptionalDivisorComputer(object):
             
             isos = []
             thimble_monodromy = []
-            adapted_paths_z = [[self.fundamental_group_spec.vertices[v] for v in path] for path in self.adapted_paths]
+            adapted_paths_z = [[self.fundamental_group_critical.vertices[v] for v in path] for path in self.adapted_paths]
             
             begin=time.time()
             logger.info("Computing the braid action.")
