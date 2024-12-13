@@ -3,7 +3,7 @@
 
 ## Description
 This Sage package provides a means of efficiently computing periods of complex projective hypersurfaces and elliptic surfaces over $\mathbb P^1$ with certified rigorous precision bounds.
-It implements the methods described in [https://arxiv.org/abs/2306.05263](https://arxiv.org/abs/2306.05263).
+It implements the methods described in [https://doi.org/10.1090/mcom/3947](Effective homology and periods of complex projective hypersurfaces) ([arxiv:2306.05263](https://arxiv.org/abs/2306.05263)).
 Here is a runtime benchmark for various examples:
 | Variety (generic) 	| Time (on 10 M1 cores) 	|
 |-------------------	|----------------------	|

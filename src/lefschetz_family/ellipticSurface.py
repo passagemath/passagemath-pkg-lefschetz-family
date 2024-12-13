@@ -141,9 +141,9 @@ class EllipticSurface(object):
             initial_conditions = integration_correction * derivatives_at_basepoint * cohomology_fiber_to_family.inverse()
             initial_conditions = initial_conditions.submatrix(1,0)
 
-            cohomology_monodromies = [initial_conditions**(-1)*M.submatrix(1,1)*initial_conditions for M in self.cyclic_transition_matrices]
+            cohomology_monodromies = [initial_conditions.inverse() * M.submatrix(1,1) * initial_conditions for M in self.cyclic_transition_matrices]
 
-            Ms = [(self.fiber.period_matrix**(-1)*M*self.fiber.period_matrix) for M in cohomology_monodromies]
+            Ms = [(self.fiber.period_matrix.inverse() * M * self.fiber.period_matrix) for M in cohomology_monodromies]
             if not self.ctx.debug:
                 Ms = [M.change_ring(ZZ) for M in Ms]
             
@@ -632,8 +632,9 @@ class EllipticSurface(object):
             W = (Dt + L.coefficients()[1]/L.coefficients()[2]).rational_solutions()[0][0]
 
             # assert sum(div) ==0, "Multiple or no holomorphic forms, not implemented yet"
-
-            self._holomorphic_forms = [-Z/W*t**i for i in range(0, sum(div)+1)]
+            res = [-Z/W*t**i for i in range(0, sum(div)+1)]
+            res = [f/(f.numerator().leading_coefficient()/f.denominator().leading_coefficient()) for f in res]
+            self._holomorphic_forms = res
         return self._holomorphic_forms
     
     @classmethod

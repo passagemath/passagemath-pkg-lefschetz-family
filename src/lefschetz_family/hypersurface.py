@@ -4,6 +4,7 @@ import sage.all
 
 from .numperiods.family import Family
 from .numperiods.cohomology import Cohomology
+from .numperiods.integerRelations import IntegerRelations
 from ore_algebra import *
 
 from sage.modules.free_module_element import vector
@@ -22,7 +23,10 @@ from sage.matrix.special import block_matrix
 from sage.matrix.special import block_diagonal_matrix
 from sage.matrix.special import zero_matrix
 from sage.arith.functions import lcm
+from sage.quadratic_forms.quadratic_form import QuadraticForm
+
 from ore_algebra.analytic.differential_operator import DifferentialOperator
+
 
 from sage.misc.prandom import randint
 
@@ -259,15 +263,15 @@ class Hypersurface(object):
             integration_correction = diagonal_matrix([1/ZZ(factorial(k)) for k in range(n+1 if self.dim%2==0 else n)])
             derivatives_at_basepoint = self.derivatives_values_at_basepoint(i)
             cohomology_fiber_to_family = self.family._coordinates([self.family.pol.parent()(w) for w in self.fiber.cohomology], self.basepoint)
-            initial_conditions = integration_correction* derivatives_at_basepoint * cohomology_fiber_to_family.inverse()
+            initial_conditions = integration_correction * derivatives_at_basepoint * cohomology_fiber_to_family.inverse()
             initial_conditions = initial_conditions.submatrix(1,0)
 
-            cohomology_monodromies = [initial_conditions**(-1)*M.submatrix(1,1)*initial_conditions for M in transition_matrices]
+            cohomology_monodromies = [initial_conditions.inverse() * M.submatrix(1,1) * initial_conditions for M in transition_matrices]
             if self.dim%2==1:
                 cohomology_monodromies = [block_diagonal_matrix([M, identity_matrix(1)]) for M in cohomology_monodromies]
 
 
-            Ms = [(self.fiber.period_matrix**(-1)*M*self.fiber.period_matrix) for M in cohomology_monodromies]
+            Ms = [(self.fiber.period_matrix.inverse() * M * self.fiber.period_matrix) for M in cohomology_monodromies]
             if not self.ctx.debug:
                 Ms = [M.change_ring(ZZ) for M in Ms]
             if not self.ctx.singular and not self.ctx.debug:
@@ -292,9 +296,10 @@ class Hypersurface(object):
     @property
     def thimbles(self):
         if not hasattr(self,'_thimbles'):
-            self._thimbles=[]
+            res = []
             for pc, path in zip(self.permuting_cycles, self.paths):
-                self._thimbles+=[(pc, path)]
+                res += [(pc, path)]
+            self._thimbles = res
         return self._thimbles
 
     @property
@@ -431,18 +436,40 @@ class Hypersurface(object):
     def exceptional_divisors(self):
         """Returns the coordinates of the exceptional divisors in the basis of homology of the modification."""
         if not hasattr(self, '_exceptional_divisors'):
-            if self.dim%2 ==1:
-                exceptional_divisors = [self.lift(extension) for _, extension in self.thimble_extensions]
-                chains = matrix([chain for chain, _ in self.thimble_extensions])
+            if self.dim==2 and self.degree in [3,4]: # this is specific for K3 surfaces, while waiting for more robust/efficient methods arrive for the general case
+                if self.degree ==4:
+                    NS = IntegerRelations(self.holomorphic_periods_modification.transpose()).basis
+                if self.degree==3:
+                    NS = IntegerRelations(self.period_matrix_modification.transpose()).basis
+                section = self.section
+                fibre = self.fibre_class
+                others = (NS*self.intersection_product_modification*matrix([section, fibre]).transpose()).kernel().basis_matrix()
+                short_vectors = QuadraticForm(-2*others*NS*self.intersection_product_modification*NS.transpose()*others.transpose()).short_vector_list_up_to_length(3)[2]
+                short_vectors = [v*others*NS for v in short_vectors]
+                exp_divs = [v+section+fibre for v in short_vectors]
+                chosen=[]
+                while len(exp_divs)!=0:
+                    chosen += [exp_divs[0]]
+                    exp_divs = [v for v in exp_divs if v*self.intersection_product_modification*chosen[-1]==0]
+                self._exceptional_divisors = chosen + [self.section]
+            # elif self.dim==2 and self.degree==3: # this is specific for cubic surfaces, while waiting for more robust/efficient methods arrive for the general case
+            #     NS = IntegerRelations(self.period_matrix_modification.transpose()).basis
+            #     expdivs = IntegerRelations(self.holomorphic_periods_modification.transpose()).basis
+            #     expdivs = Util.find_complement(matrix(expdivs.solve_left(self.fibre_class)))*expdivs
+            #     self._exceptional_divisors = expdivs.rows()
             else:
-                exceptional_divisors = []
-                for chain, extension in self.thimble_extensions:
-                    exceptional_divisor = self.lift(extension)
-                    exceptional_divisor -= self.fibre_class * (chain*self.fiber.fiber.intersection_product*self.invariant)
-                    exceptional_divisors += [exceptional_divisor]
-                exceptional_divisors += [self.section]
-                chains = matrix([chain for chain, _ in self.thimble_extensions] + [self.invariant])
-            self._exceptional_divisors = (chains**(-1)*matrix(exceptional_divisors)).rows()
+                if self.dim%2 ==1:
+                    exceptional_divisors = [self.lift(extension) for _, extension in self.thimble_extensions]
+                    chains = matrix([chain for chain, _ in self.thimble_extensions])
+                else:
+                    exceptional_divisors = []
+                    for chain, extension in self.thimble_extensions:
+                        exceptional_divisor = self.lift(extension)
+                        exceptional_divisor -= self.fibre_class * (chain*self.fiber.fiber.intersection_product*self.invariant)
+                        exceptional_divisors += [exceptional_divisor]
+                    exceptional_divisors += [self.section]
+                    chains = matrix([chain for chain, _ in self.thimble_extensions] + [self.invariant])
+                self._exceptional_divisors = (chains**(-1)*matrix(exceptional_divisors)).rows()
         return self._exceptional_divisors
 
     @property
@@ -702,7 +729,13 @@ class Hypersurface(object):
     
     @property
     def fibre_class(self):
+        assert self.dim %2 ==0, "no fibre class in odd dimensions"
         return vector([0]*len(self.extensions) + [1,0])
     @property
+    def hyperplane_class(self):
+        assert self.dim %2 ==0, "no hyperplane class in odd dimensions"
+        return matrix(self.homology).solve_left(self.fibre_class + sum(self.exceptional_divisors)) # todo in higher dimensions (>=4) we want the orthogonal projection of self.fibre_class
+    @property
     def section(self):
+        assert self.dim %2 ==0, "no section in odd dimensions"
         return vector([0]*len(self.extensions) + [0,1])

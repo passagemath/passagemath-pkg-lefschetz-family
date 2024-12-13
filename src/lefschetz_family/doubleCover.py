@@ -4,6 +4,7 @@ import sage.all
 
 from .numperiods.familyNew import Family
 from .numperiods.cohomology import Cohomology
+from .numperiods.integerRelations import IntegerRelations
 from ore_algebra import *
 
 from sage.modules.free_module_element import vector
@@ -22,6 +23,7 @@ from sage.matrix.special import block_diagonal_matrix
 from sage.matrix.special import zero_matrix
 from sage.arith.functions import lcm
 from ore_algebra.analytic.differential_operator import DifferentialOperator
+from sage.quadratic_forms.quadratic_form import QuadraticForm
 
 from sage.misc.prandom import randint
 
@@ -469,18 +471,33 @@ class DoubleCover(object):
     def exceptional_divisors(self):
         """Returns the coordinates of the exceptional divisors in the basis of homology of the modification."""
         if not hasattr(self, '_exceptional_divisors'):
-            if self.dim%2 ==1:
-                exceptional_divisors = [self.lift(extension) for _, extension in self.thimble_extensions]
-                chains = matrix([chain for chain, _ in self.thimble_extensions])
+            if self.dim==2 and self.degree in [6]: # this is specific for K3 surfaces, while waiting for more robust/efficient methods arrive for the general case
+                if self.degree ==6:
+                    NS = IntegerRelations(self.simple_periods_modification.transpose()).basis
+                section = self.section
+                fibre = self.fibre_class
+                others = (NS*self.intersection_product_modification*matrix([section, fibre]).transpose()).kernel().basis_matrix()
+                short_vectors = QuadraticForm(-2*others*NS*self.intersection_product_modification*NS.transpose()*others.transpose()).short_vector_list_up_to_length(3)[2]
+                short_vectors = [v*others*NS for v in short_vectors]
+                exp_divs = [v+section+fibre for v in short_vectors]
+                chosen=[]
+                while len(exp_divs)!=0:
+                    chosen += [exp_divs[0]]
+                    exp_divs = [v for v in exp_divs if v*self.intersection_product_modification*chosen[-1]==0]
+                self._exceptional_divisors = chosen + [self.section]
             else:
-                exceptional_divisors = []
-                for chain, extension in self.thimble_extensions:
-                    exceptional_divisor = self.lift(extension)
-                    exceptional_divisor -= self.fibre_class * (chain*self.fiber.fiber.intersection_product*self.invariant)
-                    exceptional_divisors += [exceptional_divisor]
-                exceptional_divisors += [self.section]
-                chains = matrix([chain for chain, _ in self.thimble_extensions] + [self.invariant])
-            self._exceptional_divisors = (chains**(-1)*matrix(exceptional_divisors)).rows()
+                if self.dim%2 ==1:
+                    exceptional_divisors = [self.lift(extension) for _, extension in self.thimble_extensions]
+                    chains = matrix([chain for chain, _ in self.thimble_extensions])
+                else:
+                    exceptional_divisors = []
+                    for chain, extension in self.thimble_extensions:
+                        exceptional_divisor = self.lift(extension)
+                        exceptional_divisor -= self.fibre_class * (chain*self.fiber.fiber.intersection_product*self.invariant)
+                        exceptional_divisors += [exceptional_divisor]
+                    exceptional_divisors += [self.section]
+                    chains = matrix([chain for chain, _ in self.thimble_extensions] + [self.invariant])
+                self._exceptional_divisors = (chains**(-1)*matrix(exceptional_divisors)).rows()
         return self._exceptional_divisors
 
     @property
@@ -751,6 +768,11 @@ class DoubleCover(object):
     @property
     def fibre_class(self):
         return vector([0]*len(self.extensions) + [1,0])
+    @property
+    def hyperplane_class(self):
+        assert self.dim %2 ==0, "no hyperplane class in odd dimensions"
+        return matrix(self.homology).solve_left(self.fibre_class + sum(self.exceptional_divisors)) # todo in higher dimensions (>=4) we want the orthogonal projection of self.fibre_class
+    
     @property
     def section(self):
         return vector([0]*len(self.extensions) + [0,1])
