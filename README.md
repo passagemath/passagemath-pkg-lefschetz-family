@@ -4,14 +4,20 @@
 ## Description
 This Sage package provides a means of efficiently computing periods of complex projective hypersurfaces and elliptic surfaces over $\mathbb P^1$ with certified rigorous precision bounds.
 It implements the methods described in [Effective homology and periods of complex projective hypersurfaces](https://doi.org/10.1090/mcom/3947) ([arxiv:2306.05263](https://arxiv.org/abs/2306.05263)).
-Here is a runtime benchmark for various examples:
-| Variety (generic) 	| Time (on 10 M1 cores) 	|
-|-------------------	|----------------------	|
-| Elliptic curve    	| 10 seconds            	|
-| Quartic curve     	| 8 minutes            	|
-| Cubic surface     	| 3 minutes         	|
-| Quartic surface   	| 1 hour*        	|
-| Cubic threefold   	| 7 hours*        	|
+Here is a runtime benchmark for various examples, with an input precision of 1000 bits:
+| Hypersurface (generic) 	| Time (on 10 M1 cores) | Recovered precision (decimal digits)  |
+|-------------------	|----------------------	| ----------------------                |
+| Elliptic curve    	| 5 seconds            | 300 digits                            |
+| Quartic curve     	| 90 seconds            	| 300 digits                            |
+| Quintic curve     	| 5 minutes            	| 300 digits                            |
+| Sextic curve      	| 15 minutes            	| 300 digits                            |
+| Cubic surface     	| 40 seconds         	| 300 digits                            |
+| Quartic surface   	| 1 hour        	    | 300 digits                            |
+| Cubic threefold   	| 15 minutes        	    | 300 digits                            |
+| Rational elliptic surface | 10 seconds        	    | 300 digits                            |
+| Elliptic K3 surface   	| 30 seconds*        	    | 300 digits                            |
+| Degree 2 K3 surface   	| 20 minutes        	    | 300 digits                            |
+
 
 *for holomorphic periods
 

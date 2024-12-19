@@ -7,8 +7,11 @@ from ore_algebra import *
 from sage.matrix.special import identity_matrix
 from sage.parallel.decorate import parallel
 from ore_algebra.analytic.differential_operator import DifferentialOperator
+from ore_algebra.analytic.context import Context
 
 from sage.rings.integer_ring import Z
+
+from .simul_integrator_function import fundamental_matrices
 
 from .util import Util
 
@@ -19,16 +22,20 @@ import time
 logger = logging.getLogger(__name__)
 
 
-class Integrator(object):
-    def __init__(self, path_structure, operator, nbits):
-        self._operator = DifferentialOperator(operator)
-        self.operator._singularities()
+class IntegratorSimultaneous(object):
+    def __init__(self, path_structure, rat_coefs, gaussmanin, nbits):
+        self._rat_coefs = rat_coefs
+        self._gaussmanin = gaussmanin
         self.nbits = nbits
         self.voronoi = path_structure
 
     @property
-    def operator(self):
-        return self._operator
+    def gaussmanin(self):
+        return self._gaussmanin
+    
+    @property
+    def rat_coefs(self):
+        return self._rat_coefs
     
 
     @property
@@ -39,7 +46,7 @@ class Integrator(object):
                 path = Util.simplify_path(path) # this should most likely be done in voronoi instead ?
                 transition_matrix = 1
                 N = len(path)
-                for i in range(N-1):
+                for i in range(N-1):    
                     e = path[i:i+2]
                     if e in self.voronoi.edges:
                         index = self.voronoi.edges.index(e)
@@ -73,7 +80,9 @@ class Integrator(object):
 
             edges = [[self.voronoi.vertices[e[0]], self.voronoi.vertices[e[1]]] for e in edges]
             N = len(edges)
-            integration_result = Integrator._integrate_edge([([i,N],self.operator,[e[0], e[1]], self.nbits) for i, e in list(enumerate(edges))])
+            A, denA = self._gaussmanin
+            R, denR = self._rat_coefs
+            integration_result = IntegratorSimultaneous._integrate_edge([([i,N],A, denA, R, denR,[e[0], e[1]], self.nbits) for i, e in list(enumerate(edges))])
             integrated_edges_temp= [None]*N
 
             for [inp, _], ntm in integration_result:
@@ -99,7 +108,7 @@ class Integrator(object):
     
     @classmethod
     @parallel
-    def _integrate_edge(cls, i, L, l, nbits=300, maxtries=5, verbose=False):
+    def _integrate_edge(cls, i, A, denA, R, denR, l, nbits=300):
         """ Returns the numerical transition matrix of L along l, adapted to computations of Voronoi. Accepts l=[]
         """
         logger.info("[%d] Starting integration along edge [%d/%d]"% (os.getpid(), i[0]+1,i[1]))
@@ -107,21 +116,9 @@ class Integrator(object):
         bounds_prec=256
         begin = time.time()
         eps = Z(2)**(-Z(nbits))
-        while True:
-            # try:
-            ntm = L.numerical_transition_matrix(l, eps=eps, assume_analytic=True, bounds_prec=bounds_prec) if l!= [] else identity_matrix(L.order()) 
-            ntmi = ntm**-1 # checking the matrix is precise enough to be inverted
-            # except Exception as e: # TODO: manage different types of exceptions
-            #     tries+=1
-            #     if tries<maxtries:
-            #         bounds_prec *=2
-            #         nbits*=2
-            #         logger.info("[%d] Precision error when integrating edge [%d/%d]. Trying again with double bounds_prec (%d) and nbits (%d)."% (os.getpid(), i[0]+1, i[1], bounds_prec, nbits))
-            #         continue
-            #     else:
-            #         logger.info("[%d] Too many ValueErrors when integrating edge [%d/%d]. Stopping computation here"% (os.getpid(), i[0]+1, i[1]))
-            #         raise e
-            break
+        ctx = Context(assume_analytic=True)
+        ntm = fundamental_matrices(A, denA, R, denR, l, eps, ctx=ctx) if l!= [] else identity_matrix(A.nrows() + R.nrows()) 
+        ntmi = ntm**-1 
 
         end = time.time()
         duration = end-begin

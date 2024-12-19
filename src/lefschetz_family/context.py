@@ -13,7 +13,8 @@ class Context(object):
             use_symmetry=True,
             nbits=200,
             long_fibration=True,
-            depth=0
+            depth=0,
+            simultaneous_integration=True
         ):
         r"""
         Lefschetz Family integration context
@@ -42,6 +43,10 @@ class Context(object):
         if not isinstance(long_fibration, bool):
             raise TypeError("long_fibration", type(debug))
         self.long_fibration = long_fibration
+
+        if not isinstance(simultaneous_integration, bool):
+            raise TypeError("simultaneous_integration", type(debug))
+        self.simultaneous_integration = simultaneous_integration
 
         # if not isinstance(nbits, ): # what type is int ?
         #     raise TypeError("nbits", type(nbits))
