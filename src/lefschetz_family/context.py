@@ -63,5 +63,6 @@ class Context(object):
         self.CBF = ComplexBallField(500)
         self.CF = ComplexField(500)
         self.depth = depth
+        self.cutoff_simultaneous_integration = 2
 
 dctx = Context() # default context

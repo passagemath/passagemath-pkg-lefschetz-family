@@ -32,6 +32,7 @@ from sage.misc.prandom import randint
 
 from .voronoi import FundamentalGroupVoronoi
 from .integrator_simultaneous import IntegratorSimultaneous
+from .integrator import Integrator
 from .util import Util
 from .context import Context
 from .exceptionalDivisorComputer import ExceptionalDivisorComputer
@@ -43,7 +44,7 @@ import time
 logger = logging.getLogger(__name__)
 
 
-class HypersurfaceSimul(object):
+class Hypersurface(object):
     def __init__(self, P, fibration=None, compute_fundamental_group=True, **kwds):
         """P, a homogeneous polynomial defining a smooth hypersurface X in P^{n+1}.
 
@@ -266,7 +267,7 @@ class HypersurfaceSimul(object):
             evaluate_at_basepoint = RtoS.codomain().hom([self.basepoint], RtoS.codomain().base_ring())
             P = evaluate_at_basepoint(RtoS(self.P))
             fibration  = self._restrict_fibration() if self.ctx.long_fibration else None
-            self._fiber = HypersurfaceSimul(P, fibration = fibration, method=self.ctx.method, nbits=self.ctx.nbits, long_fibration=self.ctx.long_fibration, depth=self.ctx.depth+1, simultaneous_integration=True)
+            self._fiber = Hypersurface(P, fibration = fibration, method=self.ctx.method, nbits=self.ctx.nbits, long_fibration=self.ctx.long_fibration, depth=self.ctx.depth+1, simultaneous_integration=True)
 
         return self._fiber
 
@@ -421,13 +422,13 @@ class HypersurfaceSimul(object):
                 section = self.section
                 fibre = self.fibre_class
                 others = (NS*self.intersection_product_modification*matrix([section, fibre]).transpose()).kernel().basis_matrix()
-                short_vectors = QuadraticForm(-2*others*NS*self.intersection_product_modification*NS.transpose()*others.transpose()).short_vector_list_up_to_length(3)[2]
+                short_vectors = QuadraticForm(-2 * others * NS * self.intersection_product_modification * NS.transpose() * others.transpose()).short_vector_list_up_to_length(3)[2]
                 short_vectors = [v*others*NS for v in short_vectors]
                 exp_divs = [v+section+fibre for v in short_vectors]
                 chosen=[]
                 while len(exp_divs)!=0:
                     chosen += [exp_divs[0]]
-                    exp_divs = [v for v in exp_divs if v*self.intersection_product_modification*chosen[-1]==0]
+                    exp_divs = [v for v in exp_divs if v * self.intersection_product_modification*chosen[-1]==0]
                 self._exceptional_divisors = chosen + [self.section]
 
             else:
@@ -518,77 +519,82 @@ class HypersurfaceSimul(object):
     @property
     def transition_matrices(self):
         if not hasattr(self, '_transition_matrices'):
-            logger.info("[%d] Computing numerical transition matrices (%d edges total)."% (self.dim, len(self.fundamental_group.edges)))
-            begin = time.time()
+            if hasattr(self, '_transition_matrices_holomorphic') and len(self.holomorphic_forms) == len(self.cohomology):
+                self._transition_matrices = self.transition_matrices_holomorphic
+                return self._transition_matrices
+
             if hasattr(self, '_transition_matrices_holomorphic'):
                 rat_coefs = self.family.coordinates([self._restrict_form(w) for w in self.cohomology if w not in self.holomorphic_forms])
             else:
                 rat_coefs = self.family.coordinates([self._restrict_form(w) for w in self.cohomology])
 
-            gaussmanin = self.family.gaussmanin()
-
-            integrator = IntegratorSimultaneous(self.fundamental_group, rat_coefs, gaussmanin, self.ctx.nbits)
-            transition_matrices = integrator.transition_matrices
-            if hasattr(self, '_transition_matrices_holomorphic'):
-                Rholo = len(self.holomorphic_forms)
-                R = len(self.cohomology) - Rholo
-                r = len(self.fiber.cohomology)
-                intgrold = self.transition_matrices_holomorphic.submatrix(0,Rholo,Rholo,r)
-                intnew = transition_matrices.submatrix(0,R,R,r)
-                GM = transition_matrices.submatrix(R,R)
-                transition_matrices = block_matrix([[1,0, intold],[0,1, intnew], [0,0,GM]])
-                
-            end = time.time()
-            duration_str = time.strftime("%H:%M:%S",time.gmtime(end-begin))
-            logger.info("[%d] Integration finished -- total time: %s."% (self.dim, duration_str))
+            logger.info("[%d] Computing transition matrices of all forms (%d rational vector(s))."% (self.dim, rat_coefs[0].nrows()))
+            if rat_coefs[0].nrows() > self.ctx.cutoff_simultaneous_integration:
+                transition_matrices = self._compute_transition_matrices_simultaneous(rat_coefs)
+            else:
+                indices = [i for i in range(len(self.cohomology))]
+                transition_matrices = self._compute_transition_matrices_sequential(rat_coefs, indices)
             self._transition_matrices = transition_matrices
         return self._transition_matrices
 
     @property
     def transition_matrices_holomorphic(self):
         if not hasattr(self, '_transition_matrices_holomorphic'):
-            if hasattr(self, '_transition_matrices') or self.ctx.simultenous_integration:
+            if hasattr(self, '_transition_matrices') or self.ctx.simultaneous_integration:
                 r = self.fiber.period_matrix.nrows()
                 R = len(self.cohomology)
                 indices = [self.cohomology.index(w) for w in self.holomorphic_forms]
                 indices += [R+i for i in range(r)]
-                transition_matrices = self.transition_matrices.matrix_from_rows_and_columns(indices, indices)
+                transition_matrices = [M.matrix_from_rows_and_columns(indices, indices) for M in self.transition_matrices]
             else:
-                logger.info("[%d] Computing numerical transition matrices (%d edges total)."% (self.dim, len(self.fundamental_group.edges)))
-                begin = time.time()
-                rat_coefs = [[self.family.coordinates([self._restrict_form(w) for w in self.holomorphic_forms])]]
-                gaussmanin = self.family.gaussmanin()
-                integrator = IntegratorSimultaneous(self.fundamental_group, rat_coefs, gaussmanin, self.ctx.nbits)
-                transition_matrices = integrator.transition_matrices
-                end = time.time()
-                duration_str = time.strftime("%H:%M:%S",time.gmtime(end-begin))
-                logger.info("[%d] Integration finished -- total time: %s."% (self.dim, duration_str))
-            self._transition_matrices_holomorphic = transition_matrices
+                logger.info("[%d] Computing transition matrices for holomorphic_forms (%d rational vector(s))."% (self.dim, rat_coefs[0].nrows()))
+                rat_coefs = self.family.coordinates([self._restrict_form(w) for w in self.holomorphic_forms])
+                if rat_coefs[0].nrows() > self.ctx.cutoff_simultaneous_integration:
+                    transition_matrices = self._compute_transition_matrices_simultaneous(rat_coefs)
+                else:
+                    indices = [i for i in range(len(self.holomorphic_forms))]
+                    transition_matrices = self._compute_transition_matrices_sequential(rat_coefs, indices)
+            self._transition_matrices_monodromy = transition_matrices
         return self._transition_matrices_holomorphic
 
     @property
-    def transition_matrices_monodromy(self):
+    def transition_matrices_monodromy(self): # this function might very well be buggy, but it's not called very often.
         if not hasattr(self, '_transition_matrices_monodromy'):
-            if hasattr(self, '_transition_matrices') or self.ctx.simultenous_integration:
+            if hasattr(self, '_transition_matrices') or self.ctx.simultaneous_integration:
                 r = self.fiber.period_matrix.nrows()
                 R = len(self.cohomology)
-                transition_matrices = self.transition_matrices.submatrix(R,R)
+                transition_matrices = [M.submatrix(R,R) for M in self.transition_matrices]
             elif hasattr(self, '_transition_matrices_holomorphic'):
                 r = self.fiber.period_matrix.nrows()
                 R = len(self.holomorphic_forms)
-                transition_matrices = self.transition_matrices_holomorphic.submatrix(R,R)
+                transition_matrices = [M.submatrix(R,R) for M in self.transition_matrices_holomorphic]
             else:
-                logger.info("[%d] Computing numerical transition matrices (%d edges total)."% (self.dim, len(self.fundamental_group.edges)))
-                begin = time.time()
-                rat_coefs = [[],1]
-                gaussmanin = self.family.gaussmanin()
-                integrator = IntegratorSimultaneous(self.fundamental_group, rat_coefs, gaussmanin, self.ctx.nbits)
-                transition_matrices = integrator.transition_matrices
-                end = time.time()
-                duration_str = time.strftime("%H:%M:%S",time.gmtime(end-begin))
-                logger.info("[%d] Integration finished -- total time: %s."% (self.dim, duration_str))
+                indices = [0]
+                rat_coefs = self.family.coordinates([self._restrict_form(self.cohomology[0])])
+                logger.info("[%d] Computing transition matrices for monodromy (%d rational vector(s))."% (self.dim, rat_coefs[0].nrows()))
+                transition_matrices = self._compute_transition_matrices_sequential(rat_coefs, indices)
+                transition_matrices = [M.submatrix(1,1) for M in transition_matrices]
             self._transition_matrices_monodromy = transition_matrices
         return self._transition_matrices_monodromy
+
+    def _compute_transition_matrices_simultaneous(self, rat_coefs):
+        gaussmanin = self.family.gaussmanin()
+        logger.info("[%d] Computing numerical transition matrices for %d integrals (%d edges total)."% (self.dim, rat_coefs[0].nrows(), len(self.fundamental_group.edges)))
+        begin = time.time()
+        integrator = IntegratorSimultaneous(self.fundamental_group, rat_coefs, gaussmanin, self.ctx.nbits)
+        transition_matrices = integrator.transition_matrices
+        if hasattr(self, '_transition_matrices_holomorphic'):
+            Rholo = len(self.holomorphic_forms)
+            R = len(self.cohomology) - Rholo
+            r = len(self.fiber.cohomology)
+            intold = [M.submatrix(0,Rholo,Rholo,r) for M in self.transition_matrices_holomorphic]
+            intnew = [M.submatrix(0,R,R,r) for M in transition_matrices]
+            GM = [M.submatrix(R,R) for M in transition_matrices]
+            transition_matrices = [block_matrix([[1,0, a],[0,1, b], [0,0,c]]) for a,b,c in zip(intold, intew, GM)]
+        end = time.time()
+        duration_str = time.strftime("%H:%M:%S",time.gmtime(end-begin))
+        logger.info("[%d] Integration finished -- total time: %s."% (self.dim, duration_str))
+        return transition_matrices
 
     @property
     def integrated_thimbles(self):
@@ -650,12 +656,6 @@ class HypersurfaceSimul(object):
             return res
         else:
             return 0
-
-    @classmethod
-    def _derivative(self, A, P): 
-        """computes the numerator of the derivative of A/P^k"""
-        field = P.parent().fraction_field()
-        return field(A).derivative() - A*P.derivative()         
     
     def _residue_form(self, A, P, k, alphas): 
         """ returns the formal residue of A/P^k at alpha for alpha in alphas """
@@ -731,3 +731,88 @@ class HypersurfaceSimul(object):
     def section(self):
         assert self.dim %2 ==0, "no section in odd dimensions"
         return vector([0]*len(self.extensions) + [0,1])
+
+
+    # Sequential integration methods
+
+    @classmethod
+    def _derivative(self, A, P): 
+        """computes the numerator of the derivative of A/P^k"""
+        field = P.parent().fraction_field()
+        return field(A).derivative() - A*P.derivative()         
+
+    def integrate(self, L):
+        logger.info("[%d] Computing numerical transition matrices of operator of order %d and degree %d (%d edges total)."% (self.dim, L.order(), L.degree(), len(self.fundamental_group.edges)))
+        begin = time.time()
+
+        integrator = Integrator(self.fundamental_group, L, self.ctx.nbits)
+        transition_matrices = integrator.transition_matrices
+        
+        end = time.time()
+        duration_str = time.strftime("%H:%M:%S",time.gmtime(end-begin))
+        logger.info("[%d] Integration finished -- total time: %s."% (self.dim, duration_str))
+
+        return transition_matrices
+
+    def forget_transition_matrices(self):
+        del self._integratedQ
+        del self._transition_matrices
+        del self._integrated_thimbles
+        del self._integrated_thimblesQ
+
+    def _compute_transition_matrices_sequential(self, rat_coefs, indices):
+        R, denom = rat_coefs
+        res = None
+        j=0
+        logger.info("[%d] Computing Picard-Fuchs equations of %d forms in dimension %d"% (self.dim, rat_coefs[0].nrows(), self.dim))
+        for i, v in zip(indices, R.rows()):
+            L = self.picard_fuchs_equation(v/denom)
+            L = L * L.parent().gens()[0]
+            integrated = self.integrate(L)
+            derivatives_at_basepoint = self.derivatives_values_at_basepoint(i)
+            integration_correction = diagonal_matrix([1/ZZ(factorial(k)) for k in range(L.order())])
+            initial_conditions = ( integration_correction * derivatives_at_basepoint )
+            if res == None:
+                res = []
+                for M in integrated:
+                    GM = initial_conditions.submatrix(1,0).inverse() * M.submatrix(1,1) * initial_conditions.submatrix(1,0)
+                    intgr = (M * initial_conditions).submatrix(0,0,1)
+                    res += [block_matrix([[identity_matrix(1), intgr],[0, GM]])]
+            else:
+                r = L.order()-1
+                intold = [M.submatrix(0,j,j,r) for M in res]
+                intnew = [(M * initial_conditions).submatrix(0,0,1) for M in integrated]
+                GM = [M.submatrix(j,j) for M in res]
+                res = [block_matrix([[1,0, a],[0,1, b], [0,0,c]]) for a,b,c in zip(intold, intnew, GM)]
+            j+=1
+        return res
+    
+    def picard_fuchs_equation(self, v):
+        denom = lcm([r.denominator() for r in v if r!=0])
+        numerators = denom * v
+        L = self.family.picard_fuchs_equation(numerators) * denom
+        L = DifferentialOperator(L)
+        return L
+
+    def derivatives_values_at_basepoint(self, i):
+        RtoS = self._RtoS()
+        s=len(self.fiber.cohomology)
+        w = self.cohomology[i]
+        wt = self._restrict_form(w)
+        derivatives = [RtoS(0), wt]
+        for k in range(s-1):
+            derivatives += [self._derivative(derivatives[-1], RtoS(self.P))] 
+        return self.family._coordinates(derivatives, self.basepoint)
+
+    def derivatives_coordinates(self, i):
+        if not self._coordinatesQ[i]:
+            s=len(self.fiber.homology)
+            RtoS = self._RtoS()
+            w = self.cohomology[i]
+            wt = self._restrict_form(w)
+            derivatives = [RtoS(0), wt]
+            for k in range(s-1 if self.dim%2==0 else s-2):
+                derivatives += [self._derivative(derivatives[-1], RtoS(self.P))] 
+            self._coordinates[i] = self.family.coordinates(derivatives)
+            self._coordinatesQ[i] = True
+        return self._coordinates[i]

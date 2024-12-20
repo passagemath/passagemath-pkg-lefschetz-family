@@ -271,9 +271,9 @@ def shifted_int_mat_times_fmat(num, den, pts, Pol, blksz):
                 DivByPoly(
                     # on veut peut-être garder les coefficients rationnels dans
                     # les polynômes...
-                    Add([MulByPoly(Pol.coerce(num[i][k]), fmatA[k][j])
+                    Add([MulByPoly(Pol(num[i][k]), fmatA[k][j])
                          for k in range(num.ncols())]),
-                    Pol.coerce(den[i]))),
+                    Pol(den[i]))),
             pt)
           for j in range(num.ncols())]
          for i in range(num.nrows())]
@@ -368,7 +368,10 @@ def fundamental_matrices(sys, den, aux, auxden, path, eps, vec=None, ctx=dctx):
     aux1 = aux*itnum
     auxden1 = auxden*itden
     logger.info("done, time=%s s", time.time() - t0)
-    path = Path(path, dop)
+    dop2 = DifferentialOperator(auxden1*dop)
+    # print(len(dop._singularities()), len(dop2._singularities()))
+    path = Path(path, dop2)
+    # path = Path(path, dop)
     logger.info("path = %ss", path)
     eps = RBF(eps)
     # FIXME prec currently needs to be >= sums_prec (as chosen by HSM) or we
@@ -446,7 +449,7 @@ def fundamental_matrices(sys, den, aux, auxden, path, eps, vec=None, ctx=dctx):
             fmats.append(fmat)
 
         # XXX this is certainly improvable...
-        if any(c.rad() > 1. and c.accuracy() < prec0//2
+        if any(c.rad() > 2.**(-prec0) and c.accuracy() < prec0//2
                for c in vmat_aux.list()):
             steps.extend(reversed(step.split()))
             continue
