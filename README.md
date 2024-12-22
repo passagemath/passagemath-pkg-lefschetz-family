@@ -94,12 +94,12 @@ P = (2*X*Y^2*Z + 3*X^2*Z^2 + 5*X*Y*Z^2 - 2*X*Z^3 + 2*Y*Z^3 + Z^4 + X^3*W - 3*X^2
 fibration = [vector(ZZ, [10, -8, -2, 7]), vector(ZZ, [1, -1, 5, 10]), vector(ZZ, [-5, 7, 7, 10])]
 X = Hypersurface(P, nbits=1200, fibration=fibration)
 
-periods = X.holomorphic_periods_modification
+periods = X.holomorphic_period_matrix_modification
 
 from lefschetz_family.numperiods.integerRelations import IntegerRelations
-IR = IntegerRelations(X.holomorphic_periods_modification)
+IR = IntegerRelations(X.holomorphic_period_matrix_modification)
 # this is the rank of the transcendental lattice
-transcendental_rank = X.holomorphic_periods_modification.nrows()-IR.basis.rank()
+transcendental_rank = X.holomorphic_period_matrix_modification.nrows()-IR.basis.rank()
 # The Picard rank is thus
 print("Picard rank:", 22-transcendental_rank)
 ```
@@ -151,8 +151,8 @@ Cohomology related properties:
 Period related properties
 - `period_matrix`: the period matrix of $X$ in the aforementioned bases `homology` and `cohomology`, as well as the cohomology class of the linear section in even dimension
 - `period_matrix_modification`: the period matrix of the modification $Y$ in the aforementioned bases `homology_modification` and `cohomology`
-- `holomorphic_periods`: the periods of `holomorphic_forms` in the basis `homology`.
-- `holomorphic_periods_modification`: the periods of the pushforwards of `holomorphic_forms` in the basis `homology_modification`. 
+- `holomorphic_period_matrix`: the periods of `holomorphic_forms` in the basis `homology`.
+- `holomorphic_period_matrix_modification`: the periods of the pushforwards of `holomorphic_forms` in the basis `homology_modification`. 
 
 Miscellaneous properties:
 - `P`: the defining equation of $X$.
@@ -160,7 +160,7 @@ Miscellaneous properties:
 - `degree`: the degree of $X$.
 - `ctx`: the options of $X$, see related section above.
 
-The computation of the exceptional divisors can be costly, and is not always necessary. For example, the Picard rank of a quartic surface can be recovered with `holomorphic_periods_modification` alone.
+The computation of the exceptional divisors can be costly, and is not always necessary. For example, the Picard rank of a quartic surface can be recovered with `holomorphic_period_matrix_modification` alone.
 
 ### EllipticSurface
 

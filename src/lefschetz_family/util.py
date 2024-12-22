@@ -269,7 +269,7 @@ class Util(object):
     def find_complement(cls, B, primitive=True):
         """Given an m x n integer valued matrix B with n>m, computes an (n-m) x n matrix A such that the matrix block_matrix([[A],[B]]) is invertible over the integers"""
         D, U, V = B.smith_form()
-        quotient = identity_matrix(D.ncols())[D.nrows():]*V**-1
+        quotient = identity_matrix(D.ncols())[D.nrows():] * V.inverse()
         if primitive:
             assert block_matrix([[B],[quotient]]).det() in [-1,1], "cannot find complement, are you sure sublattice is primitive?"
         return quotient

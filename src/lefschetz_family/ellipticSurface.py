@@ -83,7 +83,7 @@ class EllipticSurface(object):
         if not hasattr(self, '_primary_periods'):
             homology_mat = matrix(self.extensions).transpose()
             integrated_thimbles =  matrix(self.integrated_thimbles)
-            self._primary_periods = integrated_thimbles*homology_mat
+            self._primary_periods = integrated_thimbles * homology_mat
 
         return self._primary_periods
     
@@ -91,7 +91,7 @@ class EllipticSurface(object):
     def period_matrix(self):
         if not hasattr(self, '_period_matrix'):
             periods_tot = block_matrix([[self.primary_periods, zero_matrix(len(self.holomorphic_forms), len(flatten(self.singular_components))+2)]])
-            self._period_matrix = periods_tot*matrix(self.primary_lattice).transpose()**-1
+            self._period_matrix = periods_tot * matrix(self.primary_lattice).transpose().inverse()
         return self._period_matrix
 
     @property
@@ -156,7 +156,7 @@ class EllipticSurface(object):
                 for M in self.cyclic_transition_matrices:
                     transition_matrix_infinity = M*transition_matrix_infinity
                 self._cyclic_transition_matrices += [transition_matrix_infinity**(-1)]
-                Ms += [(Mtot**-1).change_ring(ZZ)]
+                Ms += [(Mtot.inverse()).change_ring(ZZ)]
                 pathtot=[]
                 for path in self.paths:
                     pathtot=pathtot+path
@@ -213,7 +213,7 @@ class EllipticSurface(object):
             I1_monodromy_matrices = []
             for M in self.monodromy_matrices:
                 type, base_change, nu = EllipticSingularities.monodromy_class(M)
-                mats =  [base_change*M*base_change**-1 for M in EllipticSingularities.fibre_confluence[type][:-1]] + [base_change*EllipticSingularities.fibre_confluence[type][-1]*base_change**-1]*nu
+                mats =  [base_change*M*base_change.inverse() for M in EllipticSingularities.fibre_confluence[type][:-1]] + [base_change*EllipticSingularities.fibre_confluence[type][-1]*base_change.inverse()]*nu
                 mats = [M.change_ring(ZZ) for M in mats]
                 Mtot = 1
                 for M2 in mats:
@@ -226,7 +226,7 @@ class EllipticSurface(object):
         return self._monodromy_matrices_morsification
 
     @property
-    def fiber(self) -> Hypersurface:
+    def fiber(self):
         if not hasattr(self,'_fiber'):
             self._fiber = Hypersurface(self.P(self.basepoint), nbits=self.ctx.nbits, fibration=self._fibration)
             if self._fiber.intersection_product == matrix([[0,-1], [1,0]]):
@@ -307,7 +307,6 @@ class EllipticSurface(object):
         Along with the fibre and section, this constitutes a basis for the second homology group of the surface. 
         The singular fibre components are identified at the end of the list."""
         if not hasattr(self, '_extensions_morsification'):
-            singular_components = flatten(self.singular_components, max_level=2)
             infinity_loops = [self.morsify(v) for v in self.infinity_loops]
             delta = matrix(flatten(self.vanishing_cycles_morsification)).change_ring(ZZ)
             kerdelta = delta.kernel().matrix()
@@ -451,7 +450,7 @@ class EllipticSurface(object):
         r=len(flatten(self.vanishing_cycles_morsification))
         extensions = matrix(self.extensions_morsification)
         inter_prod_thimbles = matrix([[self._compute_intersection_product_thimbles(i,j) for j in range(r)] for i in range(r)])
-        intersection_11 = (-1) * (extensions*inter_prod_thimbles*extensions.transpose()).change_ring(ZZ)
+        intersection_11 = (-1) * (extensions * inter_prod_thimbles * extensions.transpose()).change_ring(ZZ)
         chi = ZZ((len(self.extensions_morsification)+ZZ(4))/ZZ(12))
         intersection_02 = matrix(ZZ, [[0,1],[1,-chi]])
         return block_diagonal_matrix(intersection_11, intersection_02)
@@ -563,7 +562,7 @@ class EllipticSurface(object):
         triv_coords = matrix(self.neron_severi).solve_left(matrix(self.trivial_lattice)).change_ring(ZZ)
         coords = block_matrix([[ess_coords],[triv_coords]])
         projection_temp = block_diagonal_matrix([identity_matrix(len(self.essential_lattice.rows())), zero_matrix(len(self.trivial_lattice))])
-        orth_proj = coords**-1*projection_temp*coords
+        orth_proj = coords.inverse() * projection_temp * coords
 
         quotient_basis = Util.find_complement(triv_coords, primitive=False)
         # quotient_basis = ess_coords

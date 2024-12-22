@@ -14,7 +14,7 @@ class Context(object):
             nbits=200,
             long_fibration=True,
             depth=0,
-            simultaneous_integration=True
+            simultaneous_integration=False
         ):
         r"""
         Lefschetz Family integration context

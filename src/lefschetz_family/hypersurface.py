@@ -24,6 +24,7 @@ from sage.matrix.special import block_diagonal_matrix
 from sage.matrix.special import zero_matrix
 from sage.arith.functions import lcm
 from sage.quadratic_forms.quadratic_form import QuadraticForm
+from sage.misc.flatten import flatten
 
 from ore_algebra.analytic.differential_operator import DifferentialOperator
 
@@ -37,6 +38,8 @@ from .util import Util
 from .context import Context
 from .exceptionalDivisorComputer import ExceptionalDivisorComputer
 from .delaunayDual import FundamentalGroupDelaunayDual
+from .monodromyRepresentationGeneric import MonodromyRepresentationGeneric
+from .monodromyRepresentationSurface import MonodromyRepresentationSurface
 
 import logging
 import time
@@ -70,8 +73,21 @@ class Hypersurface(object):
         """The intersection matrix of the modification of the hypersurface"""
         if not hasattr(self,'_intersection_product_modification'):
             assert self.dim!=0, "no modification in dimension 0"
-            self._intersection_product_modification=self._compute_intersection_product_modification()
+            self._intersection_product_modification = self.monodromy_representation.intersection_product
         return self._intersection_product_modification
+
+    @property
+    def monodromy_representation(self):
+        """The monodromy representation associated to the modification of the hypersurface"""
+        if not hasattr(self,'_monodromy_representation'):
+            assert self.dim!=0, "no monodromy_representation in dimension 0"
+            if self.dim == 2:
+                monodromy_representation = MonodromyRepresentationSurface(self.monodromy_matrices, self.fiber.intersection_product)
+            else:
+                monodromy_representation = MonodromyRepresentationGeneric(self.monodromy_matrices, self.fiber.intersection_product)
+                monodromy_representation._add = 0 if self.dim%2==1 else 2
+            self._monodromy_representation = monodromy_representation
+        return self._monodromy_representation
     
     @property
     def intersection_product(self):
@@ -83,7 +99,7 @@ class Hypersurface(object):
                 self._intersection_product=self.intersection_product_modification
             else:
                 homology = matrix(self.homology)
-                IP = homology*self.intersection_product_modification*homology.transpose()
+                IP = homology * self.monodromy_representation.intersection_product * homology.transpose()
                 assert IP.det() in [1,-1], "intersection product is not unitary"
                 self._intersection_product = IP
         return self._intersection_product
@@ -95,7 +111,8 @@ class Hypersurface(object):
             if self.dim<2:
                 self._homology = identity_matrix(len(self.extensions)).rows()
             else:
-                product_with_exdiv = self.intersection_product_modification*matrix(self.exceptional_divisors).transpose()
+                exceptional_divisors = matrix(self.exceptional_divisors).transpose()
+                product_with_exdiv = self.monodromy_representation.intersection_product * exceptional_divisors
                 product_with_exdiv = product_with_exdiv.change_ring(ZZ)
                 self._homology = product_with_exdiv.kernel().basis()
         return self._homology
@@ -105,9 +122,11 @@ class Hypersurface(object):
         """The period matrix of the modification of the hypersurface"""
         if not hasattr(self, '_period_matrix_modification'):
             integrated_thimbles = self.integrated_thimbles
-            add = [vector([0]*len(self.thimbles))]*2 if self.dim%2 ==0 else []
-            homology_mat = matrix(self.extensions + add).transpose()
-            self._period_matrix_modification = integrated_thimbles * homology_mat
+            add  = [vector([0]*len(self.monodromy_representation.thimbles))] * len(flatten(self.monodromy_representation.components_of_singular_fibers))
+            add += [vector([0]*len(self.monodromy_representation.thimbles))] * 2 if self.dim%2 ==0 else []
+            homology_mat = matrix(self.monodromy_representation.extensions + add).transpose()
+            primary_lattice = self.monodromy_representation.primary_lattice
+            self._period_matrix_modification =  integrated_thimbles * homology_mat * primary_lattice.inverse()
         return self._period_matrix_modification
 
     @property
@@ -123,7 +142,7 @@ class Hypersurface(object):
                 period_matrix = block_matrix([[period_matrix],[matrix([[CBF(1)]*self.degree])]])
                 self._period_matrix=period_matrix
             elif self.dim%2 ==1:
-                self._period_matrix = self.period_matrix_modification*matrix(self.homology).transpose()
+                self._period_matrix = self.period_matrix_modification * matrix(self.homology).transpose()
             else:
                 self._period_matrix = block_matrix([[self.period_matrix_modification*matrix(self.homology).transpose()], [matrix(self.intersection_product*self.lift_modification(self.fibre_class))]])
         return self._period_matrix
@@ -136,9 +155,11 @@ class Hypersurface(object):
                 self._holomorphic_period_matrix_modification = self.period_matrix
             else:
                 integrated_thimbles_holomorphic = self.integrated_thimbles_holomorphic
-                add = [vector([0]*len(self.thimbles))]*2 if self.dim%2 ==0 else []
-                homology_mat = matrix(self.extensions + add).transpose()
-                self._holomorphic_period_matrix_modification =  integrated_thimbles_holomorphic * homology_mat
+                add = [vector([0]*len(self.monodromy_representation.thimbles))] * len(flatten(self.monodromy_representation.components_of_singular_fibers))
+                add += [vector([0]*len(self.monodromy_representation.thimbles))]*2 if self.dim%2 ==0 else []
+                homology_mat = matrix(self.monodromy_representation.extensions + add).transpose()
+                primary_lattice = self.monodromy_representation.primary_lattice
+                self._holomorphic_period_matrix_modification =  integrated_thimbles_holomorphic * homology_mat * primary_lattice.inverse()
         return self._holomorphic_period_matrix_modification
     @property
     def holomorphic_period_matrix(self):
@@ -228,7 +249,7 @@ class Hypersurface(object):
             Qt = PolynomialRing(QQ, 't')
 
             roots_with_multiplicity = Qt(ideal.groebner_basis()[0]).roots(AlgebraicField())
-            if not self.ctx.debug:
+            if not self.ctx.debug and not self.ctx.singular:
                 for e in roots_with_multiplicity:
                     assert e[1]==1, "double critical values, fibration is not Lefschetz"
             self._critical_values=[e[0] for e in roots_with_multiplicity]
@@ -288,56 +309,15 @@ class Hypersurface(object):
 
     @property
     def thimbles(self):
-        if not hasattr(self,'_thimbles'):
-            res = []
-            for pc, path in zip(self.permuting_cycles, self.paths):
-                res += [(pc, path)]
-            self._thimbles = res
-        return self._thimbles
+        return self.monodromy_representation.thimbles
 
     @property
     def permuting_cycles(self):
-        if not hasattr(self, '_permuting_cycles'):
-            self._permuting_cycles = [None for i in range(len(self.monodromy_matrices))]
-            for i in range(len(self.monodromy_matrices)):
-                M = self.monodromy_matrices[i]
-                D, U, V = (M-1).smith_form()
-                self._permuting_cycles[i] = V * vector([1]+[0]*(V.dimensions()[0]-1))
-        return self._permuting_cycles
+        return self.monodromy_representation.permuting_cycles
 
     @property
     def vanishing_cycles(self):
-        if not hasattr(self, '_vanishing_cycles'):
-            self._vanishing_cycles = []
-            for p, M in zip(self.permuting_cycles,self.monodromy_matrices):
-                self._vanishing_cycles += [(M-1)*p]
-        return self._vanishing_cycles
-
-
-    @property
-    def infinity_loops(self):
-        if not hasattr(self, '_infinity_loops'):
-            Mtot=1
-            phi=[]
-            for M, v in zip(self.monodromy_matrices, self.vanishing_cycles):
-                tempM=(M-1)*Mtot
-                phi+=[[c/v for c in tempM.columns()]]
-                Mtot=M*Mtot
-            phi = matrix(phi).transpose().change_ring(ZZ)
-            if not self.ctx.debug:
-                assert Mtot == identity_matrix(len(self.fiber.homology)), "Monodromy around infinity is nontrivial, most likely because the paths do not actually compose to the loop around infinity"
-            self._infinity_loops = phi.rows()
-
-        return self._infinity_loops
-    
-    @property
-    def kernel_boundary(self):
-        if not hasattr(self, '_kernel_boundary'):
-            delta = matrix(self.vanishing_cycles).change_ring(ZZ)
-            self._kernel_boundary = delta.kernel()
-
-        return self._kernel_boundary
-    
+        return self.monodromy_representation.vanishing_cycles
 
     @property
     def extensions(self):
@@ -347,33 +327,8 @@ class Hypersurface(object):
                 affineR = PolynomialRing(QQbar, 'X')
                 affineProjection = R.hom([affineR.gens()[0],1], affineR)
                 self._extensions = [e[0] for e in affineProjection(self.P).roots()]
-
             else:
-                r = len(self.monodromy_matrices)
-                
-                begin = time.time()
-                # compute representants of the quotient H(Y)/imtau
-                D, U, V = self.kernel_boundary.matrix().smith_form()
-                B = D.solve_left(matrix(self.infinity_loops)*V).change_ring(ZZ)*U
-                Brows=B.row_space()
-                compl = [[0 for i in range(Brows.degree())]]
-                rank=Brows.dimension()
-                N=0
-                for i in range(Brows.degree()):
-                    v=[1 if j==i else 0 for j in range(Brows.degree())]
-                    M=block_matrix([[B],[matrix(compl)],[matrix([v])]],subdivide=False)
-                    if rank+N+1==M.rank():
-                        compl += [v]
-                        N+=1
-                    if rank+N == Brows.degree():
-                        break
-                quotient_basis=matrix(compl[1:])
-                self._extensions = (quotient_basis*self.kernel_boundary.matrix()).rows() # NB this is the homology of Y, to recover the homology of X we need to remove the kernel of the period matrix
-                
-                end = time.time()
-                duration_str = time.strftime("%H:%M:%S",time.gmtime(end-begin))
-                logger.info("[%d] Reconstructed homology from monodromy -- total time: %s."% (self.dim, duration_str))
-
+                self._extensions = self.monodromy_representation.extensions
         return self._extensions
 
     @property
@@ -436,14 +391,18 @@ class Hypersurface(object):
                     NS = IntegerRelations(self.period_matrix_modification.transpose()).basis
                 section = self.section
                 fibre = self.fibre_class
-                others = (NS*self.intersection_product_modification*matrix([section, fibre]).transpose()).kernel().basis_matrix()
+                others = (NS * self.intersection_product_modification * matrix([section, fibre]).transpose()).kernel().basis_matrix()
                 short_vectors = QuadraticForm(-2 * others * NS * self.intersection_product_modification * NS.transpose() * others.transpose()).short_vector_list_up_to_length(3)[2]
-                short_vectors = [v*others*NS for v in short_vectors]
+                short_vectors = [v * others * NS for v in short_vectors]
                 exp_divs = [v+section+fibre for v in short_vectors]
                 chosen=[]
+                expected_number = self.degree-1
                 while len(exp_divs)!=0:
-                    chosen += [exp_divs[0]]
-                    exp_divs = [v for v in exp_divs if v * self.intersection_product_modification*chosen[-1]==0]
+                    if len([v for v in exp_divs if v * self.intersection_product_modification*exp_divs[0]==0])>0 or len(chosen) == expected_number-1:
+                        chosen += [exp_divs[0]]
+                        exp_divs = [v for v in exp_divs if v * self.intersection_product_modification*chosen[-1]==0]
+                    else:
+                        exp_divs = exp_divs[1:]
                 self._exceptional_divisors = chosen + [self.section]
 
             else:
@@ -631,7 +590,11 @@ class Hypersurface(object):
             if self.dim%2==1:
                 pM = pM.submatrix(0,0,s-1)
             expand = zero_matrix(R,s-1 if self.dim%2==1 else s).stack(identity_matrix(s-1 if self.dim%2==1 else s))
-            self._integrated_thimbles = matrix([(transition_matrices[j] * expand * pM * permuting_cycles[j])[:R] for j in range(r)]).transpose()
+            integrated_thimbles = []
+            for tM, pcs in zip(transition_matrices, permuting_cycles):
+                for pc in pcs:
+                    integrated_thimbles += [(tM * expand * pM * pc)[:R]]
+            self._integrated_thimbles = matrix(integrated_thimbles).transpose()
         return self._integrated_thimbles
     
     @property
@@ -648,39 +611,12 @@ class Hypersurface(object):
             if self.dim%2==1:
                 pM = pM.submatrix(0,0,s-1)
             expand = zero_matrix(R,s-1 if self.dim%2==1 else s).stack(identity_matrix(s-1 if self.dim%2==1 else s))
-            self._integrated_thimbles_holomorphic = matrix([(transition_matrices[j] * expand * pM * permuting_cycles[j])[:R] for j in range(r)]).transpose()
+            integrated_thimbles = []
+            for tM, pcs in zip(transition_matrices, permuting_cycles):
+                for pc in pcs:
+                    integrated_thimbles += [(tM * expand * pM * pc)[:R]]
+            self._integrated_thimbles_holomorphic = matrix(integrated_thimbles).transpose()
         return self._integrated_thimbles_holomorphic
-
-    def _compute_intersection_product_modification(self):
-        r=len(self.thimbles)
-        inter_prod_thimbles = matrix([[self._compute_intersection_product_thimbles(i,j) for j in range(r)] for i in range(r)])
-        intersection_11 = (-1)**(self.dim-1) * (matrix(self.extensions)*inter_prod_thimbles*matrix(self.extensions).transpose()).change_ring(ZZ)
-        if self.dim%2==0:
-            intersection_02 = zero_matrix(2,2)
-            intersection_02[0,1], intersection_02[1,0] = 1,1
-            intersection_02[1,1] = -1
-            return block_diagonal_matrix(intersection_11, intersection_02)
-        else:
-            return intersection_11
-        
-    def _compute_intersection_product_thimbles(self, i, j):
-        vi = self.thimbles[i][0]
-        Mi = self.monodromy_matrices[i]
-        vj = self.thimbles[j][0]
-        Mj = self.monodromy_matrices[j]
-
-        di, dj = ((Mi-1)*vi), (Mj-1)*vj
-
-        
-        res = di*self.fiber.intersection_product*dj
-        resid = -vi*self.fiber.intersection_product*di
-
-        if i==j:
-            return resid
-        if i<j:
-            return res
-        else:
-            return 0
     
     def _residue_form(self, A, P, k, alphas): 
         """ returns the formal residue of A/P^k at alpha for alpha in alphas """
@@ -736,26 +672,23 @@ class Hypersurface(object):
         return self._basepoint
 
     def lift(self, v):
-        v = matrix(self.extensions + self.infinity_loops).solve_left(v)
-        add = [] if self.dim %2 ==1 else [0,0]
-        return vector(list(v)[:-len(self.infinity_loops)] + add)
+        return self.monodromy_representation.lift(v)
     
     def lift_modification(self, v):
         """Given a vector v, return the orthogonal projection of the homology of the modification on the homology of the hypersurface"""
         return vector(list(matrix(self.homology + self.exceptional_divisors).solve_left(v))[:len(self.homology)])
     
     @property
-    def fibre_class(self):
-        assert self.dim %2 ==0, "no fibre class in odd dimensions"
-        return vector([0]*len(self.extensions) + [1,0])
-    @property
     def hyperplane_class(self):
         assert self.dim %2 ==0, "no hyperplane class in odd dimensions"
         return matrix(self.homology).solve_left(self.fibre_class + sum(self.exceptional_divisors)) # todo in higher dimensions (>=4) we want the orthogonal projection of self.fibre_class
+    
+    @property
+    def fibre_class(self):
+        return self.monodromy_representation.fibre_class
     @property
     def section(self):
-        assert self.dim %2 ==0, "no section in odd dimensions"
-        return vector([0]*len(self.extensions) + [0,1])
+        return self.monodromy_representation.section
 
 
     # Sequential integration methods
