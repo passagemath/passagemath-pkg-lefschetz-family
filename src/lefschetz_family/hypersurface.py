@@ -82,9 +82,9 @@ class Hypersurface(object):
         if not hasattr(self,'_monodromy_representation'):
             assert self.dim!=0, "no monodromy_representation in dimension 0"
             if self.dim == 2:
-                monodromy_representation = MonodromyRepresentationSurface(self.monodromy_matrices, self.fiber.intersection_product)
+                monodromy_representation = MonodromyRepresentationSurface(self.monodromy_matrices, self.fibre.intersection_product)
             else:
-                monodromy_representation = MonodromyRepresentationGeneric(self.monodromy_matrices, self.fiber.intersection_product)
+                monodromy_representation = MonodromyRepresentationGeneric(self.monodromy_matrices, self.fibre.intersection_product)
                 monodromy_representation._add = 0 if self.dim%2==1 else 2
             self._monodromy_representation = monodromy_representation
         return self._monodromy_representation
@@ -94,9 +94,9 @@ class Hypersurface(object):
         """The intersection matrix of the hypersurface"""
         if not hasattr(self,'_intersection_product'):
             if self.dim==0:
-                self._intersection_product=identity_matrix(self.degree)
+                self._intersection_product = identity_matrix(self.degree)
             elif self.dim==1:
-                self._intersection_product=self.intersection_product_modification
+                self._intersection_product = self.intersection_product_modification
             else:
                 homology = matrix(self.homology)
                 IP = homology * self.intersection_product_modification * homology.transpose()
@@ -122,7 +122,7 @@ class Hypersurface(object):
         """The period matrix of the modification of the hypersurface"""
         if not hasattr(self, '_period_matrix_modification'):
             integrated_thimbles = self.integrated_thimbles
-            add  = [vector([0]*len(self.monodromy_representation.thimbles))] * len(flatten(self.monodromy_representation.components_of_singular_fibers))
+            add  = [vector([0]*len(self.monodromy_representation.thimbles))] * len(flatten(self.monodromy_representation.components_of_singular_fibres))
             add += [vector([0]*len(self.monodromy_representation.thimbles))] * 2 if self.dim%2 ==0 else []
             homology_mat = matrix(self.monodromy_representation.extensions + add).transpose()
             primary_lattice = self.monodromy_representation.primary_lattice
@@ -137,9 +137,8 @@ class Hypersurface(object):
                 R = self.P.parent()
                 affineR = PolynomialRing(QQbar, 'X')
                 affineProjection = R.hom([affineR.gens()[0],1], affineR)
-                CBF = ComplexBallField(self.ctx.nbits)
-                period_matrix = matrix([self._residue_form(affineProjection(b), affineProjection(self.P), (b.degree()+len(R.gens()))//self.P.degree(), self.extensions) for b in self.cohomology]).change_ring(CBF)
-                period_matrix = block_matrix([[period_matrix],[matrix([[CBF(1)]*self.degree])]])
+                period_matrix = matrix([self._residue_form(affineProjection(b), affineProjection(self.P), (b.degree()+len(R.gens()))//self.P.degree(), self.extensions) for b in self.cohomology]).change_ring(self.ctx.CBF)
+                period_matrix = block_matrix([[period_matrix],[matrix([[1]*self.degree])]])
                 self._period_matrix=period_matrix
             elif self.dim%2 ==1:
                 self._period_matrix = self.period_matrix_modification * matrix(self.homology).transpose()
@@ -155,19 +154,19 @@ class Hypersurface(object):
                 self._holomorphic_period_matrix_modification = self.period_matrix
             else:
                 integrated_thimbles_holomorphic = self.integrated_thimbles_holomorphic
-                add = [vector([0]*len(self.monodromy_representation.thimbles))] * len(flatten(self.monodromy_representation.components_of_singular_fibers))
+                add = [vector([0]*len(self.monodromy_representation.thimbles))] * len(flatten(self.monodromy_representation.components_of_singular_fibres))
                 add += [vector([0]*len(self.monodromy_representation.thimbles))]*2 if self.dim%2 ==0 else []
                 homology_mat = matrix(self.monodromy_representation.extensions + add).transpose()
                 primary_lattice = self.monodromy_representation.primary_lattice
                 self._holomorphic_period_matrix_modification =  integrated_thimbles_holomorphic * homology_mat * primary_lattice.inverse()
         return self._holomorphic_period_matrix_modification
-        
+
     @property
     def holomorphic_period_matrix(self):
         """The holomorphic period matrix of the hypersurface"""
         if not hasattr(self, '_holomorphic_period_matrix'):
             if self.dim==0:
-                self._holomorphic_period_matrix=self.period_matrix
+                self._holomorphic_period_matrix = self.period_matrix
             else:
                 periods_modification = self.holomorphic_period_matrix_modification
                 homology = matrix(self.homology).transpose()
@@ -199,7 +198,7 @@ class Hypersurface(object):
         if not hasattr(self,'_dim'):
             self._dim = len(self.P.parent().gens())-2
         return self._dim
-    
+
     @property
     def cohomology(self):
         if not hasattr(self,'_cohomology'):
@@ -263,23 +262,23 @@ class Hypersurface(object):
             i=0
             transition_matrices = self.transition_matrices_monodromy
 
-            n = len(self.fiber.homology) 
+            n = len(self.fibre.homology) 
             
-            cohomology_fiber_to_family = self.family._coordinates([self.family.pol.parent()(w) for w in self.fiber.cohomology], self.basepoint)
-            initial_conditions = cohomology_fiber_to_family.inverse()
+            cohomology_fibre_to_family = self.family._coordinates([self.family.pol.parent()(w) for w in self.fibre.cohomology], self.basepoint)
+            initial_conditions = cohomology_fibre_to_family.inverse()
 
             cohomology_monodromies = [initial_conditions.inverse() * M * initial_conditions for M in transition_matrices]
             if self.dim%2==1:
                 cohomology_monodromies = [block_diagonal_matrix([M, identity_matrix(1)]) for M in cohomology_monodromies]
 
-            Ms = [(self.fiber.period_matrix.inverse() * M * self.fiber.period_matrix) for M in cohomology_monodromies]
+            Ms = [(self.fibre.period_matrix.inverse() * M * self.fibre.period_matrix) for M in cohomology_monodromies]
             try:
                 Ms = [M.change_ring(ZZ) for M in Ms]
             except:
                 if self.ctx.debug:
                     logger.info("Monodromy is not integral")
                 else:
-                    raise "Monodromy is not integral"
+                    raise Exception("Monodromy is not integral")
                 
             if not self.ctx.singular and not self.ctx.debug:
                 for M in Ms:
@@ -289,23 +288,23 @@ class Hypersurface(object):
         return self._monodromy_matrices
     
     @property
-    def fiber(self):
-        assert self.dim!=0, "Variety of dimension 0 does not have a fiber"
-        if not hasattr(self,'_fiber'):
+    def fibre(self):
+        assert self.dim!=0, "Variety of dimension 0 does not have a fibre"
+        if not hasattr(self,'_fibre'):
             RtoS = self._RtoS()
             evaluate_at_basepoint = RtoS.codomain().hom([self.basepoint], RtoS.codomain().base_ring())
             P = evaluate_at_basepoint(RtoS(self.P))
             fibration  = self._restrict_fibration() if self.ctx.long_fibration else None
-            self._fiber = Hypersurface(P, 
-                                       fibration = fibration, 
+            self._fibre = Hypersurface(P, 
+                                       fibration=fibration, 
                                        method=self.ctx.method, 
                                        nbits=self.ctx.nbits, 
                                        long_fibration=self.ctx.long_fibration, 
-                                       depth=self.ctx.depth+1, 
+                                       depth=self.ctx.depth+1,
                                        simultaneous_integration=True
                                        )
 
-        return self._fiber
+        return self._fibre
 
     @property
     def thimbles(self):
@@ -327,13 +326,13 @@ class Hypersurface(object):
                 affineR = PolynomialRing(QQbar, 'X')
                 affineProjection = R.hom([affineR.gens()[0],1], affineR)
                 self._extensions = [e[0] for e in affineProjection(self.P).roots()]
-            else:
-                self._extensions = self.monodromy_representation.extensions
+                return self._extensions
+            self._extensions = self.monodromy_representation.extensions
         return self._extensions
 
     @property
     def thimble_extensions(self):
-        """Returns a list of elements of the form `[boundary, extension]` such that `extension` is the extension of a thimble of the fiber of the fiber along the loop around infinity. 
+        """Returns a list of elements of the form `[boundary, extension]` such that `extension` is the extension of a thimble of the fibre of the fibre along the loop around infinity. 
         `boundary` is the boundary of the extended thimble. 
         The list consisting of the `boundary`s forms a basis of the image of the boundary map.
         `extension` if defined only up to an infinity loop."""
@@ -342,19 +341,19 @@ class Hypersurface(object):
                 self._thimble_extensions = []
             else:
                 distinct_vanishing_cycles = []
-                for i, v in enumerate(self.fiber.vanishing_cycles):
-                    if v not in matrix([self.fiber.vanishing_cycles[j] for j in distinct_vanishing_cycles]).image():
+                for i, v in enumerate(self.fibre.vanishing_cycles):
+                    if v not in matrix([self.fibre.vanishing_cycles[j] for j in distinct_vanishing_cycles]).image():
                         distinct_vanishing_cycles+=[i]
                         
-                chains = [self.fiber.vanishing_cycles[i] for i in distinct_vanishing_cycles]
+                chains = [self.fibre.vanishing_cycles[i] for i in distinct_vanishing_cycles]
 
                 thimble_extensions = zero_matrix(len(distinct_vanishing_cycles),len(self.thimbles))
                 for j in distinct_vanishing_cycles:
-                    u=vector([0]*len(self.fiber.thimbles))
+                    u=vector([0]*len(self.fibre.thimbles))
                     u[j]=1
                     for i, M in enumerate(self.thimble_monodromy):
                         v = (M-1)*u
-                        v = self.fiber.lift(v)
+                        v = self.fibre.lift(v)
                         u = M*u
                         c = v/self.vanishing_cycles[i]
                         thimble_extensions[j,i] = c
@@ -404,7 +403,6 @@ class Hypersurface(object):
                     else:
                         exp_divs = exp_divs[1:]
                 self._exceptional_divisors = chosen + [self.section]
-
             else:
                 if self.dim%2 ==1:
                     exceptional_divisors = [self.lift(extension) for _, extension in self.thimble_extensions]
@@ -413,7 +411,7 @@ class Hypersurface(object):
                     exceptional_divisors = []
                     for chain, extension in self.thimble_extensions:
                         exceptional_divisor = self.lift(extension)
-                        exceptional_divisor -= self.fibre_class * (chain*self.fiber.fiber.intersection_product*self.invariant)
+                        exceptional_divisor -= self.fibre_class * (chain*self.fibre.fibre.intersection_product*self.invariant)
                         exceptional_divisors += [exceptional_divisor]
                     exceptional_divisors += [self.section]
                     chains = matrix([chain for chain, _ in self.thimble_extensions] + [self.invariant])
@@ -437,7 +435,7 @@ class Hypersurface(object):
 
         _vars = [v for v in R.gens()]
         S = PolynomialRing(PolynomialRing(QQ, [_vars[i] for i in range(len(_vars)) if i != self._restriction_variable]), 't')
-        t=S.gens()[0]
+        t = S.gens()[0]
 
         l = vector([c for i, c in enumerate(_vars) if i != self._restriction_variable])*vector([c for i,c in enumerate(self.fibration[0]) if i != self._restriction_variable])
         m = vector([c for i, c in enumerate(_vars) if i != self._restriction_variable])*vector([c for i,c in enumerate(self.fibration[1]) if i != self._restriction_variable])
@@ -460,7 +458,7 @@ class Hypersurface(object):
         hyperplanes = []
         for hyperplane in self.fibration[1:]:
             cs = (b-a*self.basepoint) * vector([c for i, c in enumerate(hyperplane) if i != self._restriction_variable])
-            cz = hyperplane[self._restriction_variable]*form
+            cz = hyperplane[self._restriction_variable] * form
             hyperplanes += [cs+cz]
         return hyperplanes
 
@@ -479,7 +477,7 @@ class Hypersurface(object):
 
         _vars = [v for v in R.gens()]
         S = PolynomialRing(PolynomialRing(QQ, [_vars[i] for i in range(len(_vars)) if i != self._restriction_variable]), 't')
-        t=S.gens()[0]
+        t = S.gens()[0]
 
         l = vector([_vars[i] for i in range(len(_vars)) if i != self._restriction_variable])*vector([self.fibration[0][i] for i in range(len(_vars)) if i != self._restriction_variable])
         m = vector([_vars[i] for i in range(len(_vars)) if i != self._restriction_variable])*vector([self.fibration[1][i] for i in range(len(_vars)) if i != self._restriction_variable])
@@ -515,7 +513,7 @@ class Hypersurface(object):
     def transition_matrices_holomorphic(self):
         if not hasattr(self, '_transition_matrices_holomorphic'):
             if hasattr(self, '_transition_matrices') or self.ctx.simultaneous_integration:
-                r = self.fiber.period_matrix.nrows()
+                r = self.fibre.period_matrix.nrows()
                 R = len(self.cohomology)
                 indices = [self.cohomology.index(w) for w in self.holomorphic_forms]
                 indices += [R+i for i in range(r)]
@@ -535,11 +533,11 @@ class Hypersurface(object):
     def transition_matrices_monodromy(self): # this function might very well be buggy, but it's not called very often.
         if not hasattr(self, '_transition_matrices_monodromy'):
             if hasattr(self, '_transition_matrices') or self.ctx.simultaneous_integration:
-                r = self.fiber.period_matrix.nrows()
+                r = self.fibre.period_matrix.nrows()
                 R = len(self.cohomology)
                 transition_matrices = [M.submatrix(R,R) for M in self.transition_matrices]
             elif hasattr(self, '_transition_matrices_holomorphic'):
-                r = self.fiber.period_matrix.nrows()
+                r = self.fibre.period_matrix.nrows()
                 R = len(self.holomorphic_forms)
                 transition_matrices = [M.submatrix(R,R) for M in self.transition_matrices_holomorphic]
             else:
@@ -566,7 +564,7 @@ class Hypersurface(object):
         if hasattr(self, '_transition_matrices_holomorphic'):
             Rholo = len(self.holomorphic_forms)
             R = len(self.cohomology) - Rholo
-            r = len(self.fiber.cohomology)
+            r = len(self.fibre.cohomology)
             intold = [M.submatrix(0,Rholo,Rholo,r) for M in self.transition_matrices_holomorphic]
             intnew = [M.submatrix(0,R,R,r) for M in transition_matrices]
             GM = [M.submatrix(R,R) for M in transition_matrices]
@@ -576,17 +574,62 @@ class Hypersurface(object):
         logger.info("[%d] Integration finished -- total time: %s."% (self.dim, duration_str))
         return transition_matrices
 
+    def _compute_transition_matrices_sequential(self, rat_coefs, indices):
+        R, denom = rat_coefs
+        res = None
+        j=0
+        logger.info("[%d] Computing Picard-Fuchs equations of %d form(s) in dimension %d"% (self.dim, R.nrows(), self.dim))
+        for i, v in zip(indices, R.rows()):
+            L = self.picard_fuchs_equation(v/denom)
+            L = L * L.parent().gens()[0]
+            logger.info("[%d] Integrating operator [%d/%d] with order %d and degree %d."% (self.dim, j+1, R.nrows(), L.order(), L.degree()))
+            integrated = self.integrate(L)
+            derivatives_at_basepoint = self.derivatives_values_at_basepoint(i)
+            integration_correction = diagonal_matrix([1/ZZ(factorial(k)) for k in range(L.order())])
+            initial_conditions = ( integration_correction * derivatives_at_basepoint )
+            if res == None:
+                res = []
+                for M in integrated:
+                    GM = initial_conditions.submatrix(1,0).inverse() * M.submatrix(1,1) * initial_conditions.submatrix(1,0)
+                    intgr = (M * initial_conditions).submatrix(0,0,1)
+                    res += [block_matrix([[identity_matrix(1), intgr],[0, GM]])]
+            else:
+                r = L.order()-1
+                intold = [M.submatrix(0,j,j,r) for M in res]
+                intnew = [(M * initial_conditions).submatrix(0,0,1) for M in integrated]
+                GM = [M.submatrix(j,j) for M in res]
+                res = [block_matrix([[1,0, a],[0,1, b], [0,0,c]]) for a,b,c in zip(intold, intnew, GM)]
+            j+=1
+        return res
+
+    def picard_fuchs_equation(self, v):
+        denom = lcm([r.denominator() for r in v if r!=0])
+        numerators = denom * v
+        L = self.family.picard_fuchs_equation(numerators) * denom
+        L = DifferentialOperator(L)
+        return L
+
+    def integrate(self, L):
+        logger.info("[%d] Computing numerical transition matrices of operator of order %d and degree %d (%d edges total)."% (self.dim, L.order(), L.degree(), len(self.fundamental_group.edges)))
+        begin = time.time()
+        integrator = Integrator(self.fundamental_group, L, self.ctx.nbits)
+        transition_matrices = integrator.transition_matrices
+        end = time.time()
+        duration_str = time.strftime("%H:%M:%S",time.gmtime(end-begin))
+        logger.info("[%d] Integration finished -- total time: %s."% (self.dim, duration_str))
+        return transition_matrices
+
     @property
     def integrated_thimbles(self):
         if not hasattr(self, '_integrated_thimbles'):
-            s=len(self.fiber.homology)
+            s=len(self.fibre.homology)
             transition_matrices = self.transition_matrices
             R=len(self.cohomology)
             r=len(self.thimbles)
             permuting_cycles = self.permuting_cycles
             
             integration_correction = diagonal_matrix([1/ZZ(factorial(k)) for k in range(s if self.dim%2==1 else s+1)])
-            pM = self.fiber.period_matrix
+            pM = self.fibre.period_matrix
             if self.dim%2==1:
                 pM = pM.submatrix(0,0,s-1)
             expand = zero_matrix(R,s-1 if self.dim%2==1 else s).stack(identity_matrix(s-1 if self.dim%2==1 else s))
@@ -600,14 +643,14 @@ class Hypersurface(object):
     @property
     def integrated_thimbles_holomorphic(self):
         if not hasattr(self, '_integrated_thimbles_holomorphic'):
-            s=len(self.fiber.homology)
+            s=len(self.fibre.homology)
             transition_matrices = self.transition_matrices_holomorphic
             R=len(self.holomorphic_forms)
             r=len(self.thimbles)
             permuting_cycles = self.permuting_cycles
             
             integration_correction = diagonal_matrix([1/ZZ(factorial(k)) for k in range(s if self.dim%2==1 else s+1)])
-            pM = self.fiber.period_matrix
+            pM = self.fibre.period_matrix
             if self.dim%2==1:
                 pM = pM.submatrix(0,0,s-1)
             expand = zero_matrix(R,s-1 if self.dim%2==1 else s).stack(identity_matrix(s-1 if self.dim%2==1 else s))
@@ -618,6 +661,21 @@ class Hypersurface(object):
             self._integrated_thimbles_holomorphic = matrix(integrated_thimbles).transpose()
         return self._integrated_thimbles_holomorphic
     
+    # Integration methods
+
+    def derivatives_coordinates(self, i):
+        if not self._coordinatesQ[i]:
+            s=len(self.fibre.homology)
+            RtoS = self._RtoS()
+            w = self.cohomology[i]
+            wt = self._restrict_form(w)
+            derivatives = [RtoS(0), wt]
+            for k in range(s-1 if self.dim%2==0 else s-2):
+                derivatives += [self._derivative(derivatives[-1], RtoS(self.P))] 
+            self._coordinates[i] = self.family.coordinates(derivatives)
+            self._coordinatesQ[i] = True
+        return self._coordinates[i]
+
     def _residue_form(self, A, P, k, alphas): 
         """ returns the formal residue of A/P^k at alpha for alpha in alphas """
         G,U,V = xgcd(P, P.derivative())
@@ -625,6 +683,21 @@ class Hypersurface(object):
         if k==1:
             return [V(alpha)*A(alpha) for alpha in alphas]
         return self._residue_form(A*U/(k-1)+(A*V).derivative()/(k-1)**2, P, k-1, alphas)
+    
+    def derivatives_values_at_basepoint(self, i):
+        RtoS = self._RtoS()
+        s=len(self.fibre.cohomology)
+        w = self.cohomology[i]
+        wt = self._restrict_form(w)
+        derivatives = [RtoS(0), wt]
+        for k in range(s-1):
+            derivatives += [self._derivative(derivatives[-1], RtoS(self.P))] 
+        return self.family._coordinates(derivatives, self.basepoint)
+
+    @classmethod
+    def _derivative(self, A, P): 
+        """computes the numerator of the derivative of A/P^k"""
+        return A.derivative() - A*P.derivative()         
 
     @property
     def fundamental_group(self):
@@ -689,88 +762,3 @@ class Hypersurface(object):
     @property
     def section(self):
         return self.monodromy_representation.section
-
-
-    # Sequential integration methods
-
-    @classmethod
-    def _derivative(self, A, P): 
-        """computes the numerator of the derivative of A/P^k"""
-        field = P.parent().fraction_field()
-        return field(A).derivative() - A*P.derivative()         
-
-    def integrate(self, L):
-        logger.info("[%d] Computing numerical transition matrices of operator of order %d and degree %d (%d edges total)."% (self.dim, L.order(), L.degree(), len(self.fundamental_group.edges)))
-        begin = time.time()
-
-        integrator = Integrator(self.fundamental_group, L, self.ctx.nbits)
-        transition_matrices = integrator.transition_matrices
-        
-        end = time.time()
-        duration_str = time.strftime("%H:%M:%S",time.gmtime(end-begin))
-        logger.info("[%d] Integration finished -- total time: %s."% (self.dim, duration_str))
-
-        return transition_matrices
-
-    def forget_transition_matrices(self):
-        del self._integratedQ
-        del self._transition_matrices
-        del self._integrated_thimbles
-        del self._integrated_thimblesQ
-
-    def _compute_transition_matrices_sequential(self, rat_coefs, indices):
-        R, denom = rat_coefs
-        res = None
-        j=0
-        logger.info("[%d] Computing Picard-Fuchs equations of %d form(s) in dimension %d"% (self.dim, rat_coefs[0].nrows(), self.dim))
-        for i, v in zip(indices, R.rows()):
-            L = self.picard_fuchs_equation(v/denom)
-            L = L * L.parent().gens()[0]
-            integrated = self.integrate(L)
-            derivatives_at_basepoint = self.derivatives_values_at_basepoint(i)
-            integration_correction = diagonal_matrix([1/ZZ(factorial(k)) for k in range(L.order())])
-            initial_conditions = ( integration_correction * derivatives_at_basepoint )
-            if res == None:
-                res = []
-                for M in integrated:
-                    GM = initial_conditions.submatrix(1,0).inverse() * M.submatrix(1,1) * initial_conditions.submatrix(1,0)
-                    intgr = (M * initial_conditions).submatrix(0,0,1)
-                    res += [block_matrix([[identity_matrix(1), intgr],[0, GM]])]
-            else:
-                r = L.order()-1
-                intold = [M.submatrix(0,j,j,r) for M in res]
-                intnew = [(M * initial_conditions).submatrix(0,0,1) for M in integrated]
-                GM = [M.submatrix(j,j) for M in res]
-                res = [block_matrix([[1,0, a],[0,1, b], [0,0,c]]) for a,b,c in zip(intold, intnew, GM)]
-            j+=1
-        return res
-    
-    def picard_fuchs_equation(self, v):
-        denom = lcm([r.denominator() for r in v if r!=0])
-        numerators = denom * v
-        L = self.family.picard_fuchs_equation(numerators) * denom
-        L = DifferentialOperator(L)
-        return L
-
-    def derivatives_values_at_basepoint(self, i):
-        RtoS = self._RtoS()
-        s=len(self.fiber.cohomology)
-        w = self.cohomology[i]
-        wt = self._restrict_form(w)
-        derivatives = [RtoS(0), wt]
-        for k in range(s-1):
-            derivatives += [self._derivative(derivatives[-1], RtoS(self.P))] 
-        return self.family._coordinates(derivatives, self.basepoint)
-
-    def derivatives_coordinates(self, i):
-        if not self._coordinatesQ[i]:
-            s=len(self.fiber.homology)
-            RtoS = self._RtoS()
-            w = self.cohomology[i]
-            wt = self._restrict_form(w)
-            derivatives = [RtoS(0), wt]
-            for k in range(s-1 if self.dim%2==0 else s-2):
-                derivatives += [self._derivative(derivatives[-1], RtoS(self.P))] 
-            self._coordinates[i] = self.family.coordinates(derivatives)
-            self._coordinatesQ[i] = True
-        return self._coordinates[i]

@@ -227,14 +227,16 @@ class EllipticSurface(object):
 
     @property
     def fiber(self):
-        if not hasattr(self,'_fiber'):
-            self._fiber = Hypersurface(self.P(self.basepoint), nbits=self.ctx.nbits, fibration=self._fibration)
-            if self._fiber.intersection_product == matrix([[0,-1], [1,0]]):
-                self._fiber._extensions = list(reversed(self._fiber.extensions))
-                del self._fiber._intersection_product
-                del self._fiber._intersection_product_modification
-            assert self.fiber.intersection_product == matrix([[0,1], [-1,0]])
-        return self._fiber
+        if not hasattr(self,'_fibre'):
+            self._fibre = Hypersurface(self.P(self.basepoint), nbits=self.ctx.nbits, fibration=self._fibration)
+            if self._fibre.intersection_product == matrix([[0,-1], [1,0]]):
+                del self._fibre._monodromy_representation
+                self._fibre.monodromy_representation._extensions_desingularisation = list(reversed(self._fibre.monodromy_representation.extensions_desingularisation))
+                del self._fibre._intersection_product
+                del self._fibre._intersection_product_modification
+            assert self._fibre.intersection_product == matrix([[0,1], [-1,0]])
+        return self._fibre
+
 
     @property
     def thimbles(self):

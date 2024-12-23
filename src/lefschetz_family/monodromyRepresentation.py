@@ -43,7 +43,7 @@ class MonodromyRepresentation(object):
         
         assert prod(list(reversed(monodromy_matrices)))==1, "monodromy representation is badly defined"
         self._monodromy_matrices = monodromy_matrices
-        self._fiber_intersection_product = intersection_product
+        self._fibre_intersection_product = intersection_product
         self._dim = monodromy_matrices[0].nrows()
     
     
@@ -52,8 +52,8 @@ class MonodromyRepresentation(object):
         return self._monodromy_matrices
 
     @property
-    def fiber_intersection_product(self):
-        return self._fiber_intersection_product
+    def fibre_intersection_product(self):
+        return self._fibre_intersection_product
     
     @property
     def dim(self):
@@ -179,8 +179,8 @@ class MonodromyRepresentation(object):
         vj = self.permuting_cycles_desingularisation[j]
         Mj = flatten(self.monodromy_matrices_desingularisation)[j]
         di, dj = (Mi-1) * vi, (Mj-1) * vj
-        res = di*self.fiber_intersection_product*dj
-        resid = -vi*self.fiber_intersection_product*di
+        res = di*self.fibre_intersection_product*dj
+        resid = -vi*self.fibre_intersection_product*di
 
         if i==j:
             return resid
@@ -206,7 +206,7 @@ class MonodromyRepresentation(object):
     def primary_lattice(self):
         if not hasattr(self, '_primary_lattice'):
             extensions = [self.lift(self.desingularise(v)) for v in self.extensions]
-            components_of_singular_fibers =[self.lift(v) for v in flatten(self.components_of_singular_fibers, max_level=2)]
+            components_of_singular_fibers =[self.lift(v) for v in flatten(self.components_of_singular_fibres, max_level=2)]
             primary_lattice = extensions + components_of_singular_fibers
             if self.add==2:
                 primary_lattice += [self.fibre_class, self.section]
@@ -277,8 +277,8 @@ class MonodromyRepresentation(object):
         return self._borders_of_thimbles
 
     @property
-    def components_of_singular_fibers(self):
-        if not hasattr(self, '_components_of_singular_fibers'):
+    def components_of_singular_fibres(self):
+        if not hasattr(self, '_components_of_singular_fibres'):
             ranktot = 0
             rankmax = sum([len(Ms) for Ms in self.monodromy_matrices_desingularisation])
             sing_comps = []
@@ -287,14 +287,32 @@ class MonodromyRepresentation(object):
                 rank = M.dimensions()[0]
                 sing_comps += [[vector([0]*ranktot+list(v) + [0]*(rankmax-ranktot-rank)) for v in M.kernel().gens()]]
                 ranktot+=rank
-            self._components_of_singular_fibers = sing_comps
-        return self._components_of_singular_fibers
+            self._components_of_singular_fibres = sing_comps
+        return self._components_of_singular_fibres
     
     @property
     def fibre_class(self):
         assert self.add == 2, "no fibre class in odd dimensions"
-        return vector([0]*len(self.extensions + flatten(self.components_of_singular_fibers)) + [1,0])
+        return vector([0] * len(self.extensions + flatten(self.components_of_singular_fibres)) + [1,0])
+    
     @property
     def section(self):
         assert self.add == 2, "no section in odd dimensions"
-        return vector([0]*len(self.extensions + flatten(self.components_of_singular_fibers)) + [0,1])
+        return vector([0] * len(self.extensions + flatten(self.components_of_singular_fibres)) + [0,1])
+    
+    @property
+    def monodromy_matrices_desingularisation(self):
+        if not hasattr(self, '_monodromy_matrices_desingularisation'):
+            I1_monodromy_matrices = []
+            for M in self.monodromy_matrices:
+                mats = self.desingularise_matrix(M)
+                Mtot = 1
+                for M2 in mats:
+                    Mtot = M2 * Mtot
+                assert Mtot == M
+                I1_monodromy_matrices += [mats]
+            self._monodromy_matrices_desingularisation = I1_monodromy_matrices
+        return self._monodromy_matrices_desingularisation
+
+    def desingularise_matrix(self, M):
+        raise Exception("`desingularise_matrix` not implemented")

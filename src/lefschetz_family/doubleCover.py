@@ -73,6 +73,19 @@ class DoubleCover(object):
             assert self.dim!=0, "no modification in dimension 0"
             self._intersection_product_modification = self.monodromy_representation.intersection_product
         return self._intersection_product_modification
+
+    @property
+    def monodromy_representation(self):
+        """The monodromy representation associated to the modification of the hypersurface"""
+        if not hasattr(self,'_monodromy_representation'):
+            assert self.dim!=0, "no monodromy_representation in dimension 0"
+            if self.dim == 2:
+                monodromy_representation = MonodromyRepresentationSurface(self.monodromy_matrices, self.fibre.intersection_product)
+            else:
+                monodromy_representation = MonodromyRepresentationGeneric(self.monodromy_matrices, self.fibre.intersection_product)
+                monodromy_representation._add = 0 if self.dim%2==1 else 2
+            self._monodromy_representation = monodromy_representation
+        return self._monodromy_representation
     
     @property
     def intersection_product(self):
@@ -84,7 +97,7 @@ class DoubleCover(object):
                 self._intersection_product = self.intersection_product_modification
             else:
                 homology = matrix(self.homology)
-                IP = homology*self.intersection_product_modification*homology.transpose()
+                IP = homology * self.intersection_product_modification * homology.transpose()
                 assert IP.det() in [1,-1], "intersection product is not unitary"
                 self._intersection_product = IP
         return self._intersection_product
@@ -96,17 +109,18 @@ class DoubleCover(object):
             if self.dim<2:
                 self._homology = identity_matrix(len(self.extensions)).rows()
             else:
-                product_with_exdiv = self.intersection_product_modification * matrix(self.exceptional_divisors).transpose()
+                exceptional_divisors = matrix(self.exceptional_divisors).transpose()
+                product_with_exdiv = self.intersection_product_modification * exceptional_divisors
                 product_with_exdiv = product_with_exdiv.change_ring(ZZ)
                 self._homology = product_with_exdiv.kernel().basis()
         return self._homology
-    
+
     @property
     def period_matrix_modification(self):
         """The period matrix of the modification of the hypersurface"""
         if not hasattr(self, '_period_matrix_modification'):
             integrated_thimbles = self.integrated_thimbles
-            add  = [vector([0]*len(self.monodromy_representation.thimbles))] * len(flatten(self.monodromy_representation.components_of_singular_fibers))
+            add  = [vector([0]*len(self.monodromy_representation.thimbles))] * len(flatten(self.monodromy_representation.components_of_singular_fibres))
             add += [vector([0]*len(self.monodromy_representation.thimbles))] * 2 if self.dim%2 ==0 else []
             homology_mat = matrix(self.monodromy_representation.extensions + add).transpose()
             primary_lattice = self.monodromy_representation.primary_lattice
@@ -117,15 +131,8 @@ class DoubleCover(object):
     def period_matrix(self):
         """The period matrix of the hypersurface"""
         if not hasattr(self, '_period_matrix'):
-            if self.dim==0:
-                R = self.P.parent()
-                affineR = PolynomialRing(QQbar, 'X')
-                affineProjection = R.hom([affineR.gens()[0],1], affineR)
-                period_matrix = matrix([self._residue_form(affineProjection(b), affineProjection(self.P), (b.degree()+len(R.gens()))//self.P.degree(), self.extensions) for b in self.cohomology]).change_ring(self.ctx.CBF)
-                period_matrix = block_matrix([[period_matrix],[matrix([[1]*self.degree])]])
-                self._period_matrix=period_matrix
-            elif self.dim%2 ==1:
-                self._period_matrix = self.period_matrix_modification*matrix(self.homology).transpose()
+            if self.dim%2 == 1:
+                self._period_matrix = self.period_matrix_modification * matrix(self.homology).transpose()
             else:
                 self._period_matrix = block_matrix([[self.period_matrix_modification*matrix(self.homology).transpose()], [matrix(self.intersection_product*self.lift_modification(self.fibre_class))]])
         return self._period_matrix
@@ -138,13 +145,13 @@ class DoubleCover(object):
                 self._holomorphic_period_matrix_modification = self.period_matrix
             else:
                 integrated_thimbles_holomorphic = self.integrated_thimbles_holomorphic
-                add = [vector([0]*len(self.monodromy_representation.thimbles))] * len(flatten(self.monodromy_representation.components_of_singular_fibers))
+                add = [vector([0]*len(self.monodromy_representation.thimbles))] * len(flatten(self.monodromy_representation.components_of_singular_fibres))
                 add += [vector([0]*len(self.monodromy_representation.thimbles))]*2 if self.dim%2 ==0 else []
                 homology_mat = matrix(self.monodromy_representation.extensions + add).transpose()
                 primary_lattice = self.monodromy_representation.primary_lattice
                 self._holomorphic_period_matrix_modification =  integrated_thimbles_holomorphic * homology_mat * primary_lattice.inverse()
         return self._holomorphic_period_matrix_modification
-    
+
     @property
     def holomorphic_period_matrix(self):
         """The holomorphic period matrix of the hypersurface"""
@@ -152,12 +159,14 @@ class DoubleCover(object):
             if self.dim==0:
                 self._holomorphic_period_matrix = self.period_matrix
             else:
-                self._holomorphic_period_matrix = self.holomorphic_period_matrix_modification * matrix(self.homology).transpose()
+                periods_modification = self.holomorphic_period_matrix_modification
+                homology = matrix(self.homology).transpose()
+                self._holomorphic_period_matrix = periods_modification * homology
         return self._holomorphic_period_matrix
 
     @property
     def holomorphic_forms(self):
-        """The list of indices i such that self.cohomology[i] is holomorphic."""
+        """The holomorphic cohomology classes."""
         if not hasattr(self, "_holomorphic_forms"):
             mindeg = min([m.degree() for m in self.cohomology])
             self._holomorphic_forms = [m for m in self.cohomology if m.degree()==mindeg]
@@ -166,6 +175,7 @@ class DoubleCover(object):
 
     @property
     def P(self):
+        """The defining equation of the hypersurface."""
         return self._P
 
     @property
@@ -201,18 +211,6 @@ class DoubleCover(object):
                 self._family = Family(RtoS(self.P), denom=denom**self.degree, shift=self.shift)
         return self._family
     
-    @property
-    def monodromy_representation(self):
-        """The monodromy representation associated to the modification of the hypersurface"""
-        if not hasattr(self,'_monodromy_representation'):
-            assert self.dim!=0, "no monodromy_representation in dimension 0"
-            if self.dim == 2:
-                monodromy_representation = MonodromyRepresentationSurface(self.monodromy_matrices, self.fiber.intersection_product)
-            else:
-                monodromy_representation = MonodromyRepresentationGeneric(self.monodromy_matrices, self.fiber.intersection_product)
-                monodromy_representation._add = 0 if self.dim%2==1 else 2
-            self._monodromy_representation = monodromy_representation
-        return self._monodromy_representation
 
     @property
     def fibration(self):
@@ -241,28 +239,28 @@ class DoubleCover(object):
                     for _, m in roots_with_multiplicity:
                         assert m==1, "double critical values, fibration is not Lefschetz"
                 self._critical_values=[e for e, _ in roots_with_multiplicity]
+                return self._critical_values
 
-            else:
-                R = self.P.parent()
-                _vars = [v for v in R.gens()]
-                forms=[v.dot_product(vector(_vars)) for v in self.fibration[:2]]
-                f=forms[0]/forms[1]
-                S = PolynomialRing(QQ, _vars+['k','t'])
-                k,t= S.gens()[-2:]
-                eqs = [
-                    self.P, 
-                    forms[1]-1, 
-                    t*forms[1]-forms[0]
-                ] + [(f.derivative(var).numerator()*k-self.P.derivative(var)*f.derivative(var).denominator()) for var in _vars]
+            R = self.P.parent()
+            _vars = [v for v in R.gens()]
+            forms=[v.dot_product(vector(_vars)) for v in self.fibration[:2]]
+            f=forms[0]/forms[1]
+            S = PolynomialRing(QQ, _vars+['k','t'])
+            k,t= S.gens()[-2:]
+            eqs = [
+                self.P, 
+                forms[1]-1, 
+                t*forms[1]-forms[0]
+            ] + [(f.derivative(var).numerator()*k-self.P.derivative(var)*f.derivative(var).denominator()) for var in _vars]
 
-                ideal = S.ideal(eqs).elimination_ideal(S.gens()[:-1])
-                Qt = PolynomialRing(QQ, 't')
+            ideal = S.ideal(eqs).elimination_ideal(S.gens()[:-1])
+            Qt = PolynomialRing(QQ, 't')
 
-                roots_with_multiplicity = Qt(ideal.groebner_basis()[0]).roots(AlgebraicField())
-                if not self.ctx.debug:
-                    for e in roots_with_multiplicity:
-                        assert e[1]==1, "double critical values, fibration is not Lefschetz"
-                self._critical_values=[e[0] for e in roots_with_multiplicity]
+            roots_with_multiplicity = Qt(ideal.groebner_basis()[0]).roots(AlgebraicField())
+            if not self.ctx.debug and not self.ctx.singular:
+                for e in roots_with_multiplicity:
+                    assert e[1]==1, "double critical values, fibration is not Lefschetz"
+            self._critical_values=[e[0] for e in roots_with_multiplicity]
         return self._critical_values
     
     @property
@@ -272,16 +270,16 @@ class DoubleCover(object):
             i=0
             transition_matrices = self.transition_matrices_monodromy
 
-            n = len(self.fiber.homology) 
+            n = len(self.fibre.homology) 
             
-            cohomology_fiber_to_family = self.family._coordinates([self.family.pol.parent()(w) for w in self.fiber.cohomology], self.basepoint)
-            initial_conditions = cohomology_fiber_to_family.inverse()
+            cohomology_fibre_to_family = self.family._coordinates([self.family.pol.parent()(w) for w in self.fibre.cohomology], self.basepoint)
+            initial_conditions = cohomology_fibre_to_family.inverse()
 
             cohomology_monodromies = [initial_conditions.inverse() * M * initial_conditions for M in transition_matrices]
             if self.dim%2==1:
                 cohomology_monodromies = [block_diagonal_matrix([M, identity_matrix(1)]) for M in cohomology_monodromies]
 
-            Ms = [(self.fiber.period_matrix.inverse() * M * self.fiber.period_matrix) for M in cohomology_monodromies]
+            Ms = [(self.fibre.period_matrix.inverse() * M * self.fibre.period_matrix) for M in cohomology_monodromies]
             try:
                 Ms = [M.change_ring(ZZ) for M in Ms]
             except:
@@ -298,23 +296,30 @@ class DoubleCover(object):
         return self._monodromy_matrices
     
     @property
-    def fiber(self):
-        assert self.dim!=0, "Variety of dimension 0 does not have a fiber"
-        if not hasattr(self,'_fiber'):
+    def fibre(self):
+        assert self.dim!=0, "Variety of dimension 0 does not have a fibre"
+        if not hasattr(self,'_fibre'):
             denom, RtoS = self._RtoS()
             if self.dim==1:
                 R = PolynomialRing(QQ, ['x0','x1'])
                 x0,x1 = R.gens()
                 alpha = self.P(self.basepoint+1, 1)
                 # beta = denom(self.basepoint+1)**self.degree
-                self._fiber = Hypersurface(x0**2+alpha*x1**2, nbits=self.ctx.nbits)
-            else:
-                evaluate_at_basepoint = RtoS.codomain().hom([self.basepoint], RtoS.codomain().base_ring())
-                P = evaluate_at_basepoint(RtoS(self.P))/denom(self.basepoint)**self.degree
-                fibration  = self._restrict_fibration() if self.ctx.long_fibration else None
-                self._fiber = DoubleCover(P, fibration=fibration, method=self.ctx.method, nbits=self.ctx.nbits, long_fibration=self.ctx.long_fibration, depth=self.ctx.depth+1)
+                self._fibre = Hypersurface(x0**2+alpha*x1**2, nbits=self.ctx.nbits)
+                return self._fibre
+            evaluate_at_basepoint = RtoS.codomain().hom([self.basepoint], RtoS.codomain().base_ring())
+            P = evaluate_at_basepoint(RtoS(self.P))/denom(self.basepoint)**self.degree
+            fibration  = self._restrict_fibration() if self.ctx.long_fibration else None
+            self._fibre = DoubleCover(P, 
+                                        fibration=fibration, 
+                                        method=self.ctx.method, 
+                                        nbits=self.ctx.nbits, 
+                                        long_fibration=self.ctx.long_fibration, 
+                                        depth=self.ctx.depth+1,
+                                        simultaneous_integration=True
+                                        )
 
-        return self._fiber
+        return self._fibre
 
     @property
     def thimbles(self):
@@ -328,47 +333,15 @@ class DoubleCover(object):
     def vanishing_cycles(self):
         return self.monodromy_representation.vanishing_cycles
 
-
-    @property
-    def infinity_loops(self):
-        if not hasattr(self, '_infinity_loops'):
-            Mtot=1
-            phi=[]
-            for M, v in zip(self.monodromy_matrices, self.vanishing_cycles):
-                tempM=(M-1)*Mtot
-                phi+=[[c/v for c in tempM.columns()]]
-                Mtot=M*Mtot
-            phi = matrix(phi).transpose().change_ring(ZZ)
-            if not self.ctx.debug:
-                assert Mtot == identity_matrix(len(self.fiber.homology)), "Monodromy around infinity is nontrivial, most likely because the paths do not actually compose to the loop around infinity"
-            self._infinity_loops = phi.rows()
-
-        return self._infinity_loops
-    
-    @property
-    def kernel_boundary(self):
-        if not hasattr(self, '_kernel_boundary'):
-            delta = matrix(self.vanishing_cycles).change_ring(ZZ)
-            self._kernel_boundary = delta.kernel()
-
-        return self._kernel_boundary
-    
-
     @property
     def extensions(self):
         if not hasattr(self, '_extensions'):
-            if self.dim==0: # this never happens
-                R = self.P.parent()
-                affineR = PolynomialRing(QQbar, 'X')
-                affineProjection = R.hom([affineR.gens()[0],1], affineR)
-                self._extensions = [e[0] for e in affineProjection(self.P).roots()]
-            else:
-                self._extensions = self.monodromy_representation.extensions
+            self._extensions = self.monodromy_representation.extensions
         return self._extensions
 
     @property
     def thimble_extensions(self):
-        """Returns a list of elements of the form `[boundary, extension]` such that `extension` is the extension of a thimble of the fiber of the fiber along the loop around infinity. 
+        """Returns a list of elements of the form `[boundary, extension]` such that `extension` is the extension of a thimble of the fibre of the fibre along the loop around infinity. 
         `boundary` is the boundary of the extended thimble. 
         The list consisting of the `boundary`s forms a basis of the image of the boundary map.
         `extension` if defined only up to an infinity loop."""
@@ -377,19 +350,19 @@ class DoubleCover(object):
                 self._thimble_extensions = []
             else:
                 distinct_vanishing_cycles = []
-                for i, v in enumerate(self.fiber.vanishing_cycles):
-                    if v not in matrix([self.fiber.vanishing_cycles[j] for j in distinct_vanishing_cycles]).image():
+                for i, v in enumerate(self.fibre.vanishing_cycles):
+                    if v not in matrix([self.fibre.vanishing_cycles[j] for j in distinct_vanishing_cycles]).image():
                         distinct_vanishing_cycles+=[i]
                         
-                chains = [self.fiber.vanishing_cycles[i] for i in distinct_vanishing_cycles]
+                chains = [self.fibre.vanishing_cycles[i] for i in distinct_vanishing_cycles]
 
                 thimble_extensions = zero_matrix(len(distinct_vanishing_cycles),len(self.thimbles))
                 for j in distinct_vanishing_cycles:
-                    u=vector([0]*len(self.fiber.thimbles))
+                    u=vector([0]*len(self.fibre.thimbles))
                     u[j]=1
                     for i, M in enumerate(self.thimble_monodromy):
                         v = (M-1)*u
-                        v = self.fiber.lift(v)
+                        v = self.fibre.lift(v)
                         u = M*u
                         c = v/self.vanishing_cycles[i]
                         thimble_extensions[j,i] = c
@@ -424,9 +397,9 @@ class DoubleCover(object):
                     NS = IntegerRelations(self.holomorphic_period_matrix_modification.transpose()).basis
                 section = self.section
                 fibre = self.fibre_class
-                others = (NS*self.intersection_product_modification*matrix([section, fibre]).transpose()).kernel().basis_matrix()
-                short_vectors = QuadraticForm(-2*others*NS*self.intersection_product_modification*NS.transpose()*others.transpose()).short_vector_list_up_to_length(3)[2]
-                short_vectors = [v*others*NS for v in short_vectors]
+                others = (NS * self.intersection_product_modification * matrix([section, fibre]).transpose()).kernel().basis_matrix()
+                short_vectors = QuadraticForm(-2 * others * NS * self.intersection_product_modification * NS.transpose() * others.transpose()).short_vector_list_up_to_length(3)[2]
+                short_vectors = [v * others * NS for v in short_vectors]
                 exp_divs = [v+section+fibre for v in short_vectors]
                 chosen=[]
                 while len(exp_divs)!=0:
@@ -441,7 +414,7 @@ class DoubleCover(object):
                     exceptional_divisors = []
                     for chain, extension in self.thimble_extensions:
                         exceptional_divisor = self.lift(extension)
-                        exceptional_divisor -= self.fibre_class * (chain*self.fiber.fiber.intersection_product*self.invariant)
+                        exceptional_divisor -= self.fibre_class * (chain*self.fibre.fibre.intersection_product*self.invariant)
                         exceptional_divisors += [exceptional_divisor]
                     exceptional_divisors += [self.section]
                     chains = matrix([chain for chain, _ in self.thimble_extensions] + [self.invariant])
@@ -473,7 +446,7 @@ class DoubleCover(object):
         form = (-S(l)+t*S(m))
         denom = b-a*t
 
-        RtoS = R.hom([denom*S(_vars[i]) if i != self._restriction_variable else form for i in range(len(_vars))], S) # this doesn't work any more
+        RtoS = R.hom([denom*S(_vars[i]) if i != self._restriction_variable else form for i in range(len(_vars))], S)
         return denom, RtoS
     
     def _restrict_fibration(self):
@@ -495,7 +468,7 @@ class DoubleCover(object):
     def _restrict_form(self, A):
         """ Given a form A, returns the form denom, A_t such that A/P^k w_n = (A_t/denom)/P_t^k w_{n-1}dt
         """
-        assert self.dim != 0, "cannot restrict form of a dimension 0 variety"
+        assert self.dim !=0, "cannot restrict form of a dimension 0 variety"
 
         if self.dim == 1:
             S = PolynomialRing(PolynomialRing(QQ, ['x0','x1']), 't')
@@ -523,7 +496,7 @@ class DoubleCover(object):
         dt = (- a * S(l) + b * S(m))
 
         return RtoS(A)*dt/denom**(deg+2)
-    
+
     @property
     def transition_matrices(self):
         if not hasattr(self, '_transition_matrices'):
@@ -532,10 +505,8 @@ class DoubleCover(object):
                 return self._transition_matrices
 
             if hasattr(self, '_transition_matrices_holomorphic'):
-                # rat_coefs = self.family.coordinates([self._restrict_form(w) for w in self.cohomology if w not in self.holomorphic_forms])
                 rat_coefs = self._get_coordinates([w for w in self.cohomology if w not in self.holomorphic_forms])
             else:
-                # rat_coefs = self.family.coordinates([self._restrict_form(w) for w in self.cohomology])
                 rat_coefs = self._get_coordinates(self.cohomology)
 
             logger.info("[%d] Computing transition matrices of all forms (%d rational vector(s))."% (self.dim, rat_coefs[0].nrows()))
@@ -551,13 +522,12 @@ class DoubleCover(object):
     def transition_matrices_holomorphic(self):
         if not hasattr(self, '_transition_matrices_holomorphic'):
             if hasattr(self, '_transition_matrices') or self.ctx.simultaneous_integration:
-                r = self.fiber.period_matrix.nrows()
+                r = self.fibre.period_matrix.nrows()
                 R = len(self.cohomology)
                 indices = [self.cohomology.index(w) for w in self.holomorphic_forms]
                 indices += [R+i for i in range(r)]
                 transition_matrices = [M.matrix_from_rows_and_columns(indices, indices) for M in self.transition_matrices]
             else:
-                # rat_coefs = self.family.coordinates([self._restrict_form(w) for w in self.holomorphic_forms])
                 rat_coefs = self._get_coordinates(self.holomorphic_forms)
                 logger.info("[%d] Computing transition matrices for holomorphic forms (%d rational vector(s))."% (self.dim, rat_coefs[0].nrows()))
                 if rat_coefs[0].nrows() > self.ctx.cutoff_simultaneous_integration:
@@ -572,11 +542,11 @@ class DoubleCover(object):
     def transition_matrices_monodromy(self): # this function might very well be buggy, but it's not called very often.
         if not hasattr(self, '_transition_matrices_monodromy'):
             if hasattr(self, '_transition_matrices') or self.ctx.simultaneous_integration:
-                r = self.fiber.period_matrix.nrows()
+                r = self.fibre.period_matrix.nrows()
                 R = len(self.cohomology)
                 transition_matrices = [M.submatrix(R,R) for M in self.transition_matrices]
             elif hasattr(self, '_transition_matrices_holomorphic'):
-                r = self.fiber.period_matrix.nrows()
+                r = self.fibre.period_matrix.nrows()
                 R = len(self.holomorphic_forms)
                 transition_matrices = [M.submatrix(R,R) for M in self.transition_matrices_holomorphic]
             else:
@@ -615,7 +585,7 @@ class DoubleCover(object):
         if hasattr(self, '_transition_matrices_holomorphic'):
             Rholo = len(self.holomorphic_forms)
             R = len(self.cohomology) - Rholo
-            r = len(self.fiber.cohomology)
+            r = len(self.fibre.cohomology)
             intold = [M.submatrix(0,Rholo,Rholo,r) for M in self.transition_matrices_holomorphic]
             intnew = [M.submatrix(0,R,R,r) for M in transition_matrices]
             GM = [M.submatrix(R,R) for M in transition_matrices]
@@ -669,37 +639,33 @@ class DoubleCover(object):
                 denomr = 2*P
             return r*denomr*2*P*Dt - (2*P*(r.derivative()*denomr - r*denomr.derivative()) - r*denomr*P.derivative())
 
-        denom2 = lcm([r.denominator() for r in v if r!=0])
-        numerators = denom2 * v
-        L = self.family.picard_fuchs_equation(numerators)*denom2
+        denom = lcm([r.denominator() for r in v if r!=0])
+        numerators = denom * v
+        L = self.family.picard_fuchs_equation(numerators) * denom
         L = DifferentialOperator(L)
-        return L   
+        return L
 
     def integrate(self, L):
         logger.info("[%d] Computing numerical transition matrices of operator of order %d and degree %d (%d edges total)."% (self.dim, L.order(), L.degree(), len(self.fundamental_group.edges)))
         begin = time.time()
-
         integrator = Integrator(self.fundamental_group, L, self.ctx.nbits)
         transition_matrices = integrator.transition_matrices
-        
         end = time.time()
         duration_str = time.strftime("%H:%M:%S",time.gmtime(end-begin))
         logger.info("[%d] Integration finished -- total time: %s."% (self.dim, duration_str))
-
         return transition_matrices
-
 
     @property
     def integrated_thimbles(self):
         if not hasattr(self, '_integrated_thimbles'):
-            s=len(self.fiber.homology)
+            s=len(self.fibre.homology)
             transition_matrices = self.transition_matrices
             R=len(self.cohomology)
             r=len(self.thimbles)
             permuting_cycles = self.permuting_cycles
             
             integration_correction = diagonal_matrix([1/ZZ(factorial(k)) for k in range(s if self.dim%2==1 else s+1)])
-            pM = self.fiber.period_matrix
+            pM = self.fibre.period_matrix
             if self.dim%2==1:
                 pM = pM.submatrix(0,0,s-1)
             expand = zero_matrix(R,s-1 if self.dim%2==1 else s).stack(identity_matrix(s-1 if self.dim%2==1 else s))
@@ -713,14 +679,14 @@ class DoubleCover(object):
     @property
     def integrated_thimbles_holomorphic(self):
         if not hasattr(self, '_integrated_thimbles_holomorphic'):
-            s=len(self.fiber.homology)
+            s=len(self.fibre.homology)
             transition_matrices = self.transition_matrices_holomorphic
             R=len(self.holomorphic_forms)
             r=len(self.thimbles)
             permuting_cycles = self.permuting_cycles
             
             integration_correction = diagonal_matrix([1/ZZ(factorial(k)) for k in range(s if self.dim%2==1 else s+1)])
-            pM = self.fiber.period_matrix
+            pM = self.fibre.period_matrix
             if self.dim%2==1:
                 pM = pM.submatrix(0,0,s-1)
             expand = zero_matrix(R,s-1 if self.dim%2==1 else s).stack(identity_matrix(s-1 if self.dim%2==1 else s))
@@ -733,14 +699,14 @@ class DoubleCover(object):
     
     # Integration methods
 
-    def derivatives_coordinates(self, i:int ):
+    def derivatives_coordinates(self, i):
         if not hasattr(self, '_coordinatesQ'):
             self._coordinatesQ = [False for i in range(len(self.cohomology))]
         if not hasattr(self, '_coordinates'):
             self._coordinates = [None for i in range(len(self.cohomology))]
 
         if not self._coordinatesQ[i]:
-            s=len(self.fiber.homology)
+            s=len(self.fibre.homology)
             denom, RtoS = self._RtoS()
             w = self.cohomology[i]
             wt = self._restrict_form(w)
@@ -753,13 +719,12 @@ class DoubleCover(object):
                     derivatives += [self._derivative(derivatives[-1], RtoS(self.P)/denom**self.degree)] 
             self._coordinates[i] = self.family.coordinates(derivatives)
             self._coordinatesQ[i] = True
-
         return self._coordinates[i]
 
 
     def derivatives_values_at_basepoint(self, i):
         denom, RtoS = self._RtoS()
-        s=len(self.fiber.homology)
+        s=len(self.fibre.cohomology)
 
         w = self.cohomology[i]
         wt = self._restrict_form(w)
@@ -772,21 +737,20 @@ class DoubleCover(object):
                 return matrix([QQ(w(t=self.basepoint, x1=1)) for w in derivatives]).transpose() 
             if w.degree() == 7: # ad hoc
                 return matrix([QQ(w(t=self.basepoint, x1=1))/QQ(2*self.P(self.basepoint+1, 1)) for w in derivatives]).transpose()
-        else:
-            for k in range(s-1 if self.dim%2==0 else s-2):
-                derivatives += [self._derivative(derivatives[-1], RtoS(self.P)/denom**self.degree)] 
-            return self.family._coordinates(derivatives, self.basepoint)
+        for k in range(s-1):
+            derivatives += [self._derivative(derivatives[-1], RtoS(self.P)/denom**self.degree)] 
+        return self.family._coordinates(derivatives, self.basepoint)
 
     @classmethod
     def _derivative(self, A, P): 
         """computes the numerator of the derivative of A/P^k"""
-        field = P.parent()
         return A.derivative() - A*P.derivative()         
-    
+
     @property
     def fundamental_group(self):
         assert self.dim>0, "Dimension 0 vartiety has no fibration"
         if not hasattr(self,'_fundamental_group'):
+            logger.info("[%d] Computing fundamental group with %d critical values."% (self.dim, len(self.critical_values)))
             begin = time.time()
             if self.ctx.method == 'voronoi':# access future delaunay implem here
                 fundamental_group = FundamentalGroupVoronoi(self.critical_values, self.basepoint)

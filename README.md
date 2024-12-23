@@ -7,11 +7,11 @@ It implements the methods described in [Effective homology and periods of comple
 Here is a runtime benchmark for various examples, with an input precision of 1000 bits:
 | Hypersurface (generic) 	| Time (on 10 M1 cores) | Recovered precision (decimal digits)  |
 |-------------------	|----------------------	| ----------------------                |
-| Elliptic curve    	| 5 seconds            | 300 digits                            |
-| Quartic curve     	| 90 seconds            	| 300 digits                            |
-| Quintic curve     	| 5 minutes            	| 300 digits                            |
-| Sextic curve      	| 15 minutes            	| 300 digits                            |
-| Cubic surface     	| 40 seconds         	| 300 digits                            |
+| Elliptic curve    	| 5 seconds            | 340 digits                            |
+| Quartic curve     	| 90 seconds            	| 340 digits                            |
+| Quintic curve     	| 5 minutes            	| 340 digits                            |
+| Sextic curve      	| 30 minutes            	| 300 digits                            |
+| Cubic surface     	| 40 seconds         	| 340 digits                            |
 | Quartic surface   	| 1 hour        	    | 300 digits                            |
 | Cubic threefold   	| 15 minutes        	    | 300 digits                            |
 | Rational elliptic surface | 10 seconds        	    | 300 digits                            |
