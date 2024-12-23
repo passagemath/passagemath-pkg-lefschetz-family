@@ -30,7 +30,7 @@ from .integrator import Integrator
 from .util import Util
 from .context import Context
 from .hypersurface import Hypersurface
-from .ellipticSingularity import EllipticSingularities
+from .monodromyRepresentationEllipticSurface import MonodromyRepresentationEllipticSurface
 
 import logging
 import time
@@ -64,19 +64,22 @@ class EllipticSurface(object):
         
         if basepoint!= None: # it is useful to be able to specify the basepoint to avoid being stuck in arithmetic computations if critical values have very large modulus
             assert basepoint not in self.critical_values, "basepoint is not regular"
-            self._basepoint=basepoint
+            self._basepoint = basepoint
 
         if not self.ctx.debug:
             fg = self.fundamental_group # this allows reordering the critical points straight away and prevents shenanigans. There should be a better way to do this
 
         self._family = Family(self.P, path=[self.basepoint-1, self.basepoint])
     
+    @property
+    def monodromy_representation(self):
+        if not hasattr(self,'_monodromy_representation'):
+            self._monodromy_representation = MonodromyRepresentationEllipticSurface(self.monodromy_matrices, self.fibre.intersection_product)
+        return self._monodromy_representation
     
     @property
     def intersection_product(self):
-        if not hasattr(self,'_intersection_product'):
-            self._intersection_product=self._compute_intersection_product()
-        return self._intersection_product
+        return self.monodromy_representation.intersection_product
 
     @property
     def primary_periods(self):
@@ -84,13 +87,12 @@ class EllipticSurface(object):
             homology_mat = matrix(self.extensions).transpose()
             integrated_thimbles =  matrix(self.integrated_thimbles)
             self._primary_periods = integrated_thimbles * homology_mat
-
         return self._primary_periods
     
     @property
     def period_matrix(self):
         if not hasattr(self, '_period_matrix'):
-            periods_tot = block_matrix([[self.primary_periods, zero_matrix(len(self.holomorphic_forms), len(flatten(self.singular_components))+2)]])
+            periods_tot = block_matrix([[self.primary_periods, zero_matrix(len(self.holomorphic_forms), len(flatten(self.components_of_singular_fibres))+2)]])
             self._period_matrix = periods_tot * matrix(self.primary_lattice).transpose().inverse()
         return self._period_matrix
 
@@ -129,21 +131,21 @@ class EllipticSurface(object):
     @property
     def monodromy_matrices(self):
         if not hasattr(self, '_monodromy_matrices'):
-            n = len(self.fiber.extensions) 
+            n = len(self.fibre.extensions) 
             
             cyclic_form = self.cyclic_form
             w = cyclic_form[0]*self.P + cyclic_form[1]*self.family.coho1.basis()[1]
 
             integration_correction = diagonal_matrix([1/ZZ(factorial(k)) for k in range(n+1)])
             derivatives_at_basepoint = self.derivatives_values_at_basepoint(w)
-            cohomology_fiber_to_family = self.family._coordinates([self.family.pol.parent()(w) for w in self.fiber.cohomology], self.basepoint)
+            cohomology_fibre_to_family = self.family._coordinates([self.family.pol.parent()(w) for w in self.fibre.cohomology], self.basepoint)
 
-            initial_conditions = integration_correction * derivatives_at_basepoint * cohomology_fiber_to_family.inverse()
+            initial_conditions = integration_correction * derivatives_at_basepoint * cohomology_fibre_to_family.inverse()
             initial_conditions = initial_conditions.submatrix(1,0)
 
             cohomology_monodromies = [initial_conditions.inverse() * M.submatrix(1,1) * initial_conditions for M in self.cyclic_transition_matrices]
 
-            Ms = [(self.fiber.period_matrix.inverse() * M * self.fiber.period_matrix) for M in cohomology_monodromies]
+            Ms = [(self.fibre.period_matrix.inverse() * M * self.fibre.period_matrix) for M in cohomology_monodromies]
             if not self.ctx.debug:
                 Ms = [M.change_ring(ZZ) for M in Ms]
             
@@ -183,7 +185,7 @@ class EllipticSurface(object):
     
     def morsify(self, v):
         """Given an extension of the surface, yields its description as an extension of the morsification."""
-        return v*self.thimbles_confluence
+        return self.monodromy_representation.desingularise(v)
 
     @property
     def vanishing_cycles_morsification(self):
@@ -192,169 +194,71 @@ class EllipticSurface(object):
         return self._vanishing_cycles_morsification
     
     @property
-    def singular_components(self):
-        if not hasattr(self, '_singular_components'):
-            # fullmat = block_matrix([[self.homology], [self.infinity_loops*self.thimbles_confluence]])
-            ranktot = 0
-            rankmax = sum([len(Ms) for Ms in self.monodromy_matrices_morsification])
-            sing_comps = []
-            for M in self.vanishing_cycles_morsification:
-                M = matrix(M)
-                rank = M.dimensions()[0]
-                sing_comps += [[vector([0]*ranktot+list(v) + [0]*(rankmax-ranktot-rank)) for v in M.kernel().gens()]]
-                ranktot+=rank
-            self._singular_components = sing_comps # [[fullmat.solve_left(component)[:-self.infinity_loops.nrows()] for component in components] for components in sing_comps]
-        return self._singular_components
+    def components_of_singular_fibres(self):
+        return self.monodromy_representation.components_of_singular_fibres
 
     
     @property
     def monodromy_matrices_morsification(self):
-        if not hasattr(self, '_monodromy_matrices_morsification'):
-            I1_monodromy_matrices = []
-            for M in self.monodromy_matrices:
-                type, base_change, nu = EllipticSingularities.monodromy_class(M)
-                mats =  [base_change*M*base_change.inverse() for M in EllipticSingularities.fibre_confluence[type][:-1]] + [base_change*EllipticSingularities.fibre_confluence[type][-1]*base_change.inverse()]*nu
-                mats = [M.change_ring(ZZ) for M in mats]
-                Mtot = 1
-                for M2 in mats:
-                    Mtot = M2*Mtot
-                assert Mtot == M
-                I1_monodromy_matrices += [mats]
-
-            self._monodromy_matrices_morsification = I1_monodromy_matrices
-
         return self._monodromy_matrices_morsification
 
     @property
-    def fiber(self):
+    def fibre(self):
         if not hasattr(self,'_fibre'):
             self._fibre = Hypersurface(self.P(self.basepoint), nbits=self.ctx.nbits, fibration=self._fibration)
-            if self._fibre.intersection_product == matrix([[0,-1], [1,0]]):
-                del self._fibre._monodromy_representation
-                self._fibre.monodromy_representation._extensions_desingularisation = list(reversed(self._fibre.monodromy_representation.extensions_desingularisation))
-                del self._fibre._intersection_product
-                del self._fibre._intersection_product_modification
-            assert self._fibre.intersection_product == matrix([[0,1], [-1,0]])
+            # if self._fibre.intersection_product == matrix([[0,-1], [1,0]]):
+                # del self._fibre._monodromy_representation
+                # self._fibre.monodromy_representation._extensions_desingularisation = list(reversed(self._fibre.monodromy_representation.extensions_desingularisation))
+                # self._fibre.monodromy_representation._extensions = list(reversed(self._fibre.monodromy_representation.extensions))
+                # del self._fibre._intersection_product
+                # del self._fibre._intersection_product_modification
+            # assert self._fibre.intersection_product == matrix([[0,1], [-1,0]])
         return self._fibre
-
 
     @property
     def thimbles(self):
-        if not hasattr(self,'_thimbles'):
-            self._thimbles=[]
-            for pcs, path in zip(self.permuting_cycles, self.paths):
-                for pc in pcs:
-                    self._thimbles+=[(pc, path)]
-        return self._thimbles
+        return self.monodromy_representation.thimbles
 
     @property
     def permuting_cycles(self):
-        if not hasattr(self, '_permuting_cycles'):
-            self._permuting_cycles = [[] for i in range(len(self.monodromy_matrices))]
-            for i in range(len(self.monodromy_matrices)):
-                M = self.monodromy_matrices[i]
-                D, U, V = (M-1).smith_form()
-                for j in range(2):
-                    if D[j,j]!=0:
-                        self._permuting_cycles[i] += [ V*vector([1 if k==j else 0 for k in range(2)]) ]
-        return self._permuting_cycles
+        return self.monodromy_representation.permuting_cycles
     
     @property
     def permuting_cycles_morsification(self):
-        if not hasattr(self, '_permuting_cycles_morsification'):
-            monodromy_matrices = flatten(self.monodromy_matrices_morsification)
-            vanishing = flatten(self.vanishing_cycles_morsification)
-            _permuting_cycles_morsification = []
-            for i in range(len(monodromy_matrices)):
-                M = monodromy_matrices[i]
-                D, U, V = (M-1).smith_form()
-                p = V.column(0)
-                if (M-1)*p != vanishing[i]:
-                    p = -p
-                assert (M-1)*p == vanishing[i]
-                _permuting_cycles_morsification += [ p ]
-            self._permuting_cycles_morsification = _permuting_cycles_morsification
-        return self._permuting_cycles_morsification
+        return self.monodromy_representation.permuting_cycles_desingularisation
 
     @property
     def borders_of_thimbles(self):
-        if not hasattr(self, '_borders_of_thimbles'):
-            self._borders_of_thimbles = []
-            for ps, M in zip(self.permuting_cycles, self.monodromy_matrices):
-                self._borders_of_thimbles += [(M-1)*p for p in ps]
-        return self._borders_of_thimbles
-
+        return self.monodromy_representation.borders_of_thimbles
 
     @property
     def infinity_loops(self):
         """The linear combinations of thimbles that correspond to extensions along the (trivial) loop around infinity."""
-        if not hasattr(self, '_infinity_loops'):
-            infinity_cycles = []
-            for i in range(2):
-                v = vector([1 if k==i else 0 for k in range(2)])
-                coefs = []
-                for j in range(len(self.critical_values)):
-                    M = self.monodromy_matrices[j]
-                    if len(self.permuting_cycles[j])==0:
-                        continue
-                    coefs += list(matrix([(M-1)*t for t in self.permuting_cycles[j]]).solve_left((M-1)*v))
-                    v = self.monodromy_matrices[j]*v
-                infinity_cycles+=[vector(coefs)]
-            self._infinity_loops = matrix(infinity_cycles).change_ring(ZZ).rows()
-        return self._infinity_loops
+        return self.monodromy_representation.infinity_loops
 
     @property
     def extensions_morsification(self):
         """Representant of the extensions of the morsification of the elliptic surface. 
         Along with the fibre and section, this constitutes a basis for the second homology group of the surface. 
         The singular fibre components are identified at the end of the list."""
-        if not hasattr(self, '_extensions_morsification'):
-            infinity_loops = [self.morsify(v) for v in self.infinity_loops]
-            delta = matrix(flatten(self.vanishing_cycles_morsification)).change_ring(ZZ)
-            kerdelta = delta.kernel().matrix()
-            D, U, V = kerdelta.smith_form()
-            B = D.solve_left(matrix(infinity_loops)*V).change_ring(ZZ)*U
-            quotient_basis = Util.find_complement(B)
-            if quotient_basis.nrows()==0:
-                self._extensions_morsification = kerdelta.submatrix(0,0,0).rows()
-            else:
-                self._extensions_morsification = (quotient_basis*kerdelta).rows()
-        return self._extensions_morsification
+        return self.monodromy_representation.extensions_desingularisation
     
     @property
     def extensions(self):
         """Representants of the extensions of the elliptic surface."""
-        if not hasattr(self, '_extensions'):
-            delta = matrix(self.borders_of_thimbles).change_ring(ZZ)
-            kerdelta = delta.kernel().matrix()
-            D, U, V = kerdelta.smith_form()
-            B = D.solve_left(matrix(self.infinity_loops)*V).change_ring(ZZ)*U
-            quotient_basis = Util.find_complement(B)
-            if quotient_basis.nrows()==0:
-                self._extensions = kerdelta.submatrix(0,0,0).rows()
-            else:
-                self._extensions = (quotient_basis*kerdelta).rows()
-        return self._extensions
+        return self.monodromy_representation.extensions
 
     @property
     def primary_lattice(self):
-        if not hasattr(self, '_primary_lattice'):
-            extensions = [self.lift(self.morsify(v)) for v in self.extensions]
-            singular_components =[self.lift(v) for v in flatten(self.singular_components, max_level=2)]
-            self._primary_lattice = extensions + singular_components + [self.fibre_class, self.section]
-        return self._primary_lattice
+        return self.monodromy_representation.primary_lattice
    
     def lift(self, v):
         """Given a combination of thimbles of morsification, gives the corresponding homology class"""
-        infinity_loops = [self.morsify(v) for v in self.infinity_loops]
-        v = matrix(self.extensions_morsification + infinity_loops).solve_left(v)
-        return vector(list(v)[:-len(self.infinity_loops)] + [0,0])
+        return self.monodromy_representation.lift(v)
 
     @property
     def homology(self):
-        if not hasattr(self, '_homology'):
-            self._homology = identity_matrix(len(self.extensions_morsification)+2).rows()
-        return self._homology
+        return self.monodromy_representation.homology
 
 
     @property
@@ -419,18 +323,18 @@ class EllipticSurface(object):
     def integrated_thimbles(self):
         if not hasattr(self, '_integrated_thimbles'):
         
-            s=len(self.fiber.extensions)
+            s=len(self.fibre.extensions)
             r=len(self.thimbles)
             
-            pM = self.fiber.period_matrix
+            pM = self.fibre.period_matrix
             integration_correction = diagonal_matrix([1/ZZ(factorial(k)) for k in range(s+1)])
 
             _integrated_thimbles_all=[]
             for transition_matrices, w in zip(self.transition_matrices, self.holomorphic_forms):
                 derivatives_at_basepoint = self.derivatives_values_at_basepoint(w)
-                cohomology_fiber_to_family = self.family._coordinates([self.family.pol.parent()(w) for w in self.fiber.cohomology], self.basepoint)
+                cohomology_fibre_to_family = self.family._coordinates([self.family.pol.parent()(w) for w in self.fibre.cohomology], self.basepoint)
                 
-                initial_conditions = integration_correction * derivatives_at_basepoint * cohomology_fiber_to_family.inverse() * pM
+                initial_conditions = integration_correction * derivatives_at_basepoint * cohomology_fibre_to_family.inverse() * pM
                 initial_conditions = initial_conditions.submatrix(0,0,transition_matrices[0].ncols())
                 _integrated_thimbles = []
                 for i,ps in enumerate(self.permuting_cycles):
@@ -441,40 +345,12 @@ class EllipticSurface(object):
 
 
     def derivatives_values_at_basepoint(self, w):
-        s=len(self.fiber.extensions)
-
+        s=len(self.fibre.extensions)
         derivatives = [self.P.parent()(0), w]
         for k in range(s-1):
             derivatives += [self._derivative(derivatives[-1], self.P)] 
         return self.family._coordinates(derivatives, self.basepoint)
 
-    def _compute_intersection_product(self):
-        r=len(flatten(self.vanishing_cycles_morsification))
-        extensions = matrix(self.extensions_morsification)
-        inter_prod_thimbles = matrix([[self._compute_intersection_product_thimbles(i,j) for j in range(r)] for i in range(r)])
-        intersection_11 = (-1) * (extensions * inter_prod_thimbles * extensions.transpose()).change_ring(ZZ)
-        chi = ZZ((len(self.extensions_morsification)+ZZ(4))/ZZ(12))
-        intersection_02 = matrix(ZZ, [[0,1],[1,-chi]])
-        return block_diagonal_matrix(intersection_11, intersection_02)
-        
-    def _compute_intersection_product_thimbles(self,i,j):
-        vi = self.permuting_cycles_morsification[i]
-        Mi = flatten(self.monodromy_matrices_morsification)[i]
-        vj = self.permuting_cycles_morsification[j]
-        Mj = flatten(self.monodromy_matrices_morsification)[j]
-
-        di, dj = ((Mi-1)*vi), (Mj-1)*vj
-
-        
-        res = di*self.fiber.intersection_product*dj
-        resid = -vi*self.fiber.intersection_product*di
-
-        if i==j:
-            return resid
-        if i<j:
-            return res
-        else:
-            return 0
 
     @classmethod
     def _derivative(self, A, P): 
@@ -516,6 +392,7 @@ class EllipticSurface(object):
             self._basepoint = Util.simple_rational(xmin - (xmax-xmin)*shift, (xmax-xmin)/10)
         return self._basepoint
 
+
     @property
     def neron_severi(self):
         if  not hasattr(self, '_neron_severi'):
@@ -538,10 +415,10 @@ class EllipticSurface(object):
     
     @property
     def fibre_class(self):
-        return self.homology[-2]
+        return self.monodromy_representation.fibre_class
     @property
     def section(self):
-        return self.homology[-1]
+        return self.monodromy_representation.section
     
     @property
     def mordell_weil(self):
@@ -574,9 +451,7 @@ class EllipticSurface(object):
 
     @property
     def types(self):
-        if not hasattr(self, "_types"):
-            self._types = [EllipticSingularities.monodromy_class(M) for M in self.monodromy_matrices]
-        return self._types
+        return self.monodromy_representation.types
 
     @property
     def holomorphic_forms(self):
@@ -593,7 +468,7 @@ class EllipticSurface(object):
             for r in roots:
                 if r in self.critical_values:
                     i = self.critical_values.index(r)
-                    ty, _, n = self.types[i]
+                    ty, _, n = self.monodromy_representation.monodromy_class(self.monodromy_matrices[i])
                     bs += [self._b(L, r, ty, n)]
                 else:
                     bs += [self._b(L, r, "I", 0)]
@@ -605,7 +480,7 @@ class EllipticSurface(object):
                 roots += [r]
                 if r in self.critical_values:
                     i = self.critical_values.index(r)
-                    ty, _, n = self.types[i]
+                    ty, _, n = self.monodromy_representation.monodromy_class(self.monodromy_matrices[i])
                     bs += [self._b(L2, 0, ty, n)]
                 else:
                     bs += [self._b(L2, 0, "I", 0)]
