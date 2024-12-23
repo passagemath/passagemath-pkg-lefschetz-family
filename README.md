@@ -16,7 +16,7 @@ Here is a runtime benchmark for various examples, with an input precision of 100
 | Cubic threefold   	| 15 minutes        	    | 300 digits                            |
 | Rational elliptic surface | 10 seconds        	    | 300 digits                            |
 | Elliptic K3 surface   	| 30 seconds*        	    | 300 digits                            |
-| Degree 2 K3 surface   	| 20 minutes        	    | 300 digits                            |
+| Degree 2 K3 surface   	| 5 minutes        	    | 300 digits                            |
 
 
 *for holomorphic periods
@@ -109,7 +109,7 @@ The object `Hypersurface` can be called with several options:
 - `method` (`"voronoi"` by default/`"delaunay"`/`"delaunay_dual"`): the method used for computing a basis of homotopy. `voronoi` uses integration along paths in the voronoi graph of the critical points; `delaunay` uses integration along paths along the delaunay triangulation of the critical points; `delaunay_dual` paths are along the segments connecting the barycenter of a triangle of the Delaunay triangulation to the middle of one of its edges. In practice, `delaunay` is more efficient for low dimension and low order varieties (such as degree 3 curves and surfaces, and degree 4 curves). This gain in performance is however hindered in higher dimensions because of the algebraic complexity of the critical points (which are defined as roots of high order polynomials, with very large integer coefficients). <b>`"delaunay"` method is not working for now</b>
 - `nbits` (positive integer, `400` by default): the number of bits of precision used as input for the computations. If a computation fails to recover the integral  monodromy matrices, you should try to increase this precision. The output precision seems to be roughly linear with respect to the input precision.
 - `debug` (boolean, `False` by default): whether coherence checks should be done earlier rather than late. We recommend setting to true only if the computation failed in normal mode.
-<!-- - `singular` (boolean, `False` by default): whether the variety is singular. <b>Not implemented yet</b> -->
+- `singular` (boolean, `False` by default): whether the variety is singular.
 
 #### Properties
 
@@ -172,7 +172,7 @@ R.<X,Y,Z> = PolynomialRing(QQ)
 S.<t> = PolynomialRing(R)
 P = X^2*Y+Y^2*Z+Z^2*X+t*X*Y*Z 
 ```
-Then the following creates an object representing the hypersurface:
+Then the following creates an object representing the surface:
 ```python
 from lefschetz_family import EllipticSurface
 X = EllipticSurface(P)
@@ -268,10 +268,10 @@ Cohomology related properties:
 
 Period related properties:
 - `period_matrix`: the holomorphic periods of $X$ in the bases `self.homology` and `self.holomorphic_forms`.
-- `effective_periods`: the holomorphic periods $X$ in the bases `self.effective_lattice` and `self.holomorphic_forms`
+- `primary_periods`: the holomorphic periods $X$ in the bases `self.primary_lattice` and `self.holomorphic_forms`
 
 Sublattices of homology. Unless stated otherwise, lattices are given by the coordinates of a basis of the lattice in the basis `homology`:
-- `effective_lattice`: The lattice of effective cycles of $X$, consisting of the concatenation of `extensions`, `singular_components`, `fibre_class` and `section`.
+- `primary_lattice`: The primary lattice of $X$, consisting of the concatenation of `extensions`, `singular_components`, `fibre_class` and `section`.
 - `neron_severi`: the Néron-Severi group of $X$.
 - `trivial`: the trivial lattice.
 - `essential_lattice`: the essential lattice.
@@ -280,6 +280,66 @@ Sublattices of homology. Unless stated otherwise, lattices are given by the coor
 
 Miscellaneous properties:
 <!-- - `dim`: the dimension of $X$. -->
+- `ctx`: the options of $X$, see related section above.
+
+
+
+
+### DoubleCover
+
+#### Usage
+
+The defining equation for the double cover should be given as a homogeneous polynomial of even degree. Such a polynomial $P$ represents the double cover $X = V(w^2-P)$.
+```python
+R.<X,Y,Z> = PolynomialRing(QQ)
+P = X^6+Y^6+Z^6
+```
+Then the following creates an object representing the variety:
+```python
+from lefschetz_family import DoubleCover
+X = DoubleCover(P)
+```
+#### Copy-paste ready examples
+
+TODO
+
+#### Options
+
+The options are the same as those for `Hypersurface` (see above).
+
+#### Properties
+
+The object `DoubleCover` has several properties.
+Fibration related properties, in positive dimension:
+<!-- - `fibration`: the two linear maps defining the map $X\dashrightarrow \mathbb P^1$. -->
+- `critical_values`: the list critical values  of that map.
+- `basepoint`: the basepoint of the fibration (i.e. a non critical value).
+- `fiber`: the fiber above the basepoint as a `LefschetzFamily` object.
+- `paths`: the list of simple loops around each point of `critical_points`. When this is called, the ordering of `critical_points` changes so that the composition of these loops is the loop around infinity.
+- `family`: the one parameter family corresponding to the fibration.
+
+Homology related properties:
+- `extensions`: the extensions of the fibration.
+- `homology`: the homology of $X$.
+- `fibre_class`: the class of the fibre in `homology`.
+- `section`: the class of the zero section in `homology`.
+- `intersection_product`: the intersection matrix of the surface in the basis `homology`.
+- `lift`: a map taking a combination of thimbles of the morsification with empty boundary and returning its class in `homology`.
+
+Cohomology related properties:
+- `holomorphic_forms`: a basis of rational functions $f(t)$ such that $f(t) \operatorname{Res}\frac{\Omega_2}{P_t}\wedge\mathrm dt$ is a holomorphic form of $S$.
+
+Period related properties:
+- `period_matrix`: the holomorphic periods of $X$ in the bases `self.homology` and `self.holomorphic_forms`.
+- `effective_periods`: the holomorphic periods $X$ in the bases `self.effective_lattice` and `self.holomorphic_forms`
+
+Sublattices of homology. Unless stated otherwise, lattices are given by the coordinates of a basis of the lattice in the basis `homology`:
+- `primary_lattice`: The lattice of effective cycles of $X$, consisting of the concatenation of `extensions`, `singular_components`, `fibre_class` and `section`.
+
+Miscellaneous properties:
+- `P`: the defining equation of $X$.
+- `dim`: the dimension of $X$.
+- `degree`: the degree of $P$.
 - `ctx`: the options of $X$, see related section above.
 
 
@@ -301,9 +361,10 @@ Middle term goals include:
 Long term goals include:
 - [x] Tackling cubic threefolds.
 - [x] Generic code for all dimensions.
-- [ ] Computing periods of singular varieties.
+- [x] Computing periods of K3 surfaces with mildy singular quartic models.
+- [ ] Dealing with other singularities, especially curves.
 - [ ] Computing periods of complete intersections.
-- [ ] Computing periods of weighted projective hypersurfaces, notably double covers of $\mathbb P^2$ ramified along a cubic.
+- [x] Computing periods of weighted projective hypersurfaces, notably double covers of $\mathbb P^2$ ramified along a sextic.
 
 Other directions include:
 - [ ] Computation of homology through braid groups instead of monodromy of differential operators.
