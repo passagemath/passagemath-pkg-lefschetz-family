@@ -99,7 +99,7 @@ class Hypersurface(object):
                 self._intersection_product=self.intersection_product_modification
             else:
                 homology = matrix(self.homology)
-                IP = homology * self.monodromy_representation.intersection_product * homology.transpose()
+                IP = homology * self.intersection_product_modification * homology.transpose()
                 assert IP.det() in [1,-1], "intersection product is not unitary"
                 self._intersection_product = IP
         return self._intersection_product
@@ -112,7 +112,7 @@ class Hypersurface(object):
                 self._homology = identity_matrix(len(self.extensions)).rows()
             else:
                 exceptional_divisors = matrix(self.exceptional_divisors).transpose()
-                product_with_exdiv = self.monodromy_representation.intersection_product * exceptional_divisors
+                product_with_exdiv = self.intersection_product_modification * exceptional_divisors
                 product_with_exdiv = product_with_exdiv.change_ring(ZZ)
                 self._homology = product_with_exdiv.kernel().basis()
         return self._homology
@@ -161,6 +161,7 @@ class Hypersurface(object):
                 primary_lattice = self.monodromy_representation.primary_lattice
                 self._holomorphic_period_matrix_modification =  integrated_thimbles_holomorphic * homology_mat * primary_lattice.inverse()
         return self._holomorphic_period_matrix_modification
+        
     @property
     def holomorphic_period_matrix(self):
         """The holomorphic period matrix of the hypersurface"""
@@ -263,7 +264,6 @@ class Hypersurface(object):
             transition_matrices = self.transition_matrices_monodromy
 
             n = len(self.fiber.homology) 
-            R = len(self.cohomology)
             
             cohomology_fiber_to_family = self.family._coordinates([self.family.pol.parent()(w) for w in self.fiber.cohomology], self.basepoint)
             initial_conditions = cohomology_fiber_to_family.inverse()
