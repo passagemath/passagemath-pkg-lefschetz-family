@@ -4,11 +4,11 @@
 #   - Pierre Lairez (2019): initial implementation
 
 
-from sage.rings.all import *
+#from sage.rings.all import *
 from sage.rings.polynomial.polynomial_ring_constructor import PolynomialRing
 from sage.modules.free_module_element import vector
 from sage.matrix.constructor import Matrix
-from sage.rings.polynomial.polynomial_ring import *
+#from sage.rings.polynomial.polynomial_ring import *
 
 from ..exceptions import NotSmoothError
 

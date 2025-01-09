@@ -17,16 +17,14 @@
 import logging
 import time
 
-from sage.all import (
-    block_matrix,
-    ComplexBallField,
-    diagonal_matrix,
-    Frac,
-    matrix,
-    MatrixSpace,
-    RBF,
-    ZZ
-)
+from sage.matrix.special import block_matrix
+from sage.rings.complex_arb import ComplexBallField
+from sage.matrix.special import diagonal_matrix
+from sage.rings.fraction_field import FractionField as Frac
+from sage.matrix.constructor import Matrix as matrix
+from sage.matrix.matrix_space import MatrixSpace
+from sage.rings.real_arb import RBF
+from sage.rings.integer_ring import Z as ZZ
 
 from ore_algebra import OreAlgebra
 from ore_algebra.analytic.accuracy import PrecisionError
