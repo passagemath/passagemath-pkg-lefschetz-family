@@ -40,7 +40,7 @@ logger = logging.getLogger(__name__)
 
 class EllipticSurface(object):
     def __init__(self, P, basepoint=None, fibration=None, **kwds) -> None:
-        """P, a homogeneous polynomial defining an.
+        """P, a homogeneous polynomial defining an elliptic surface.
 
         This class aims at computing an effective basis of the homology group H_n(X), 
         given as lifts of paths through a Lefschetz fibration.
@@ -206,13 +206,13 @@ class EllipticSurface(object):
     def fibre(self):
         if not hasattr(self,'_fibre'):
             self._fibre = Hypersurface(self.P(self.basepoint), nbits=self.ctx.nbits, fibration=self._fibration)
-            # if self._fibre.intersection_product == matrix([[0,-1], [1,0]]):
-                # del self._fibre._monodromy_representation
-                # self._fibre.monodromy_representation._extensions_desingularisation = list(reversed(self._fibre.monodromy_representation.extensions_desingularisation))
-                # self._fibre.monodromy_representation._extensions = list(reversed(self._fibre.monodromy_representation.extensions))
-                # del self._fibre._intersection_product
-                # del self._fibre._intersection_product_modification
-            # assert self._fibre.intersection_product == matrix([[0,1], [-1,0]])
+            if self._fibre.intersection_product == matrix([[0,-1], [1,0]]):
+                del self._fibre._monodromy_representation
+                self._fibre.monodromy_representation._extensions_desingularisation = list(reversed(self._fibre.monodromy_representation.extensions_desingularisation))
+                self._fibre.monodromy_representation._extensions = list(reversed(self._fibre.monodromy_representation.extensions))
+                del self._fibre._intersection_product
+                del self._fibre._intersection_product_modification
+            assert self._fibre.intersection_product == matrix([[0,1], [-1,0]])
         return self._fibre
 
     @property

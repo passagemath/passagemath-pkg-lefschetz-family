@@ -8,7 +8,6 @@ from .numperiods.integerRelations import IntegerRelations
 from ore_algebra import *
 
 from sage.modules.free_module_element import vector
-from sage.rings.complex_arb import ComplexBallField
 from sage.rings.polynomial.polynomial_ring_constructor import PolynomialRing
 from sage.rings.rational_field import QQ
 from sage.rings.qqbar import AlgebraicField

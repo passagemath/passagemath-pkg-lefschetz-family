@@ -60,8 +60,8 @@ class Context(object):
         #     raise TypeError("depth", type(depth))
         # self.depth = depth
 
-        self.CBF = ComplexBallField(500)
-        self.CF = ComplexField(500)
+        self.CBF = ComplexBallField(4*nbits)
+        self.CF = ComplexField(4*nbits)
         self.depth = depth
         self.cutoff_simultaneous_integration = 2
 
