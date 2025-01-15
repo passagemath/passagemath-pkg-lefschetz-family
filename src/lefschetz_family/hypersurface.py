@@ -394,7 +394,7 @@ class Hypersurface(object):
                 short_vectors = [v * others * NS for v in short_vectors]
                 exp_divs = [v+section+fibre for v in short_vectors]
                 chosen=[]
-                expected_number = self.degree-1
+                expected_number = self.degree-1 # this is a temporary workaround
                 while len(exp_divs)!=0:
                     if len([v for v in exp_divs if v * self.intersection_product_modification*exp_divs[0]==0])>0 or len(chosen) == expected_number-1:
                         chosen += [exp_divs[0]]

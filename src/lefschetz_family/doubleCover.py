@@ -402,9 +402,13 @@ class DoubleCover(object):
                 short_vectors = [v * others * NS for v in short_vectors]
                 exp_divs = [v+section+fibre for v in short_vectors]
                 chosen=[]
+                expected_number = 1 # this is a temporary workaround
                 while len(exp_divs)!=0:
-                    chosen += [exp_divs[0]]
-                    exp_divs = [v for v in exp_divs if v*self.intersection_product_modification*chosen[-1]==0]
+                    if len([v for v in exp_divs if v * self.intersection_product_modification*exp_divs[0]==0])>0 or len(chosen) == expected_number-1:
+                        chosen += [exp_divs[0]]
+                        exp_divs = [v for v in exp_divs if v * self.intersection_product_modification*chosen[-1]==0]
+                    else:
+                        exp_divs = exp_divs[1:]
                 self._exceptional_divisors = chosen + [self.section]
             else:
                 if self.dim%2 ==1:
