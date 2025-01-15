@@ -59,7 +59,7 @@ class MonodromyRepresentation(object):
     @property
     def intersection_product(self):
         if not hasattr(self,'_intersection_product'):
-            self._intersection_product=self._compute_intersection_product()
+            self._intersection_product = self._compute_intersection_product()
         return self._intersection_product
 
     @property

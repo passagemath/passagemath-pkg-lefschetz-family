@@ -250,7 +250,7 @@ class EllipticSurface(object):
 
     @property
     def primary_lattice(self):
-        return self.monodromy_representation.primary_lattice
+        return self.monodromy_representation.primary_lattice.transpose()
    
     def lift(self, v):
         """Given a combination of thimbles of morsification, gives the corresponding homology class"""
@@ -337,15 +337,15 @@ class EllipticSurface(object):
                 initial_conditions = integration_correction * derivatives_at_basepoint * cohomology_fibre_to_family.inverse() * pM
                 initial_conditions = initial_conditions.submatrix(0,0,transition_matrices[0].ncols())
                 _integrated_thimbles = []
-                for i,ps in enumerate(self.permuting_cycles):
-                    _integrated_thimbles += [(transition_matrices[i]*initial_conditions*p)[0] for p in ps]
+                for i, ps in enumerate(self.permuting_cycles):
+                    _integrated_thimbles += [(transition_matrices[i] * initial_conditions * p)[0] for p in ps]
                 _integrated_thimbles_all += [_integrated_thimbles]
             self._integrated_thimbles = _integrated_thimbles_all
         return self._integrated_thimbles
 
 
     def derivatives_values_at_basepoint(self, w):
-        s=len(self.fibre.extensions)
+        s = len(self.fibre.extensions)
         derivatives = [self.P.parent()(0), w]
         for k in range(s-1):
             derivatives += [self._derivative(derivatives[-1], self.P)] 
