@@ -406,7 +406,7 @@ class DoubleCover(object):
                 while len(exp_divs)!=0:
                     if len([v for v in exp_divs if v * self.intersection_product_modification*exp_divs[0]==0])>0 or len(chosen) == expected_number-1:
                         chosen += [exp_divs[0]]
-                        exp_divs = [v for v in exp_divs if v * self.intersection_product_modification*chosen[-1]==0]
+                        exp_divs = [v for v in exp_divs if v * self.intersection_product_modification * chosen[-1]==0]
                     else:
                         exp_divs = exp_divs[1:]
                 self._exceptional_divisors = chosen + [self.section]
@@ -665,10 +665,11 @@ class DoubleCover(object):
             s=len(self.fibre.homology)
             transition_matrices = self.transition_matrices
             R=len(self.cohomology)
-            r=len(self.thimbles)
             permuting_cycles = self.permuting_cycles
+
+            cohomology_fibre_to_family = self.family._coordinates([self.family.pol.parent()(w) for w in self.fibre.cohomology], self.basepoint)
+            initial_conditions = cohomology_fibre_to_family.inverse()
             
-            integration_correction = diagonal_matrix([1/ZZ(factorial(k)) for k in range(s if self.dim%2==1 else s+1)])
             pM = self.fibre.period_matrix
             if self.dim%2==1:
                 pM = pM.submatrix(0,0,s-1)
@@ -676,7 +677,7 @@ class DoubleCover(object):
             integrated_thimbles = []
             for tM, pcs in zip(transition_matrices, permuting_cycles):
                 for pc in pcs:
-                    integrated_thimbles += [(tM * expand * pM * pc)[:R]]
+                    integrated_thimbles += [(tM * expand * initial_conditions * pM * pc)[:R]]
             self._integrated_thimbles = matrix(integrated_thimbles).transpose()
         return self._integrated_thimbles
     
@@ -686,10 +687,11 @@ class DoubleCover(object):
             s=len(self.fibre.homology)
             transition_matrices = self.transition_matrices_holomorphic
             R=len(self.holomorphic_forms)
-            r=len(self.thimbles)
             permuting_cycles = self.permuting_cycles
+
+            cohomology_fibre_to_family = self.family._coordinates([self.family.pol.parent()(w) for w in self.fibre.cohomology], self.basepoint)
+            initial_conditions = cohomology_fibre_to_family.inverse()
             
-            integration_correction = diagonal_matrix([1/ZZ(factorial(k)) for k in range(s if self.dim%2==1 else s+1)])
             pM = self.fibre.period_matrix
             if self.dim%2==1:
                 pM = pM.submatrix(0,0,s-1)
@@ -697,7 +699,7 @@ class DoubleCover(object):
             integrated_thimbles = []
             for tM, pcs in zip(transition_matrices, permuting_cycles):
                 for pc in pcs:
-                    integrated_thimbles += [(tM * expand * pM * pc)[:R]]
+                    integrated_thimbles += [(tM * expand * initial_conditions * pM * pc)[:R]]
             self._integrated_thimbles_holomorphic = matrix(integrated_thimbles).transpose()
         return self._integrated_thimbles_holomorphic
     

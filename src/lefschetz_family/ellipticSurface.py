@@ -93,7 +93,7 @@ class EllipticSurface(object):
     def period_matrix(self):
         if not hasattr(self, '_period_matrix'):
             periods_tot = block_matrix([[self.primary_periods, zero_matrix(len(self.holomorphic_forms), len(flatten(self.components_of_singular_fibres))+2)]])
-            self._period_matrix = periods_tot * matrix(self.primary_lattice).transpose().inverse()
+            self._period_matrix = periods_tot * matrix(self.primary_lattice).inverse()
         return self._period_matrix
 
     @property
@@ -250,7 +250,7 @@ class EllipticSurface(object):
 
     @property
     def primary_lattice(self):
-        return self.monodromy_representation.primary_lattice.transpose()
+        return self.monodromy_representation.primary_lattice
    
     def lift(self, v):
         """Given a combination of thimbles of morsification, gives the corresponding homology class"""
