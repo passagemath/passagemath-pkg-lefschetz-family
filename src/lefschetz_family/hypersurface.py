@@ -47,7 +47,7 @@ logger = logging.getLogger(__name__)
 
 
 class Hypersurface(object):
-    def __init__(self, P, fibration=None, compute_fundamental_group=True, **kwds):
+    def __init__(self, P, basepoint=None, fibration=None, compute_fundamental_group=True, **kwds):
         """P, a homogeneous polynomial defining a smooth hypersurface X in P^{n+1}.
 
         This class aims at computing an effective basis of the homology group H_n(X), 
@@ -65,6 +65,10 @@ class Hypersurface(object):
             self._fibration = fibration
         if self.dim>=1 and not self.ctx.debug:
             fg = self.fundamental_group # this allows reordering the critical points straight away and prevents shenanigans. There should be a better way to do this
+
+        if basepoint!= None: # it is useful to be able to specify the basepoint to avoid being stuck in arithmetic computations if critical values have very large modulus
+            assert basepoint not in self.critical_values, "basepoint is not regular"
+            self._basepoint = basepoint
     
     
     @property
@@ -315,7 +319,7 @@ class Hypersurface(object):
 
     @property
     def vanishing_cycles(self):
-        return self.monodromy_representation.vanishing_cycles
+        return flatten(self.monodromy_representation.vanishing_cycles_desingularisation)
 
     @property
     def extensions(self):
@@ -513,6 +517,7 @@ class Hypersurface(object):
         if not hasattr(self, '_transition_matrices_holomorphic'):
             if hasattr(self, '_transition_matrices') or self.ctx.simultaneous_integration:
                 r = self.fibre.period_matrix.nrows()
+                r = len(self.fibre.cohomology)
                 R = len(self.cohomology)
                 indices = [self.cohomology.index(w) for w in self.holomorphic_forms]
                 indices += [R+i for i in range(r)]

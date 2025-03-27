@@ -200,7 +200,7 @@ class EllipticSurface(object):
     
     @property
     def monodromy_matrices_morsification(self):
-        return self._monodromy_matrices_morsification
+        return self.monodromy_representation.monodromy_matrices_desingularisation
 
     @property
     def fibre(self):
@@ -409,8 +409,8 @@ class EllipticSurface(object):
     @property
     def trivial_lattice(self):
         if  not hasattr(self, '_trivial_lattice'):
-            singular_components = flatten(self.singular_components)
-            self._trivial_lattice = [self.lift(v) for v in singular_components] + [self.fibre_class, self.section]
+            components_of_singular_fibres = flatten(self.components_of_singular_fibres)
+            self._trivial_lattice = [self.lift(v) for v in components_of_singular_fibres] + [self.fibre_class, self.section]
         return self._trivial_lattice
     
     @property
