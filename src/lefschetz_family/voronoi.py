@@ -30,6 +30,8 @@ class FundamentalGroupVoronoi(object):
 
 
     def rationalize(self, z):
+        if z.parent()==QQ:
+            return z
         zcc = self.CC(z)
         zr, zi = zcc.real(), zcc.imag()
         zq = Util.simple_rational(zr, self.prec) + I*Util.simple_rational(zi, self.prec)
