@@ -344,7 +344,7 @@ Miscellaneous properties:
 
 
 ## Contact
-For any question, bug or remark, please contact [eric.pichon-pharabod@inria.fr](mailto:eric.pichon-pharabod@inria.fr).
+For any question, bug or remark, please contact [eric.pichon@mis.mpg.de](mailto:eric.pichon@mis.mpg.de).
 
 ## Roadmap
 Near future milestones:
