@@ -6,7 +6,7 @@ build-backend = "hatchling.build"
 name = "lefschetz-family"
 version = "0.1.15"
 authors = [
-  { name="Eric Pichon-Pharabod", email="eric.pichon@polytechnique.edu" },
+  { name="Eric Pichon-Pharabod", email="eric.pichon@mis.mpg.de" },
 ]
 description = "This package implements algorithms relying on Lefschetz fibration theory to compute periods of algebraic varieties."
 readme = "README.md"
@@ -22,5 +22,5 @@ dependencies = [
 ]
 
 [project.urls]
-"Homepage" = "https://gitlab.inria.fr/epichonp/lefschetz-family"
-"Bug Tracker" = "https://gitlab.inria.fr/epichonp/lefschetz-family/issues"
+"Homepage" = "https://github.com/ericpipha/lefschetz-family"
+"Bug Tracker" = "https://github.com/ericpipha/lefschetz-family"
