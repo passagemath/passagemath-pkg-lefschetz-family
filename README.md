@@ -1,6 +1,5 @@
 # lefschetz-family
 
-:warning: **This repository has been migrated to Github!** It will no longer be updated. For the most recent version, please see  ([https://github.com/ericpipha/lefschetz-family](https://github.com/ericpipha/lefschetz-family)).
 
 ## Description
 This Sage package provides a means of efficiently computing periods of complex projective hypersurfaces and elliptic surfaces over $\mathbb P^1$ with certified rigorous precision bounds.
@@ -120,7 +119,7 @@ Fibration related properties, in positive dimension:
 - `fibration`: a list of independant hyperplanes defining the iterative pencils. The first two element of the list generate the pencil used for the fibration.
 - `critical_values`: the list critical values  of that map.
 - `basepoint`: the basepoint of the fibration (i.e. a non critical value).
-- `fiber`: the fiber above the basepoint as a `Hypersurface` object.
+- `fibre`: the fibre above the basepoint as a `Hypersurface` object.
 - `fundamental_group`: the class computing representants of the fundamental group of $\mathbb P^1$ punctured at the critical values.
 - `paths`: the list of simple loops around each point of `critical_values`. When this is called, the ordering of `critical_values` changes so that the composition of these loops is the loop around infinity.
 - `family`: the one parameter family corresponding to the fibration.
@@ -247,7 +246,7 @@ Fibration related properties, in positive dimension:
 <!-- - `fibration`: the two linear maps defining the map $X\dashrightarrow \mathbb P^1$. -->
 - `critical_values`: the list critical values  of that map.
 - `basepoint`: the basepoint of the fibration (i.e. a non critical value).
-- `fiber`: the fiber above the basepoint as a `LefschetzFamily` object.
+- `fibre`: the fibre above the basepoint as a `LefschetzFamily` object.
 - `paths`: the list of simple loops around each point of `critical_points`. When this is called, the ordering of `critical_points` changes so that the composition of these loops is the loop around infinity.
 - `family`: the one parameter family corresponding to the fibration.
 
@@ -261,10 +260,10 @@ Homology related properties:
 - `intersection_product`: the intersection matrix of the surface in the basis `homology`.
 - `morsify`: a map taking a combination of extensions and returning its coordinates on the basis of thimbles of the morsification.
 - `lift`: a map taking a combination of thimbles of the morsification with empty boundary and returning its class in `homology`.
-- `types`: `types[i]` is the type of the fibre above `critical_values[i]`. It is given as a triple `t, M, nu` where `t` is the letter of the type of the fibre (`'I'`, `'II'`, etc.), `M` is the $\operatorname{SL}_2(\mathbb Z)$ matrices so that `M**(-1)*monodromy_matrices[i]*M` is the representative $M_T$ of the monodromy class (see Table 1. of the paper), and `nu` is the multiplicity of the fibre in the cases where `t` is `'I'` or `'I*'` (otherwise `nu` is `1`). 
+- `types`: `types[i]` is the type of the fibre above `critical_values[i]`. It is given as a triple `t, M, nu` where `t` is the letter of the type of the fibre (`'I'`, `'II'`, etc.), `M` is the ${SL}_2(\mathbb Z)$ matrices so that `M**(-1)*monodromy_matrices[i]*M` is the representative $M_T$ of the monodromy class (see Table 1. of the paper), and `nu` is the multiplicity of the fibre in the cases where `t` is `'I'` or `'I*'` (otherwise `nu` is `1`). 
 
 Cohomology related properties:
-- `holomorphic_forms`: a basis of rational functions $f(t)$ such that $f(t) \operatorname{Res}\frac{\Omega_2}{P_t}\wedge\mathrm dt$ is a holomorphic form of $S$.
+- `holomorphic_forms`: a basis of rational functions $f(t)$ such that $f(t) {Res}\frac{\Omega_2}{P_t}\wedge\mathrm dt$ is a holomorphic form of $S$.
 - `picard_fuchs_equations`: the list of the Picard-Fuchs equations of the holomorphic forms mentionned previously.
 
 Period related properties:
@@ -315,7 +314,7 @@ Fibration related properties, in positive dimension:
 <!-- - `fibration`: the two linear maps defining the map $X\dashrightarrow \mathbb P^1$. -->
 - `critical_values`: the list critical values  of that map.
 - `basepoint`: the basepoint of the fibration (i.e. a non critical value).
-- `fiber`: the fiber above the basepoint as a `LefschetzFamily` object.
+- `fibre`: the fibre above the basepoint as a `LefschetzFamily` object.
 - `paths`: the list of simple loops around each point of `critical_points`. When this is called, the ordering of `critical_points` changes so that the composition of these loops is the loop around infinity.
 - `family`: the one parameter family corresponding to the fibration.
 
@@ -328,7 +327,7 @@ Homology related properties:
 - `lift`: a map taking a combination of thimbles of the morsification with empty boundary and returning its class in `homology`.
 
 Cohomology related properties:
-- `holomorphic_forms`: a basis of rational functions $f(t)$ such that $f(t) \operatorname{Res}\frac{\Omega_2}{P_t}\wedge\mathrm dt$ is a holomorphic form of $S$.
+- `holomorphic_forms`: a basis of rational functions $f(t)$ such that $f(t) {Res}\frac{\Omega_2}{P_t}\wedge\mathrm dt$ is a holomorphic form of $S$.
 
 Period related properties:
 - `period_matrix`: the holomorphic periods of $X$ in the bases `self.homology` and `self.holomorphic_forms`.

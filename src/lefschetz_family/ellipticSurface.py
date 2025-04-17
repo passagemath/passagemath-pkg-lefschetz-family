@@ -149,10 +149,10 @@ class EllipticSurface(object):
             if not self.ctx.debug:
                 Ms = [M.change_ring(ZZ) for M in Ms]
             
-            Mtot=identity_matrix(2)
+            Mtot = identity_matrix(2)
             for M in Ms:
-                Mtot=M*Mtot
-            if Mtot!=identity_matrix(2):
+                Mtot = M * Mtot
+            if Mtot != identity_matrix(2):
                 self._critical_values = self.critical_values+["infinity"]
                 transition_matrix_infinity = 1
                 for M in self.cyclic_transition_matrices:

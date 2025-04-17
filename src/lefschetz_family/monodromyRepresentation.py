@@ -61,6 +61,12 @@ class MonodromyRepresentation(object):
         if not hasattr(self,'_intersection_product'):
             self._intersection_product = self._compute_intersection_product()
         return self._intersection_product
+    
+    @property
+    def intersection_product_extensions(self):
+        if not hasattr(self,'_intersection_product'):
+            self._intersection_product = self._compute_intersection_product_extensions()
+        return self._intersection_product
 
     @property
     def thimbles(self):
@@ -117,7 +123,7 @@ class MonodromyRepresentation(object):
             delta = matrix(self.borders_of_thimbles).change_ring(ZZ)
             kerdelta = delta.kernel().matrix()
             D, U, V = kerdelta.smith_form()
-            infinity_loops = matrix(self.infinity_loops).image().basis()
+            infinity_loops = matrix(self.infinity_loops).image().saturation().basis() # taking saturation here. This should in principle not be necessary
             B = D.solve_left(matrix(infinity_loops) * V).change_ring(ZZ)*U
             quotient_basis = Util.find_complement(B)
             if quotient_basis.nrows()==0:
@@ -144,6 +150,34 @@ class MonodromyRepresentation(object):
             else:
                 self._extensions_desingularisation = (quotient_basis*kerdelta).rows()
         return self._extensions_desingularisation
+
+
+    def _compute_intersection_product_extensions(self):
+        r=len(self.thimbles)
+        extensions = matrix(self.extensions)
+        inter_prod_thimbles = matrix([[self._compute_intersection_product_thimbles_extensions(i,j) for j in range(r)] for i in range(r)])
+        intersection_11 = (extensions * inter_prod_thimbles * extensions.transpose()).change_ring(ZZ)
+        return intersection_11
+
+    def _compute_intersection_product_thimbles_extensions(self, i, j):
+        vi, loopi = self.thimbles[i]
+        vj, loopj = self.thimbles[j]
+
+        Mi = self.monodromy_matrices[loopi]
+        Mj = self.monodromy_matrices[loopj]
+
+        di, dj = (Mi-1)*vi, (Mj-1)*vj
+
+        res = di * self.fibre_intersection_product * dj
+        resid = -vi * self.fibre_intersection_product * dj
+
+        if loopi == loopj:
+            return resid
+        if loopi < loopj:
+            return res
+        else:
+            return 0
+
 
     def _compute_intersection_product(self):
         r=len(flatten(self.vanishing_cycles_desingularisation))
@@ -190,8 +224,8 @@ class MonodromyRepresentation(object):
     def primary_lattice(self):
         if not hasattr(self, '_primary_lattice'):
             extensions = [self.lift(self.desingularise(v)) for v in self.extensions]
-            components_of_singular_fibers =[self.lift(v) for v in flatten(self.components_of_singular_fibres, max_level=2)]
-            primary_lattice = extensions + components_of_singular_fibers
+            components_of_singular_fibres =[self.lift(v) for v in flatten(self.components_of_singular_fibres, max_level=2)]
+            primary_lattice = extensions + components_of_singular_fibres
             if self.add==2:
                 primary_lattice += [self.fibre_class, self.section]
             self._primary_lattice = matrix(primary_lattice).transpose()
@@ -203,7 +237,7 @@ class MonodromyRepresentation(object):
 
     @property
     def permuting_cycles_desingularisation(self):
-        raise "`permuting_cycles_desingularisation` method not implemented"
+        raise NotImplementedError("`permuting_cycles_desingularisation` method not implemented")
     
     @property
     def permuting_cycles_desingularisation(self):
@@ -296,4 +330,4 @@ class MonodromyRepresentation(object):
         return self._monodromy_matrices_desingularisation
 
     def desingularise_matrix(self, M):
-        raise Exception("`desingularise_matrix` not implemented")
+        raise NotImplementedError("`desingularise_matrix` not implemented")

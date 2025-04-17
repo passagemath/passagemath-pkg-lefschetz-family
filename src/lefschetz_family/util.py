@@ -11,9 +11,11 @@ from sage.combinat.integer_vector import IntegerVectors
 from sage.matrix.constructor import matrix
 from sage.matrix.special import block_matrix
 from sage.matrix.special import identity_matrix
+from sage.modules.free_module_element import vector
 
 from sage.misc.prandom import randint, shuffle
 
+from .numperiods.integerRelations import IntegerRelations
 
 import logging
 
@@ -147,7 +149,7 @@ class Util(object):
 
         M = matrix([[1,x1,y1],[1,x2,y2],[1,x3,y3]])
         if abs(CC(M.determinant()))<10e-7:
-            logger.warning("cross product is very small, not certain about orientation")
+            logger.info("cross product is very small, not certain about orientation")
         
         return CC(M.determinant())<0
 
@@ -291,3 +293,36 @@ class Util(object):
             if e not in l2:
                 l2 += [e]
         return l2
+    
+    @classmethod
+    def get_coefficient(cls, c, values, symbols):
+        relations = IntegerRelations(matrix([c] + values).transpose()).basis
+        assert relations.nrows()>=1, "could not identify coefficients"
+        relation = relations[0]
+        return -vector(relation[1:])*vector(symbols)/relation[0]
+    
+    @classmethod
+    def rationalize(cls, c):
+        return cls.get_coefficient(c,[1],[1])
+
+    @classmethod
+    def saturate(cls, Ms):
+        span = identity_matrix(4).image()
+        fam = identity_matrix(4).rows()
+        new = True
+        while new:
+            new=False
+            for v in span.span(fam).basis():
+                for M in Ms:
+                    if M*v not in span.span(fam):
+                        new = True
+                        fam += [M*v]
+        CB = span.span(fam).basis_matrix().transpose()
+        return CB
+    
+    @classmethod
+    def check_if_algebraic(cls, c, order=10):
+        try:
+            return IntegerRelations(matrix([c**i for i in range(order+1)]).transpose()).basis.row(0)
+        except:
+            raise NotImplementedError("Non-algebraic number")

@@ -34,5 +34,5 @@ class MonodromyRepresentationGeneric(MonodromyRepresentation):
     @property
     def add(self):
         if not hasattr(self, '_add'):
-            raise Exception("must tell if fiber and section need to be added")
+            raise Exception("must tell if fibre and section need to be added")
         return self._add

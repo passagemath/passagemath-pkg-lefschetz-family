@@ -38,7 +38,7 @@ class ExceptionalDivisorComputer(object):
     def _compute_coefs(self, b):
         R = self.variety.family.pol(b).parent()
         _vars = [v for v in R.gens()]
-        forms=[v.dot_product(vector(_vars)) for v in self.variety.fiber.fibration[:2]]
+        forms=[v.dot_product(vector(_vars)) for v in self.variety.fibre.fibration[:2]]
         f=forms[0]/forms[1]
         S = PolynomialRing(QQ, _vars+['k','t'])
         k,t= S.gens()[-2:]
@@ -67,7 +67,7 @@ class ExceptionalDivisorComputer(object):
         """This is the fundamental group of C punctured at the points where the critical polynomial has multiple roots."""
         if not hasattr(self, "_fundamental_group_critical"):
             u, t = self.Qu.gens()
-            double_roots = self.Qt((self.critical_values_polynomial*(t-self.variety.fiber.basepoint)).discriminant(t)(u=t)).roots(QQbar, multiplicities=False)
+            double_roots = self.Qt((self.critical_values_polynomial*(t-self.variety.fibre.basepoint)).discriminant(t)(u=t)).roots(QQbar, multiplicities=False)
             fg= FundamentalGroupVoronoi(double_roots,self.variety.basepoint)
             fg.sort_loops()
             self._fundamental_group_critical = fg
@@ -115,7 +115,7 @@ class ExceptionalDivisorComputer(object):
     @property
     def roots_braid(self):
         if not hasattr(self, "_roots_braid"):
-            self._roots_braid = RootsBraid(self.critical_values_polynomial, self.edges, additional_points=[QQ(self.variety.fiber.basepoint)])
+            self._roots_braid = RootsBraid(self.critical_values_polynomial, self.edges, additional_points=[QQ(self.variety.fibre.basepoint)])
         return self._roots_braid
 
     @property
@@ -133,7 +133,7 @@ class ExceptionalDivisorComputer(object):
             xmin=Util.simple_rational(min([s.real() for s in self.marking_init]), 0.000001)
             ymax=Util.simple_rational(max([s.imag() for s in self.marking_init]), 0.000001)
             fake_basepoint = 2*xmin-xmax+ymax*I/5
-            fundamental_group_fibre = FundamentalGroupVoronoi(self.variety.fiber.critical_values + [self.variety.fiber.basepoint], fake_basepoint)
+            fundamental_group_fibre = FundamentalGroupVoronoi(self.variety.fibre.critical_values + [self.variety.fibre.basepoint], fake_basepoint)
             fundamental_group_fibre.sort_loops()
             self._fundamental_group_fibre = fundamental_group_fibre
         return self._fundamental_group_fibre
@@ -141,8 +141,8 @@ class ExceptionalDivisorComputer(object):
     @property
     def words_fibre(self):
         if not hasattr(self, "_words_fibre"):
-            fiber_translator = Translator(self.variety.fiber.fundamental_group, self.fundamental_group_fibre)
-            spec_f = [fiber_translator.specialize_path(path) for path in self.variety.fiber.fundamental_group.pointed_loops]
+            fibre_translator = Translator(self.variety.fibre.fundamental_group, self.fundamental_group_fibre)
+            spec_f = [fibre_translator.specialize_path(path) for path in self.variety.fibre.fundamental_group.pointed_loops]
             fakebp = self.fundamental_group_fibre.points[0]
             
             s_to_FG = [Util.select_closest_index(self.fundamental_group_fibre.points, s) for s in self.marking_init+[fakebp]]
@@ -152,7 +152,7 @@ class ExceptionalDivisorComputer(object):
                     edges[i] = list(reversed(e))
             mtc_init = [[s_to_FG[i] for i in e] for e in edges]
 
-            edges = [[c,p] for c, p in self.fundamental_group_fibre.polygons if c==self.variety.fiber.basepoint][0][1]
+            edges = [[c,p] for c, p in self.fundamental_group_fibre.polygons if c==self.variety.fibre.basepoint][0][1]
             cycle = [i for i in edges[0]]
             while cycle[0] != cycle[-1]:
                 for e in edges:
@@ -207,7 +207,7 @@ class ExceptionalDivisorComputer(object):
                 
                 conjtobp = Util.middle(xtot(iso(ttox(ts[0]))))
                 
-                for tinit, chain in zip(ts[1:], self.variety.fiber.thimbles):
+                for tinit, chain in zip(ts[1:], self.variety.fibre.thimbles):
                     v = chain[0]
                     ttilde = xtot(iso(ttox(tinit)))
                     ttilde = conjtobp**-1*ttilde*conjtobp
@@ -219,10 +219,10 @@ class ExceptionalDivisorComputer(object):
                         if i==0:
                             continue
                         i-=1
-                        monodromy[i, j]+=(self.variety.fiber.monodromy_matrices[i]**p-1)*v / self.variety.fiber.vanishing_cycles[i]
-                        v = self.variety.fiber.monodromy_matrices[i]**p*v
+                        monodromy[i, j]+=(self.variety.fibre.monodromy_matrices[i]**p-1)*v / self.variety.fibre.vanishing_cycles[i]
+                        v = self.variety.fibre.monodromy_matrices[i]**p*v
                 thimble_monodromy += [monodromy]
-                assert v-chain[0] == self.variety.fiber.vanishing_cycles[j], "boundaries not matching"
+                assert v-chain[0] == self.variety.fibre.vanishing_cycles[j], "boundaries not matching"
             self._thimble_monodromy = thimble_monodromy
             self._isos = isos
             end = time.time()
