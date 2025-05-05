@@ -45,7 +45,7 @@ logger = logging.getLogger(__name__)
 
 
 class Fibration(object):
-    def __init__(self, P, basepoint=None, fibration=None, cyclic_form = None, **kwds):
+    def __init__(self, P, basepoint=None, fibration=None, fibre=None, cyclic_form = None, **kwds):
         """P, a homogeneous polynomial defining a family of hypersurfaces.
         """
         
@@ -64,6 +64,11 @@ class Fibration(object):
             self._cyclic_picard_fuchs_equation = L
         
         self._family = Family(self.P, basepoint=basepoint)
+
+        if fibre!=None:
+            assert basepoint!=None, "Cannot specify fibre without specifying basepoint"
+            assert P(basepoint) == fibre.P, "Fibre and P(basepoint) do not match"
+            self._fibre = fibre
 
         if basepoint != None: # it is useful to be able to specify the basepoint to avoid being stuck in arithmetic computations if critical values have very large modulus
             assert basepoint not in self.critical_values, "basepoint is not regular"
@@ -149,10 +154,8 @@ class Fibration(object):
                 transition_matrix_infinity = prod(list(reversed(self.cyclic_transition_matrices))).inverse()
                 self._cyclic_transition_matrices += [transition_matrix_infinity]
                 Ms += [(Mtot.inverse()).change_ring(ZZ)]
-                pathtot = []
-                for path in self.paths:
-                    pathtot = pathtot+path
-                self._paths += [list(reversed(Util.simplify_path(pathtot)))]
+                
+                self._paths += [-sum(self.paths)]
             
             self._monodromy_matrices = Ms
         return self._monodromy_matrices

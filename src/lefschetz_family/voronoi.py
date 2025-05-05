@@ -32,6 +32,7 @@ from sage.graphs.spanning_tree import boruvka
 import os
 
 from .util import Util
+from .pointed_loops import PointedLoop
 
 class FundamentalGroupVoronoi(object):
     def __init__(self, points, basepoint, border=5):
@@ -163,11 +164,17 @@ class FundamentalGroupVoronoi(object):
         if not hasattr(self, "_pointed_loops"):
             pointed_loops = []
             for i in range(len(self.points)-1):
-                pointed_loops += [self.paths[i][:-1] + self.loops[i] + list(reversed(self.paths[i][:-1]))]
+                pointed_loops += [PointedLoop(self.paths[i][:-1] + self.loops[i] + list(reversed(self.paths[i][:-1])))]
             self._pointed_loops = pointed_loops
             del self._voronoi_diagram # this is to allow saving; save pickle
         return self._pointed_loops
     
+    @property
+    def pointed_loops_vertices(self):
+        paths = []
+        for path in self.pointed_loops:
+            paths += [PointedLoop([self.vertices[v] for v in path])]
+        return paths
     
 
     @property
@@ -341,7 +348,32 @@ class FundamentalGroupVoronoi(object):
 
         return self._polygons
 
+class Voronoi(object):
+    def __init__(self, ):
+        return self
+
+    def draw(self):
+        raise NotImplementedError("Drawing polygons is not implemented yet")
 
 
+class Polygon(object):
+    def __init__(self, center, polygon, rationaliser=None):
+        self.center = center
+        edges = []
+        for edge in polygon.bounded_edges():
+            e0 = rationaliser(edge[0])
+            if e0 not in vertices:
+                vertices += [e0]
+            e1 = self.rationalize(self.point_to_complex_number(edge[1]))
+            if e1 not in vertices:
+                vertices += [e1]
+            if e0 != e1:
+                edges += [[vertices.index(e0),vertices.index(e1)]]
+        polygons += [[center, edges]]
 
+    def __repr__(self):
+        s = "Polygon with center"
+        return 
 
+    def draw(self):
+        raise NotImplementedError("Drawing polygons is not implemented yet")

@@ -80,9 +80,9 @@ class MonodromyRepresentation(object):
     
     @property
     def intersection_product_extensions(self):
-        if not hasattr(self,'_intersection_product'):
-            self._intersection_product = self._compute_intersection_product_extensions()
-        return self._intersection_product
+        if not hasattr(self,'_intersection_product_extensions'):
+            self._intersection_product_extensions = self._compute_intersection_product_extensions()
+        return self._intersection_product_extensions
 
     @property
     def thimbles(self):
@@ -227,8 +227,7 @@ class MonodromyRepresentation(object):
     def permuting_cycles(self):
         if not hasattr(self, '_permuting_cycles'):
             self._permuting_cycles = [[] for i in range(len(self.monodromy_matrices))]
-            for i in range(len(self.monodromy_matrices)):
-                M = self.monodromy_matrices[i]
+            for i, M in enumerate(self.monodromy_matrices):
                 D, U, V = (M-1).smith_form()
                 for j in range(self.dim):
                     if D[j,j]!=0:
@@ -240,7 +239,7 @@ class MonodromyRepresentation(object):
     def primary_lattice(self):
         if not hasattr(self, '_primary_lattice'):
             extensions = [self.lift(self.desingularise(v)) for v in self.extensions]
-            components_of_singular_fibres =[self.lift(v) for v in flatten(self.components_of_singular_fibres, max_level=2)]
+            components_of_singular_fibres = [self.lift(v) for v in flatten(self.components_of_singular_fibres, max_level=2)]
             primary_lattice = extensions + components_of_singular_fibres
             if self.add==2:
                 primary_lattice += [self.fibre_class, self.section]
@@ -250,10 +249,6 @@ class MonodromyRepresentation(object):
     def desingularise(self, v):
         """Given an extension of the surface, yields its description as an extension of the desingularisation."""
         return v * self.thimbles_confluence
-
-    @property
-    def permuting_cycles_desingularisation(self):
-        raise NotImplementedError("`permuting_cycles_desingularisation` method not implemented")
     
     @property
     def permuting_cycles_desingularisation(self):

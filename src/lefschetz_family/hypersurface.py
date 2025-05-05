@@ -87,6 +87,13 @@ class Hypersurface(object):
             assert basepoint not in self.critical_values, "basepoint is not regular"
             self._basepoint = basepoint
     
+    def __str__(self):
+        s = "Hypersurface of dimension " + str(self.dim)+" and degree " + str(self.degree)
+        return s
+    
+    def __repr__(self):
+        s = "Hypersurface of dimension " + str(self.dim)+" and degree " + str(self.degree)
+        return s
     
     @property
     def intersection_product_modification(self):

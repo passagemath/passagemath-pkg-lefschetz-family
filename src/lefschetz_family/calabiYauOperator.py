@@ -53,8 +53,6 @@ from .voronoi import FundamentalGroupVoronoi
 from .integrator import Integrator
 from .util import Util
 from .context import Context
-from .hypersurface import Hypersurface
-from .monodromyRepresentationEllipticSurface import MonodromyRepresentationEllipticSurface
 
 import logging
 import time
@@ -95,9 +93,9 @@ class CalabiYauOperator(object):
             self._fundamental_group = fundamental_group
         return self._fundamental_group
 
-    @property
-    def loops(self):
-        return [[self.fundamental_group.vertices[i] for i in loop] for loop in self.fundamental_group.pointed_loops]
+    # @property # I think this is redundant with paths
+    # def loops(self):
+    #     return self.fundamental_group.pointed_loops_vertices
 
     @property
     def singular_values(self):
@@ -510,13 +508,10 @@ class CalabiYauOperator(object):
     @property
     def paths(self):
         if not hasattr(self, "_paths"):
-            paths = [[self.fundamental_group.vertices[i] for i in path] for path in self.fundamental_group.pointed_loops]
+            paths = self.fundamental_group.pointed_loops_vertices
             self.transition_matrices
             if "infinity" in self.singular_values:
-                pathtot = []
-                for path in paths:
-                    pathtot+=path
-                paths += [Util.simplify_path(pathtot)]
+                paths += [-sum(paths)]
             self._paths = paths
         return self._paths
     

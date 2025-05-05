@@ -43,11 +43,14 @@ from sage.misc.flatten import flatten
 
 from sage.modules.free_quadratic_module_integer_symmetric import IntegralLattice
 
+from sage.functions.other import ceil
+
 from .voronoi import FundamentalGroupVoronoi
 from .integrator import Integrator
 from .util import Util
 from .context import Context
 from .monodromyRepresentation import MonodromyRepresentation
+from .monodromyRepresentationFiberedProduct import MonodromyRepresentationFiberedProduct
 from sage.functions.other import binomial
 
 
@@ -73,7 +76,7 @@ def derivative_of_product(a, b, n):
     return sum([binomial(n, i) * tensor_prod(a.row(i+1), b.row(n-i+1)) for i in range(n+1)])
 
 class FiberedProduct(object):
-    def __init__(self, S1, S2, correction=ZZ(1), **kwds) -> None:
+    def __init__(self, S1, S2, correction=None, **kwds) -> None:
         """S1 and S2 are two elliptic surfaces with the same basepoint
         """
         
@@ -82,11 +85,33 @@ class FiberedProduct(object):
         self._S1 = S1
         self._S2 = S2
 
-        self.correction = correction
+        if correction!=None:
+            self._correction = correction
 
         assert S1.basepoint == S2.basepoint, "the basepoint of the input elliptic surfaces should be the same"
         self._basepoint=S1.basepoint
     
+    @property
+    def correction(self):
+        if not hasattr(self, "_correction"):
+            pmin=None
+            L1 = self.S1.family.picard_fuchs_equation(vector([1,0]))
+            L2 = self.S2.family.picard_fuchs_equation(vector([1,0]))
+            L = L1.symmetric_product(L2)
+            for v in L.local_basis_monomials(0):
+                if "log" in str(v):
+                    continue
+                if "/sqrt" in str(v):
+                    p=-1/2
+                elif "sqrt" in str(v):
+                    p=1/2
+                else:
+                    p = QQ(str(v)[2:].replace(")","").replace("(",""))
+                if pmin==None or p<pmin:
+                    pmin = p
+            correction = 1/L.base_ring().gen(0)^ceil(pmin)
+            self._correction = correction
+        return self._correction
     
     @property
     def S1(self):
@@ -117,7 +142,7 @@ class FiberedProduct(object):
     @property
     def paths(self):
         if not hasattr(self, '_paths'):
-            self._paths = [list(map(lambda i:self.fundamental_group.vertices[i], p)) for p in self.fundamental_group.pointed_loops]
+            self._paths = self.fundamental_group.pointed_loops_vertices
         return self._paths
 
     @property
@@ -209,10 +234,8 @@ class FiberedProduct(object):
                 
                 monodromy_matrices += [(Mtot.inverse()).change_ring(ZZ)]
                 
-                pathtot=[]
-                for path in self.paths:
-                    pathtot = pathtot+path
-                self._paths += [list(reversed(Util.simplify_path(pathtot)))]
+                path_infinity = -sum(self.paths)
+                self._paths += [path_infinity]
 
             self._monodromy_matrices = monodromy_matrices
         return self._monodromy_matrices
@@ -221,7 +244,7 @@ class FiberedProduct(object):
     def monodromy_representation(self):
         if not hasattr(self,'_monodromy_representation'):
             fibre_intersection_product = tens1(self.S1.fibre.intersection_product)*tens2(self.S2.fibre.intersection_product)
-            self._monodromy_representation = MonodromyRepresentation(self.monodromy_matrices, fibre_intersection_product)
+            self._monodromy_representation = MonodromyRepresentationFiberedProduct(self.monodromy_matrices, fibre_intersection_product)
         return self._monodromy_representation
 
     @property

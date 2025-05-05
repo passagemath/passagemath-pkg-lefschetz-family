@@ -87,6 +87,20 @@ class EllipticSurface(object):
 
         self._family = Family(self.P, path=[self.basepoint-1, self.basepoint])
     
+    def __str__(self):
+        sP= str(self.P)
+        if len(sP) >40:
+            sP = sP[:20] +"<...>"+ sP[-20:]
+        s = "Elliptic surface with defining equation " + sP
+        return s
+    
+    def __repr__(self):
+        sP= str(self.P)
+        if len(sP) >40:
+            sP = sP[:20] +"<...>"+ sP[-20:]
+        s = "Elliptic surface with defining equation " + sP
+        return s
+
     @property
     def monodromy_representation(self):
         if not hasattr(self,'_monodromy_representation'):
@@ -175,10 +189,9 @@ class EllipticSurface(object):
                     transition_matrix_infinity = M*transition_matrix_infinity
                 self._cyclic_transition_matrices += [transition_matrix_infinity**(-1)]
                 Ms += [(Mtot.inverse()).change_ring(ZZ)]
-                pathtot=[]
-                for path in self.paths:
-                    pathtot=pathtot+path
-                self._paths+=[list(reversed(Util.simplify_path(pathtot)))]
+                
+                pathinfinity = -sum(self.paths)
+                self._paths+=[pathinfinity]
             
             self._monodromy_matrices = Ms
         return self._monodromy_matrices
@@ -392,11 +405,8 @@ class EllipticSurface(object):
 
     @property
     def paths(self):
-        if not hasattr(self,'_paths'):
-            paths = []
-            for path in self.fundamental_group.pointed_loops:
-                paths += [[self.fundamental_group.vertices[v] for v in path]]
-            self._paths= paths
+        if not hasattr(self, "_paths"):
+            self._paths = self.fundamental_group.pointed_loops_vertices
         return self._paths
 
     @property

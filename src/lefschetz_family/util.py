@@ -28,6 +28,7 @@ from sage.matrix.constructor import matrix
 from sage.matrix.special import block_matrix
 from sage.matrix.special import identity_matrix
 from sage.modules.free_module_element import vector
+from sage.rings.integer_ring import ZZ
 
 from sage.misc.prandom import randint, shuffle
 
@@ -47,7 +48,10 @@ class Util(object):
         l=[floor(x)]
         while abs(p-cls.evaluate_continued_fraction(l))>r:
             x=1/(x-l[-1])
-            l+=[floor(x)]
+            try:
+                l+=[ZZ(x)]
+            except:
+                l+=[ZZ(floor(x))]
         return cls.evaluate_continued_fraction(l)
     
     @classmethod

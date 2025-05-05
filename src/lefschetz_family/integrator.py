@@ -52,7 +52,6 @@ class Integrator(object):
         if not hasattr(self, "_transition_matrices"):
             transition_matrices = []
             for path in self.voronoi.pointed_loops:
-                path = Util.simplify_path(path) # this should most likely be done in voronoi instead ?
                 transition_matrix = 1
                 N = len(path)
                 for i in range(N-1):

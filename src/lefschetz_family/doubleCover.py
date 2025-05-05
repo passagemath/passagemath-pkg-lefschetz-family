@@ -794,9 +794,7 @@ class DoubleCover(object):
     def paths(self):
         assert self.dim>0, "Dimension 0 vartiety has no fibration"
         if not hasattr(self,'_paths'):
-            paths = []
-            for path in self.fundamental_group.pointed_loops:
-                paths += [[self.fundamental_group.vertices[v] for v in path]]
+            paths = self.fundamental_group.pointed_loops_vertices
             self._paths = paths
         return self._paths
 
