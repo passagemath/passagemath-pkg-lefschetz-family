@@ -8,8 +8,9 @@ It implements the methods described in
 - [A semi-numerical algorithm for the homology lattice and periods of complex elliptic surfaces over the projective line](https://doi.org/10.1016/j.jsc.2024.102357) ([arxiv:2306.05263](https://arxiv.org/abs/2401.05131)).
 - [Periods of fibre products of elliptic surfaces and the Gamma conjecture](https://arxiv.org/abs/2505.07685) ([arxiv:2306.05263](https://arxiv.org/abs/2505.07685)).
 - [Periods in algebraic geometry : computations and application to Feynman integrals](https://theses.hal.science/tel-04823423) ([hal:tel-04823423](https://theses.hal.science/tel-04823423)).
-
 Please cite accordingly.
+
+
 Here is a runtime benchmark for various examples, with an input precision of 1000 bits:
 | Hypersurface (generic) 	| Time (on 10 M1 cores) | Recovered precision (decimal digits)  |
 |-------------------	|----------------------	| ----------------------                |
