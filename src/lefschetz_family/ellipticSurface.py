@@ -78,7 +78,7 @@ class EllipticSurface(object):
         self._P = P
         self._fibration = fibration
         
-        if basepoint!= None: # it is useful to be able to specify the basepoint to avoid being stuck in arithmetic computations if critical values have very large modulus
+        if basepoint!= None and not self.ctx.debug: # it is useful to be able to specify the basepoint to avoid being stuck in arithmetic computations if critical values have very large modulus
             assert basepoint not in self.critical_values, "basepoint is not regular"
             self._basepoint = basepoint
 

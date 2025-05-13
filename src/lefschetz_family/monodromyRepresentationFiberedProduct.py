@@ -33,6 +33,7 @@ from sage.matrix.special import zero_matrix
 from sage.functions.other import floor
 from sage.functions.other import ceil
 from sage.arith.misc import gcd
+from sage.misc.misc_c import prod
 from sage.misc.flatten import flatten
 
 
@@ -70,18 +71,23 @@ def tens22(M):
             res[2*i+1,2*j+1] = M[i,j]
     return res
 
-class MonodromyRepresentationFiberedProduct(MonodromyRepresentation):
+class MonodromyRepresentationFibreProduct(MonodromyRepresentation):
 
-    # def __init__(self, monodromy_matrices, intersection_product):
-    #     super().__init__(monodromy_matrices, intersection_product)
+    def __init__(self, monodromy_matrices, intersection_product, expected_types):
+        super().__init__(monodromy_matrices, intersection_product)
+        self.expected_types = expected_types
 
     @property
     def types(self):
         if not hasattr(self, "_types"):
             types = []
-            for M in self.monodromy_matrices:
+            for M, expected_type in zip(self.monodromy_matrices, self.expected_types):
                 M1, M2 = self.disentangle(M)
                 t, _, n = self.monodromy_class(M1)
+                if t + str(n) != expected_type:
+                    M1, M2 = -M1, -M2
+                    t, _, n = self.monodromy_class(M1)
+                assert t + str(n) == expected_type, "Unexpected fibre type"
                 type1 = t + str(n) if t in ["I", "I*"] else t
                 t, _, n = self.monodromy_class(M2)
                 type2 = t + str(n) if t in ["I", "I*"] else t
@@ -95,13 +101,16 @@ class MonodromyRepresentationFiberedProduct(MonodromyRepresentation):
             M1 = M.submatrix(0,2,2,2)
         M1 = (M1 / M1.det()**(1/2)).change_ring(ZZ)
         M2 = matrix(2, [(M.submatrix(i,j,2,2)*M1.inverse())[0,0] for i,j in [[0,0],[0,2],[2,0],[2,2]]])
-        if M1==-identity_matrix(2) or M2==-identity_matrix(2):
-            M1, M2 = -M1, -M2
         return M1, M2
     
-    def desingularise_matrix(self, M):
+    def desingularise_matrix(self, M, expected_type):
         M1, M2 = self.disentangle(M)
         ty, base_change, nu = self.monodromy_class(M1)
+        
+        if ty + str(nu) != expected_type:
+            M1, M2 = -M1, -M2
+            ty, base_change, nu = self.monodromy_class(M1)
+
         decomposition = self.fibre_confluence[ty]
 
         mats = []
@@ -119,24 +128,46 @@ class MonodromyRepresentationFiberedProduct(MonodromyRepresentation):
         mats = [M.change_ring(ZZ) for M in mats]
         return mats
     
+    @property
+    def monodromy_matrices_desingularisation(self):
+        if not hasattr(self, '_monodromy_matrices_desingularisation'):
+            monodromy_matrices_desingularisation = []
+            for M, expected_type in zip(self.monodromy_matrices, self.expected_types):
+                decomposition = self.desingularise_matrix(M, expected_type)
+                assert prod(list(reversed(decomposition))) == M
+                monodromy_matrices_desingularisation += [decomposition]
+            self._monodromy_matrices_desingularisation = monodromy_matrices_desingularisation
+        return self._monodromy_matrices_desingularisation
+
+
     def _compute_intersection_product_thimbles(self,i,j):
         vi = self.permuting_cycles_desingularisation[i]
-        Mi = flatten(self.monodromy_matrices_desingularisation)[i]
         vj = self.permuting_cycles_desingularisation[j]
+
+        Mi = flatten(self.monodromy_matrices_desingularisation)[i]
         Mj = flatten(self.monodromy_matrices_desingularisation)[j]
+        
         di, dj = (Mi-1) * vi, (Mj-1) * vj
-        res = di*self.fibre_intersection_product*dj
-        resid = -vi*self.fibre_intersection_product*dj
+
+        res = di * self.fibre_intersection_product * dj
+        resid = -vi * self.fibre_intersection_product * dj
 
         loopi = i//2
         loopj = j//2
 
         if loopi==loopj:
             return resid
-        if i<j:
+        if loopi<loopj:
             return res
         else:
             return 0
+
+    @property
+    def intersection_product_resolution(self):
+        if not hasattr(self, "_intersection_product_resolution"):
+            cycles = matrix(self.extensions_resolution)
+            self._intersection_product_resolution = cycles * self.intersection_product * cycles.transpose()
+        return self._intersection_product_resolution
 
     @property
     def vanishing_cycles_conifold_transition(self):
@@ -172,26 +203,26 @@ class MonodromyRepresentationFiberedProduct(MonodromyRepresentation):
             self._vanishing_cycles_conifold_transition = sing_comps
         return self._vanishing_cycles_conifold_transition
     
-    def lift(self, v):
+    def resolve(self, v):
             """Given a combination of thimbles of desingularisation, gives the corresponding homology class"""
-            v = super(MonodromyRepresentationFiberedProduct, self).lift(v)
-            vccts = [super(MonodromyRepresentationFiberedProduct, self).lift(v2) for v2 in flatten(self.vanishing_cycles_conifold_transition)]
-
+            vccts = [self.lift(v2) for v2 in flatten(self.vanishing_cycles_conifold_transition)]
             assert matrix(vccts) * self.intersection_product * v ==0, "cycle does not survive resolution"
-        
             v = matrix(self.extensions_resolution + vccts).solve_left(v)
-            
             return vector(list(v)[:-len(vccts)])
+    
+    def proj(self, v):
+            """Given a resolved homology class, gives a corresponding homology class (up to a conifold transition vanishing cycle)"""
+            return v * matrix(self.extensions_resolution)
     
     @property
     def extensions_resolution(self):
         if not hasattr(self, "_extensions_resolution"):
-            cosfs = matrix([super(MonodromyRepresentationFiberedProduct, self).lift(v) for v in flatten(self.vanishing_cycles_conifold_transition)])
-            cosf_orth = (cosfs * self.intersection_product).change_ring(ZZ).right_kernel_matrix()
-            toremove = cosfs.image().intersection(cosf_orth.image()).basis_matrix()
-            compl = Util.find_complement(cosf_orth.solve_left(toremove).change_ring(ZZ))
+            vanishing_cycles = matrix([self.lift(v) for v in flatten(self.vanishing_cycles_conifold_transition)])
+            vanishing_cycles_orth = (vanishing_cycles * self.intersection_product).change_ring(ZZ).right_kernel_matrix()
+            toremove = vanishing_cycles.image().intersection(vanishing_cycles_orth.image()).basis_matrix()
+            compl = Util.find_complement(vanishing_cycles_orth.solve_left(toremove).change_ring(ZZ))
             
-            self._extensions_resolution = (compl * cosf_orth).rows()
+            self._extensions_resolution = (compl * vanishing_cycles_orth).rows()
         return self._extensions_resolution
 
     @property
@@ -203,19 +234,47 @@ class MonodromyRepresentationFiberedProduct(MonodromyRepresentation):
     @property
     def primary_lattice(self):
         if not hasattr(self, '_primary_lattice'):
-            extensions = [super(MonodromyRepresentationFiberedProduct, self).lift(self.desingularise(v)) for v in self.extensions]
-            components_of_singular_fibres = [super(MonodromyRepresentationFiberedProduct, self).lift(v) for v in flatten(self.components_of_singular_fibres, max_level=2)]
+            extensions = [super(MonodromyRepresentationFibreProduct, self).lift(self.desingularise(v)) for v in self.extensions]
+            # extensions = matrix(extensions).change_ring(ZZ).image().basis()
+            components_of_singular_fibres = [super(MonodromyRepresentationFibreProduct, self).lift(v) for v in flatten(self.components_of_singular_fibres, max_level=2)]
             primary_lattice = extensions + components_of_singular_fibres
             self._primary_lattice = matrix(primary_lattice).transpose()
         return self._primary_lattice
-
-
+    
     @property
-    def self_intersection_section(self):
-        if not hasattr(self, '_self_intersection_section'):
-            chi = ZZ((len(self.extensions_desingularisation)+ZZ(4))/ZZ(12))
-            self._self_intersection_section = -chi
-        return self._self_intersection_section
+    def primary_periods(self):
+        if not hasattr(self, '_primary_periods'):
+            homology_mat = matrix(self.extensions).transpose()
+            integrated_thimbles =  matrix(self.integrated_thimbles)
+            self._primary_periods = integrated_thimbles * homology_mat
+        return self._primary_periods
+
+
+    
+    @property
+    def permuting_cycles(self):
+        if not hasattr(self, '_permuting_cycles'):
+            permuting_cycles = [identity_matrix(self.dim).rows() for i in range(len(self.monodromy_matrices))]
+            self._permuting_cycles = permuting_cycles
+        return self._permuting_cycles
+    
+    @property
+    def infinity_loops(self):
+        """The linear combinations of thimbles that correspond to extensions along the (trivial) loop around infinity."""
+        if not hasattr(self, '_infinity_loops'):
+            infinity_cycles = []
+            for i in range(self.dim):
+                v = vector([1 if k==i else 0 for k in range(self.dim)])
+                coefs = []
+                for j in range(len(self.monodromy_matrices)):
+                    M = self.monodromy_matrices[j]
+                    if len(self.permuting_cycles[j])==0:
+                        continue
+                    coefs += list(v)
+                    v = self.monodromy_matrices[j]*v
+                infinity_cycles+=[vector(coefs)]
+            self._infinity_loops = matrix(infinity_cycles).change_ring(ZZ).rows()
+        return self._infinity_loops
     
     @property
     def add(self):

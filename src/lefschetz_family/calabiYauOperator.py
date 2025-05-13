@@ -143,7 +143,7 @@ class CalabiYauOperator(object):
             self._has_integral_monodromy = len(unknowns) == 1
 
             if not self.has_integral_monodromy:
-                P = lcm([sum([c*t**i for i, c in enumerate(Util.check_if_algebraic(u))]) for u in unknowns])
+                P = lcm([sum([c*t**i for i, c in enumerate(Util.check_if_algebraic(u))]) for u in unknowns[1:]])
                 SF = P.splitting_field("nu").optimized_representation(name="nu")[0]
                 P = SF.defining_polynomial()
 
@@ -238,7 +238,7 @@ class CalabiYauOperator(object):
     def conifold_fibres(self):
         if not hasattr(self, "_conifold_fibres"):
             conifold_fibres = [i for i, t in enumerate(self.types) if t == (1,2)]
-            conifold_fibres.sort(key = lambda i: abs(self.singular_values[i])if self.singular_values[i]!="infinity" else max([abs(c) for c in self.singular_values if c!="infinity"])+1)
+            conifold_fibres.sort(key = lambda i: abs(self.ctx.CBF(self.singular_values[i]))if self.singular_values[i]!="infinity" else max([abs(self.ctx.CBF(c)) for c in self.singular_values if c!="infinity"])+1)
             self._conifold_fibres = conifold_fibres
         return self._conifold_fibres
 
@@ -314,6 +314,7 @@ class CalabiYauOperator(object):
                         break
             if found:
                 d = (2*3*5*7*11*13*17*19*21*23*29)**10
+                d = 1
                 holo, log2, log3 = (Mmum-1)**3*log4/d, (Mmum-1)**2*log4/d, (Mmum-1)*log4
 
             if not found:
@@ -416,7 +417,7 @@ class CalabiYauOperator(object):
 
         SF, r = self.number_field
         nu = SF.gen(0)
-        R = PolynomialRing(SF, 'lambda')
+        R = PolynomialRing(SF, 'lambda3')
         constants = [1, self.ctx.CBF(zeta(3))/twopiI**3]
         variables = [1, R.gen(0)]
 

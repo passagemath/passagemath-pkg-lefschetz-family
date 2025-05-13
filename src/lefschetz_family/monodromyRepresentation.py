@@ -103,6 +103,7 @@ class MonodromyRepresentation(object):
                 for j in range(self.dim):
                     if D[j,j]!=0:
                         permuting_cycles[i] += [ V * vector([1 if k==j else 0 for k in range(self.dim)]) ]
+                permuting_cycles[i] = matrix(permuting_cycles[i]).image().gens()
             self._permuting_cycles = permuting_cycles
         return self._permuting_cycles
 
@@ -222,17 +223,6 @@ class MonodromyRepresentation(object):
             return res
         else:
             return 0
-    
-    @property
-    def permuting_cycles(self):
-        if not hasattr(self, '_permuting_cycles'):
-            self._permuting_cycles = [[] for i in range(len(self.monodromy_matrices))]
-            for i, M in enumerate(self.monodromy_matrices):
-                D, U, V = (M-1).smith_form()
-                for j in range(self.dim):
-                    if D[j,j]!=0:
-                        self._permuting_cycles[i] += [ V*vector([1 if k==j else 0 for k in range(self.dim)]) ]
-        return self._permuting_cycles
 
     
     @property

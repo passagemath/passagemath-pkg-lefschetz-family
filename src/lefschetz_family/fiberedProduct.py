@@ -33,6 +33,7 @@ from sage.matrix.special import identity_matrix
 from sage.matrix.special import diagonal_matrix
 from sage.matrix.special import block_matrix
 from sage.matrix.special import block_diagonal_matrix
+from sage.matrix.special import zero_matrix
 from sage.arith.functions import lcm
 
 
@@ -50,7 +51,7 @@ from .integrator import Integrator
 from .util import Util
 from .context import Context
 from .monodromyRepresentation import MonodromyRepresentation
-from .monodromyRepresentationFiberedProduct import MonodromyRepresentationFiberedProduct
+from .monodromyRepresentationFiberedProduct import MonodromyRepresentationFibreProduct
 from sage.functions.other import binomial
 
 
@@ -75,7 +76,7 @@ def derivatives_coords(S, w, k):
 def derivative_of_product(a, b, n):
     return sum([binomial(n, i) * tensor_prod(a.row(i+1), b.row(n-i+1)) for i in range(n+1)])
 
-class FiberedProduct(object):
+class FibreProduct(object):
     def __init__(self, S1, S2, correction=None, **kwds) -> None:
         """S1 and S2 are two elliptic surfaces with the same basepoint
         """
@@ -101,7 +102,11 @@ class FiberedProduct(object):
             for v in L.local_basis_monomials(0):
                 if "log" in str(v):
                     continue
-                if "/sqrt" in str(v):
+                if str(v)=="1":
+                    p = 0
+                elif str(v)==str(L.base_ring().gen(0)):
+                    p = 1
+                elif "/sqrt" in str(v):
                     p=-1/2
                 elif "sqrt" in str(v):
                     p=1/2
@@ -109,7 +114,7 @@ class FiberedProduct(object):
                     p = QQ(str(v)[2:].replace(")","").replace("(",""))
                 if pmin==None or p<pmin:
                     pmin = p
-            correction = 1/L.base_ring().gen(0)^ceil(pmin)
+            correction = 1/L.base_ring().gen(0)**ceil(pmin)
             self._correction = correction
         return self._correction
     
@@ -180,7 +185,7 @@ class FiberedProduct(object):
 
     @property
     def homology(self):
-        return self.monodromy_representation.extensions
+        return self.monodromy_representation.homology
     
     def integrate(self, L):
         logger.info("Computing numerical transition matrices of operator of order %d and degree %d (%d edges total)."% (L.order(), L.degree(), len(self.fundamental_group.edges)))
@@ -195,19 +200,27 @@ class FiberedProduct(object):
 
         return transition_matrices
     
+    def cyclic_form_and_vectors(self):
+        L1s = [self.S1.family.picard_fuchs_equation(v) for v in identity_matrix(2)]
+        L2s = [self.S2.family.picard_fuchs_equation(v) for v in identity_matrix(2)]
+        found = False
+        for i1, L1 in enumerate(L1s):
+            for i2, L2 in enumerate(L2s):
+                Ltot = L1.symmetric_product(L2)
+                if Ltot.order() ==4:
+                    return self.S1.family.basis[i1], self.S1.family.basis[i2], Ltot
+
     @property
     def monodromy_matrices(self):
         if not hasattr(self,'_monodromy_matrices'):
             logger.info("Computing monodromy matrices")
-            L1 = self.S1.cyclic_picard_fuchs_equation
-            L2 = self.S2.cyclic_picard_fuchs_equation
-            Ltot = L1.symmetric_product(L2)
+            w1, w2, Ltot = self.cyclic_form_and_vectors()
+            w1, w2 = self.S1.P.parent()(w1), self.S2.P.parent()(w2)
 
             Dt, = Ltot.parent().gens()
             
             transition_matrices = self.integrate(Ltot*Dt)
             
-            w1, w2 = self.S1.P.parent()(1), self.S2.P.parent()(1)
             d1 = derivatives_coords(self.S1, w1, 3)
             d2 = derivatives_coords(self.S2, w2, 3)
             derivatives_tensor = matrix([vector([0]*4)] + [derivative_of_product(d1, d2, i) for i in range(4)])
@@ -241,10 +254,21 @@ class FiberedProduct(object):
         return self._monodromy_matrices
 
     @property
+    def monodromy_matrices_morsification(self):
+        return [[Ms[2*i]*Ms[2*i+1] for i in range(len(Ms)/2)] for Ms in self.monodromy_representation.monodromy_matrices_desingularisation]
+    
+    @property
     def monodromy_representation(self):
         if not hasattr(self,'_monodromy_representation'):
+            monodromy_matrices = self.monodromy_matrices
+            expected_types = []
+            for c in self.critical_values:
+                if c in self.S1.critical_values:
+                    expected_types += [self.S1.types[self.S1.critical_values.index(c)]]
+                else:
+                    expected_types += ["I0"]
             fibre_intersection_product = tens1(self.S1.fibre.intersection_product)*tens2(self.S2.fibre.intersection_product)
-            self._monodromy_representation = MonodromyRepresentationFiberedProduct(self.monodromy_matrices, fibre_intersection_product)
+            self._monodromy_representation = MonodromyRepresentationFibreProduct(monodromy_matrices, fibre_intersection_product, expected_types)
         return self._monodromy_representation
 
     @property
@@ -324,52 +348,42 @@ class FiberedProduct(object):
                 _integrated_thimbles = []
                 for i, ps in enumerate(self.permuting_cycles):
                     for p in ps:
-                        _integrated_thimbles += [(transition_matrices[i] * initial_conditions * p)[0]]
+                        _integrated_thimbles += [(transition_matrices[i] * initial_conditions.submatrix(0,0,transition_matrices[i].nrows()) * p)[0]]
                 _integrated_thimbles_all += [_integrated_thimbles]
             self._integrated_thimbles = _integrated_thimbles_all
         return self._integrated_thimbles
+    
+    @property
+    def primary_lattice(self):
+        return self.monodromy_representation.primary_lattice
+    
+    @property
+    def primary_periods(self):
+        if not hasattr(self, "_primary_periods"):
+            homology_mat = matrix(self.extensions).transpose()
+            integrated_thimbles =  matrix(self.integrated_thimbles)
+            self._primary_periods = integrated_thimbles * homology_mat
+        return self._primary_periods
+    
+
+    @property
+    def components_of_singular_fibres(self):
+        return self.monodromy_representation.components_of_singular_fibres
 
     @property
     def period_matrix(self):
-        if not hasattr(self, "_period_matrix"):
-            homology_mat = matrix(self.extensions).transpose()
-            integrated_thimbles =  matrix(self.integrated_thimbles)
-            self._period_matrix = integrated_thimbles * homology_mat
+        if not hasattr(self, '_period_matrix'):
+            periods_tot = block_matrix([[self.primary_periods, zero_matrix(len(self.cohomology), len(flatten(self.components_of_singular_fibres)))]])
+            
+            res = self.primary_lattice.solve_right(matrix([self.monodromy_representation.proj(v) for v in self.homology]).transpose())
+            self._period_matrix = periods_tot * res
         return self._period_matrix
     
     @property
     def intersection_product(self):
-        return self.monodromy_representation.intersection_product_extensions
+        return self.monodromy_representation.intersection_product_resolution
     
-    # @property
-    # def intersection_product(self):
-    #     if not hasattr(self,'_intersection_product'):
-    #         # in the next line, 12 is specific to this case
-    #         inter_prod_thimbles = matrix([[self._compute_IP_thimbles(i,j) for j in range(12)] for i in range(12)])
-    #         intersection_product = self.homology*inter_prod_thimbles*self.homology.transpose()
-    #         intersection_product = intersection_product.change_ring(ZZ)
 
-    #         self._intersection_product = intersection_product
-    #     return self._intersection_product
-
-    # def _compute_IP_thimbles(self, i, j):
-    #     loops_ids = flatten([[i]*len(vanishing_cycles_of_M) for i, vanishing_cycles_of_M in enumerate(self.vanishing_cycles)])
-    #     tensIP = tens1(self.S1.fibre.intersection_product)*tens2(self.S2.fibre.intersection_product)
-
-    #     loopi, loopj = loops_ids[i], loops_ids[j]
-    #     vi = flatten(self.permuting_cycles)[i]
-    #     Mi = self.monodromy_matrices[loopi]
-    #     vj = flatten(self.permuting_cycles)[j]
-    #     Mj = self.monodromy_matrices[loopj]
-
-    #     di, dj = (Mi-1)*vi, (Mj-1)*vj
-
-    #     res = di*tensIP*dj
-    #     resid = -vi*tensIP*dj
-
-    #     if loopi == loopj:
-    #         return resid
-    #     if loopi < loopj:
-    #         return res
-    #     else:
-    #         return 0
+    @property
+    def types(self):
+        return self.monodromy_representation.types
