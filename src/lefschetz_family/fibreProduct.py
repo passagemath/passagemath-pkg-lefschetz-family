@@ -182,6 +182,9 @@ class FibreProduct(object):
     def infinity_loops(self):
         """The linear combinations of thimbles that correspond to extensions along the (trivial) loop around infinity."""
         return self.monodromy_representation.infinity_loops
+    
+    def lift(self, v):
+        return self.monodromy_representation.resolve(self.monodromy_representation.lift(self.monodromy_representation.desingularise(v)))
 
     @property
     def homology(self):
