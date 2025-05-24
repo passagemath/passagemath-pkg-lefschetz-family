@@ -42,6 +42,7 @@ from sage.misc.flatten import flatten
 from sage.modules.free_quadratic_module_integer_symmetric import IntegralLattice
 
 from .voronoi import FundamentalGroupVoronoi
+from .integrator_simultaneous import IntegratorSimultaneous
 from .integrator import Integrator
 from .util import Util
 from .context import Context
@@ -580,3 +581,47 @@ class EllipticSurface(object):
             return (R(m**4).degree()-2)/4 - 1
         if ty=="IV*":
             return (R(m**3).degree()-1)/3 - 1
+        
+    def integrate_forms(self, forms):
+        transition_matrices = self.transition_matrices_of_forms(forms)
+        if "infinity" in self.critical_values:
+            transition_matrix_infinity = 1
+            for M in transition_matrices:
+                transition_matrix_infinity = M*transition_matrix_infinity
+            transition_matrices += [transition_matrix_infinity.inverse()]
+    
+        s = len(self.fibre.extensions)
+        R = len(forms)
+        
+        expand = zero_matrix(R,s).stack(identity_matrix(s))
+
+        integrated_thimbles = []
+        for tM, ps in zip(transition_matrices, self.permuting_cycles):
+            integrated_thimbles += [(tM * expand * self.fibre.period_matrix * p)[:R] for p in ps]
+
+        return matrix(integrated_thimbles).transpose()
+
+
+    def transition_matrices_of_forms(self, forms):
+        rat_coefs = self.family.coordinates(forms)
+        logger.info("Computing transition matrices of all forms (%d rational vector(s))."% (rat_coefs[0].nrows()))
+        transition_matrices = self._compute_transition_matrices_simultaneous(rat_coefs)
+        return transition_matrices
+
+    def _compute_transition_matrices_simultaneous(self, rat_coefs):
+        gaussmanin = self.family.gaussmanin()
+        begin = time.time()
+        integrator = IntegratorSimultaneous(self.fundamental_group, rat_coefs, gaussmanin, self.ctx.nbits)
+        transition_matrices = integrator.transition_matrices
+        if hasattr(self, '_transition_matrices_holomorphic'):
+            Rholo = len(self.holomorphic_forms)
+            R = len(self.cohomology) - Rholo
+            r = len(self.fibre.cohomology)
+            intold = [M.submatrix(0,Rholo,Rholo,r) for M in self.transition_matrices_holomorphic]
+            intnew = [M.submatrix(0,R,R,r) for M in transition_matrices]
+            GM = [M.submatrix(R,R) for M in transition_matrices]
+            transition_matrices = [block_matrix([[1,0, a],[0,1, b], [0,0,c]]) for a,b,c in zip(intold, intnew, GM)]
+        end = time.time()
+        duration_str = time.strftime("%H:%M:%S",time.gmtime(end-begin))
+        logger.info("Integration finished -- total time: %s."% (duration_str))
+        return transition_matrices
