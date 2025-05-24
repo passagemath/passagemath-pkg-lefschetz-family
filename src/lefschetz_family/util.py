@@ -327,8 +327,9 @@ class Util(object):
 
     @classmethod
     def saturate(cls, Ms):
-        span = identity_matrix(4).image()
-        fam = identity_matrix(4).rows()
+        dim = Ms[0].nrows()
+        span = identity_matrix(dim).image()
+        fam = identity_matrix(dim).rows()
         new = True
         while new:
             new=False
@@ -346,3 +347,11 @@ class Util(object):
             return IntegerRelations(matrix([c**i for i in range(order+1)]).transpose()).basis.row(0)
         except:
             raise NotImplementedError("Non-algebraic number")
+        
+    @classmethod
+    def flatten_matrix_of_matrices(cls, M):
+        res = [[0 for i in range(M.nrows())] for j in range(M.ncols())]
+        for i in range(M.nrows()):
+            for j in range(M.ncols()):
+                res[i][j] = M[i,j]
+        return block_matrix(res)
