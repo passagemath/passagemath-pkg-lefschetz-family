@@ -97,7 +97,7 @@ class IntegratorSimultaneous(object):
             N = len(edges)
             A, denA = self._gaussmanin
             R, denR = self._rat_coefs
-            integration_result = IntegratorSimultaneous._integrate_edge([([i,N],A, denA, R, denR,[e[0], e[1]], self.nbits) for i, e in list(enumerate(edges))])
+            integration_result = self._integrate_edge([([i,N],A, denA, R, denR,[e[0], e[1]], self.nbits) for i, e in list(enumerate(edges))])
             integrated_edges_temp= [None]*N
 
             for [inp, _], ntm in integration_result:
@@ -121,7 +121,6 @@ class IntegratorSimultaneous(object):
             self._integrated_edges = integrated_edges
         return self._integrated_edges
     
-    @classmethod
     @parallel
     def _integrate_edge(cls, i, A, denA, R, denR, l, nbits=300):
         """ Returns the numerical transition matrix of L along l, adapted to computations of Voronoi. Accepts l=[]

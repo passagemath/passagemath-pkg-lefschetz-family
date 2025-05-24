@@ -88,7 +88,7 @@ class Integrator(object):
 
             edges = [[self.voronoi.vertices[e[0]], self.voronoi.vertices[e[1]]] for e in edges]
             N = len(edges)
-            integration_result = Integrator._integrate_edge([([i,N],self.operator,[e[0], e[1]], self.nbits) for i, e in list(enumerate(edges))])
+            integration_result = self._integrate_edge([([i,N],self.operator,[e[0], e[1]], self.nbits) for i, e in list(enumerate(edges))])
             integrated_edges_temp= [None]*N
 
             for [inp, _], ntm in integration_result:
@@ -112,7 +112,6 @@ class Integrator(object):
             self._integrated_edges = integrated_edges
         return self._integrated_edges
     
-    @classmethod
     @parallel
     def _integrate_edge(cls, i, L, l, nbits=300, maxtries=5, verbose=False):
         """ Returns the numerical transition matrix of L along l, adapted to computations of Voronoi. Accepts l=[]
