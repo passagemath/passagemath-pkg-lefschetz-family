@@ -109,8 +109,8 @@ class Translator(object):
         """Given a path of B, return its word in terms of the tree"""
         return self.word(path, self.Bduality, self.edges_tree, self.alphabet)
     
-    @classmethod
-    def word(self, path, duality, edges, alphabet=None):
+    @staticmethod
+    def word(path, duality, edges, alphabet=None):
         dual_temp = [[e,d] for e,d in duality if d in edges]
         dual_temp.sort(key=lambda e: edges.index(e[1]))
         edges_temp = [e for e,_ in dual_temp]

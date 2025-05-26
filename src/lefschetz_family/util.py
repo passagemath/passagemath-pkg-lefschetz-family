@@ -41,21 +41,21 @@ logger = logging.getLogger(__name__)
 
 class Util(object):
 
-    @classmethod 
-    def simple_rational(cls, p, r):
+    @staticmethod 
+    def simple_rational(p, r):
         """Gives a rational q such that |p-q|<=r"""
         x=p
         l=[floor(x)]
-        while abs(p-cls.evaluate_continued_fraction(l))>r:
+        while abs(p-Util.evaluate_continued_fraction(l))>r:
             x=1/(x-l[-1])
             try:
                 l+=[ZZ(x)]
             except:
                 l+=[ZZ(floor(x))]
-        return cls.evaluate_continued_fraction(l)
+        return Util.evaluate_continued_fraction(l)
     
-    @classmethod
-    def evaluate_continued_fraction(cls, l):
+    @staticmethod
+    def evaluate_continued_fraction(l):
         """ Given a list l, evaluates the continued fraction l[0] + 1/(l[1] + 1/(l[2] + ...))"""
         p=l[-1]
         l=l[:-1]
@@ -64,13 +64,13 @@ class Util(object):
             l=l[:-1]
         return p
 
-    @classmethod
-    def invert_permutation(cls, l):
+    @staticmethod
+    def invert_permutation(l):
         """Given a list representing a permutation of [0, ..., len(l)-1], l[i] = j, returns the inverse permutation l2[j] = i"""
         return [l.index(x) for x in range(len(l))]
 
-    @classmethod
-    def simplify_path(cls, p):
+    @staticmethod
+    def simplify_path(p):
         """Given a list of numbers p, returns a ``simplification'' of p, removing all the backtracking
         
         For example, `simplify_path([1,2,3,2,1,4,5,1]) == [1,4,5,1]`
@@ -93,13 +93,13 @@ class Util(object):
                 i=i+1
         return res
 
-    @classmethod
-    def monomials(cls, ring, degree):
+    @staticmethod
+    def monomials(ring, degree):
         """Given a polynomial ring and an integer d, returns all the monomials of the ring with degree d."""
         return [ring.monomial(*m) for m in list(IntegerVectors(degree, ring.ngens()))]
 
-    @classmethod
-    def xgcd_list(cls, l):
+    @staticmethod
+    def xgcd_list(l):
         """Given a list of integers l, return a double consisting of the gcd of these numbers and the coefficients of a Bezout relation."""
         if len(l)==0:
             return 0, []
@@ -117,8 +117,8 @@ class Util(object):
         return d2, result
 
 
-    @classmethod
-    def path(cls, path, x):
+    @staticmethod
+    def path(path, x):
         """Given a list of complex numbers path, and a number 0<x<1, return the path(x) where path is seen as a path [0,1]\\to C."""
         CC=ComplexField(500)
         dtot = sum([CC(abs(p1-p2)) for (p1,p2) in zip(path[:-1], path[1:])])
@@ -133,8 +133,8 @@ class Util(object):
 
 
 
-    @classmethod
-    def select_closest(cls, l, e):
+    @staticmethod
+    def select_closest(l, e):
         """Given a list of complex numbers l and a complex number e, return the element e2 of l minimizing abs(e2-e)"""
         # find element in l that is closest to e for abs
         CC=ComplexField(500)
@@ -144,8 +144,8 @@ class Util(object):
                 r = l[i]
         return r
 
-    @classmethod
-    def select_closest_index(cls, l, e):
+    @staticmethod
+    def select_closest_index(l, e):
         """Given a list of complex numbers l and a complex number e, return the index i minimizing abs(l[i]-e)"""
         # find index of element in l that is closest to e for abs
         CC=ComplexField(500)
@@ -155,8 +155,8 @@ class Util(object):
                 r = i
         return r
 
-    @classmethod
-    def is_clockwise(cls, l):
+    @staticmethod
+    def is_clockwise(l):
         """Given a list of complex numbers describing a convex polygon, return whether the points are clockwise."""
         CC=ComplexField(500)
         smally = min(l, key=lambda v:(CC(v).imag(), CC(v).real()))
@@ -173,46 +173,46 @@ class Util(object):
         
         return CC(M.determinant())<0
 
-    @classmethod
-    def is_simple(cls, l):
+    @staticmethod
+    def is_simple(l):
         """Given a list of words l, return whether every word in the list consists of a single letter."""
         for w in l:
             if len(w.syllables()) != 1:
                 return False
         return True
     
-    @classmethod
-    def letter(cls, w,i):
+    @staticmethod
+    def letter(w, i):
         """Given a word w and an integer i, yields the i-th letter of w."""
         return w.syllables()[i][0]**(w.syllables()[i][1]/abs(w.syllables()[i][1]))
 
-    @classmethod
-    def compatibility(cls, t1, t2, phi):
+    @staticmethod
+    def compatibility(t1, t2, phi):
         w1, w2 = phi(t1), phi(t2)
         res = []
-        if cls.letter(w1, 0) == cls.letter(w2, 0):
+        if Util.letter(w1, 0) == Util.letter(w2, 0):
             res += [t2**-1*t1]
-        if cls.letter(w1, -1) == cls.letter(w2, 0)**-1:
+        if Util.letter(w1, -1) == Util.letter(w2, 0)**-1:
             res += [t1*t2]
-        if cls.letter(w1, 0) == cls.letter(w2, -1)**-1:
+        if Util.letter(w1, 0) == Util.letter(w2, -1)**-1:
             res += [t2*t1]
-        if cls.letter(w1, -1) == cls.letter(w2, -1):
+        if Util.letter(w1, -1) == Util.letter(w2, -1):
             res += [t2*t1**-1]
         return res
     
-    @classmethod
-    def easy_simplifications(cls, phi, ts=None):
+    @staticmethod
+    def easy_simplifications(phi, ts=None):
         if ts == None:
             ts = list(phi.domain().gens())
-        while not cls.is_simple([phi(t) for t in ts]):
+        while not Util.is_simple([phi(t) for t in ts]):
             managed = False
             for i, t in enumerate(ts): 
                 others = [t for j,t in enumerate(ts) if i != j]
                 while len(phi(t).syllables())!=1:
-                    options = [t*t2 for t2 in others if cls.letter(phi(t2),0) == cls.letter(phi(t),-1)**-1]
-                    options += [t*t2**-1 for t2 in others if cls.letter(phi(t2**-1),0) == cls.letter(phi(t),-1)**-1]
-                    options += [t2*t for t2 in others if cls.letter(phi(t2),-1) == cls.letter(phi(t),0)**-1]
-                    options += [t2**-1*t for t2 in others if cls.letter(phi(t2**-1),-1) == cls.letter(phi(t),0)**-1]
+                    options = [t*t2 for t2 in others if Util.letter(phi(t2),0) == Util.letter(phi(t),-1)**-1]
+                    options += [t*t2**-1 for t2 in others if Util.letter(phi(t2**-1),0) == Util.letter(phi(t),-1)**-1]
+                    options += [t2*t for t2 in others if Util.letter(phi(t2),-1) == Util.letter(phi(t),0)**-1]
+                    options += [t2**-1*t for t2 in others if Util.letter(phi(t2**-1),-1) == Util.letter(phi(t),0)**-1]
                     if len(options)==0:
                         break
                     options = [o for o in options if phi(o)!=phi(1)]
@@ -228,40 +228,40 @@ class Util(object):
                 break
         return ts
 
-    @classmethod
-    def lettersof(cls, w):
+    @staticmethod
+    def lettersof(w):
         letters = []
         for x, n in w.syllables():
             if x not in letters:
                 letters += [x]
         return letters
     
-    @classmethod
-    def number_of_occurences(cls, w, x):
+    @staticmethod
+    def number_of_occurences(w, x):
         res = 0
         for x2,n in w.syllables():
             if x2 == x:
                 res += abs(n)
         return res
     
-    @classmethod
-    def invert_morphism(cls, phi):
+    @staticmethod
+    def invert_morphism(phi):
         """Given an invertible free group morphism phi, computes its inverse. 
         Optionally, you can give generators ts of a subgroup (as a list of words) to compute the inverse of the restriction of phi on \\langle ts \\rangle (assuming it is invertible)."""
         singlets = []
-        ts = cls.easy_simplifications(phi)
+        ts = Util.easy_simplifications(phi)
         xs = list(phi.codomain().gens())
-        xs.sort(key = lambda x: len([t for t in ts if x in cls.lettersof(phi(t))]))
+        xs.sort(key = lambda x: len([t for t in ts if x in Util.lettersof(phi(t))]))
         replace = [1]
         while replace != []:
             done_something = False
             for x in xs:
                 replace = []
-                tsx = [t for t in ts if x in cls.lettersof(phi(t))]
-                tsx.sort(key = lambda t: cls.number_of_occurences(phi(t), x))
+                tsx = [t for t in ts if x in Util.lettersof(phi(t))]
+                tsx.sort(key = lambda t: Util.number_of_occurences(phi(t), x))
                 for t in tsx[1:]:
-                    for newt in cls.compatibility(tsx[0], t, phi):
-                        if cls.number_of_occurences(phi(newt), x) < cls.number_of_occurences(phi(t), x):
+                    for newt in Util.compatibility(tsx[0], t, phi):
+                        if Util.number_of_occurences(phi(newt), x) < Util.number_of_occurences(phi(t), x):
                             replace += [[t, newt]]
                             done_something = True
                             break
@@ -273,12 +273,12 @@ class Util(object):
                     if t==t2:
                         ts[i]=newt
             for x in xs:
-                tsx = [t for t in ts if x in cls.lettersof(phi(t))]
+                tsx = [t for t in ts if x in Util.lettersof(phi(t))]
                 if len(tsx) == 1:
                     singlets += [ts.pop(ts.index(tsx[0]))]
-            xs.sort(key=lambda x: len([t for t in ts if x in cls.lettersof(phi(t))]))
+            xs.sort(key=lambda x: len([t for t in ts if x in Util.lettersof(phi(t))]))
         assert len(ts) == 0, "did not manage inversion"
-        res = cls.easy_simplifications(phi, list(reversed(singlets)))
+        res = Util.easy_simplifications(phi, list(reversed(singlets)))
 
         tfin = [None]*len(res)
         for t in res:
@@ -287,8 +287,8 @@ class Util(object):
         return  phi.codomain().hom(tfin)
 
 
-    @classmethod
-    def find_complement(cls, B, primitive=True):
+    @staticmethod
+    def find_complement( B, primitive=True):
         """Given an m x n integer valued matrix B with n>m, computes an (n-m) x n matrix A such that the matrix block_matrix([[A],[B]]) is invertible over the integers"""
         D, U, V = B.smith_form()
         quotient = identity_matrix(D.ncols())[D.nrows():] * V.inverse()
@@ -296,8 +296,8 @@ class Util(object):
             assert block_matrix([[B],[quotient]]).det() in [-1,1], "cannot find complement, are you sure sublattice is primitive?"
         return quotient
     
-    @classmethod
-    def middle(self, w):
+    @staticmethod
+    def middle(w):
         """Given a word w of odd length 2n+1, yields the word consisting of the first n letters of w."""
         syls = w.syllables()
         syls = syls[:len(syls)//2]
@@ -306,27 +306,27 @@ class Util(object):
             conj = conj*l**p
         return conj
     
-    @classmethod
-    def remove_duplicates(cls, l):
+    @staticmethod
+    def remove_duplicates(l):
         l2 = []
         for e in l:
             if e not in l2:
                 l2 += [e]
         return l2
     
-    @classmethod
-    def get_coefficient(cls, c, values, symbols):
+    @staticmethod
+    def get_coefficient(c, values, symbols):
         relations = IntegerRelations(matrix([c] + values).transpose()).basis
         assert relations.nrows()>=1, "could not identify coefficients"
         relation = relations[0]
         return -vector(relation[1:])*vector(symbols)/relation[0]
     
-    @classmethod
-    def rationalize(cls, c):
-        return cls.get_coefficient(c,[1],[1])
+    @staticmethod
+    def rationalize(c):
+        return Util.get_coefficient(c,[1],[1])
 
-    @classmethod
-    def saturate(cls, Ms):
+    @staticmethod
+    def saturate(Ms):
         dim = Ms[0].nrows()
         span = identity_matrix(dim).image()
         fam = identity_matrix(dim).rows()
@@ -341,15 +341,15 @@ class Util(object):
         CB = span.span(fam).basis_matrix().transpose()
         return CB
     
-    @classmethod
-    def check_if_algebraic(cls, c, order=10):
+    @staticmethod
+    def check_if_algebraic(c, order=10):
         try:
             return IntegerRelations(matrix([c**i for i in range(order+1)]).transpose()).basis.row(0)
         except:
             raise NotImplementedError("Non-algebraic number")
         
-    @classmethod
-    def flatten_matrix_of_matrices(cls, M):
+    @staticmethod
+    def flatten_matrix_of_matrices(M):
         res = [[0 for i in range(M.nrows())] for j in range(M.ncols())]
         for i in range(M.nrows()):
             for j in range(M.ncols()):

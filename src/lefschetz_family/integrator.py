@@ -113,29 +113,17 @@ class Integrator(object):
         return self._integrated_edges
     
     @parallel
+    # @staticmethod
     def _integrate_edge(cls, i, L, l, nbits=300, maxtries=5, verbose=False):
         """ Returns the numerical transition matrix of L along l, adapted to computations of Voronoi. Accepts l=[]
         """
         logger.info("[%d] Starting integration along edge [%d/%d]"% (os.getpid(), i[0]+1,i[1]))
-        tries = 1
         bounds_prec=256
         begin = time.time()
         eps = Z(2)**(-Z(nbits))
-        while True:
-            # try:
-            ntm = L.numerical_transition_matrix(l, eps=eps, assume_analytic=True, bounds_prec=bounds_prec) if l!= [] else identity_matrix(L.order()) 
-            ntmi = ntm**-1 # checking the matrix is precise enough to be inverted
-            # except Exception as e: # TODO: manage different types of exceptions
-            #     tries+=1
-            #     if tries<maxtries:
-            #         bounds_prec *=2
-            #         nbits*=2
-            #         logger.info("[%d] Precision error when integrating edge [%d/%d]. Trying again with double bounds_prec (%d) and nbits (%d)."% (os.getpid(), i[0]+1, i[1], bounds_prec, nbits))
-            #         continue
-            #     else:
-            #         logger.info("[%d] Too many ValueErrors when integrating edge [%d/%d]. Stopping computation here"% (os.getpid(), i[0]+1, i[1]))
-            #         raise e
-            break
+        
+        ntm = L.numerical_transition_matrix(l, eps=eps, assume_analytic=True, bounds_prec=bounds_prec) if l!= [] else identity_matrix(L.order()) 
+        ntmi = ntm**-1
 
         end = time.time()
         duration = end-begin

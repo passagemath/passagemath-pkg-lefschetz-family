@@ -65,42 +65,42 @@ class EllipticSingularities(object):
         "IV*": [U,V]*4
     }
 
-    @classmethod
-    def monodromy_class(cls, M):
+    @staticmethod
+    def monodromy_class(M):
         M=M.change_ring(ZZ)
         if M.trace()==2:
             if M==identity_matrix(2):
                 return "I", identity_matrix(2), 0
             else:
-                return "I", cls.normalize_Iv(M)[0], cls.normalize_Iv(M)[1]
+                return "I", EllipticSingularities.normalize_Iv(M)[0], EllipticSingularities.normalize_Iv(M)[1]
         if M.trace()==1:
             if M[0,1]>0:
-                return "II", cls.find_conjugation(M, cls.classes["II"])[0], 1
+                return "II", EllipticSingularities.find_conjugation(M, EllipticSingularities.classes["II"])[0], 1
             else:
-                return "II*", cls.find_conjugation(M, cls.classes["II*"])[0], 1
+                return "II*", EllipticSingularities.find_conjugation(M, EllipticSingularities.classes["II*"])[0], 1
         if M.trace()==0:
             try:
-                bc = cls.find_conjugation(M, cls.classes["III"])[0]
+                bc = EllipticSingularities.find_conjugation(M, EllipticSingularities.classes["III"])[0]
                 return "III", bc, 1
             except:
-                bc = cls.find_conjugation(M, cls.classes["III*"])[0]
+                bc = EllipticSingularities.find_conjugation(M, EllipticSingularities.classes["III*"])[0]
                 return "III*", bc, 1
         if M.trace()==-1:
             try:
-                bc = cls.find_conjugation(M, cls.classes["IV"])[0]
+                bc = EllipticSingularities.find_conjugation(M, EllipticSingularities.classes["IV"])[0]
                 return "IV", bc, 1
             except:
-                bc = cls.find_conjugation(M, cls.classes["IV*"])[0]
+                bc = EllipticSingularities.find_conjugation(M, EllipticSingularities.classes["IV*"])[0]
                 return "IV*", bc, 1
         if M.trace()==-2:
             if M==-identity_matrix(2):
                 return "I*", identity_matrix(2), 0
             else:
-                return "I*", cls.normalize_Ivstar(M)[0], cls.normalize_Ivstar(M)[1]
+                return "I*", EllipticSingularities.normalize_Ivstar(M)[0], EllipticSingularities.normalize_Ivstar(M)[1]
     
 
-    @classmethod
-    def normalize_Iv(cls, M):
+    @staticmethod
+    def normalize_Iv(M):
         vanishing = (M-1).transpose().image().basis()[0]
         v = gcd(vanishing)
         v = ZZ(gcd(vanishing))
@@ -117,8 +117,8 @@ class EllipticSingularities(object):
         assert bc.det()==1, "could not find permuting vector"
         return bc, v
     
-    @classmethod
-    def normalize_Ivstar(cls, M):
+    @staticmethod
+    def normalize_Ivstar(M):
         vanishing = (M+1).transpose().image().basis()[0]
         v = ZZ(gcd(vanishing))
         vanishing = vanishing/v
@@ -134,8 +134,8 @@ class EllipticSingularities(object):
         assert bc.det()==1, "could not find permuting vector"
         return bc, v
     
-    @classmethod
-    def find_conjugation(cls, M1, M2):
+    @staticmethod
+    def find_conjugation(M1, M2):
         R = PolynomialRing(ZZ, ['a','b','c','d'])
         [a,b,c,d] = R.gens()
         bci = matrix([[a,b],[c,d]])

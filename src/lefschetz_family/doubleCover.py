@@ -763,8 +763,8 @@ class DoubleCover(object):
             derivatives += [self._derivative(derivatives[-1], RtoS(self.P)/denom**self.degree)] 
         return self.family._coordinates(derivatives, self.basepoint)
 
-    @classmethod
-    def _derivative(self, A, P): 
+    @staticmethod
+    def _derivative(A, P): 
         """computes the numerator of the derivative of A/P^k"""
         return A.derivative() - A*P.derivative()         
 

@@ -48,6 +48,7 @@ from .util import Util
 from .context import Context
 from .hypersurface import Hypersurface
 from .monodromyRepresentationEllipticSurface import MonodromyRepresentationEllipticSurface
+from .ellipticSingularity import EllipticSingularities
 
 import logging
 import time
@@ -382,8 +383,8 @@ class EllipticSurface(object):
         return self.family._coordinates(derivatives, self.basepoint)
 
 
-    @classmethod
-    def _derivative(self, A, P): 
+    @staticmethod
+    def _derivative(A, P): 
         """computes the numerator of the derivative of A/P^k"""
         field = P.parent().fraction_field()
         return field(A).derivative() - A*P.derivative()         
@@ -495,7 +496,7 @@ class EllipticSurface(object):
             for r in roots:
                 if r in self.critical_values:
                     i = self.critical_values.index(r)
-                    ty, _, n = self.monodromy_representation.monodromy_class(self.monodromy_matrices[i])
+                    ty, _, n = EllipticSingularities.monodromy_class(self.monodromy_matrices[i])
                     bs += [self._b(L, r, ty, n)]
                 else:
                     bs += [self._b(L, r, "I", 0)]
@@ -507,7 +508,7 @@ class EllipticSurface(object):
                 roots += [r]
                 if r in self.critical_values:
                     i = self.critical_values.index(r)
-                    ty, _, n = self.monodromy_representation.monodromy_class(self.monodromy_matrices[i])
+                    ty, _, n = EllipticSingularities.monodromy_class(self.monodromy_matrices[i])
                     bs += [self._b(L2, 0, ty, n)]
                 else:
                     bs += [self._b(L2, 0, "I", 0)]
@@ -540,18 +541,18 @@ class EllipticSurface(object):
             self._holomorphic_forms = res
         return self._holomorphic_forms
     
-    @classmethod
-    def _holomorphic_form_order_1(cls, L):
+    @staticmethod
+    def _holomorphic_form_order_1(L):
         return [L.base_ring()(1)]
 
-    @classmethod
-    def _rnorm(cls, L, p):
+    @staticmethod
+    def _rnorm(L, p):
         R = L.base_ring()
         t = R.gens()[0]
         return floor((L.local_basis_monomials(p)[0]**12)(t=t).degree(t)/12)
     
-    @classmethod
-    def _b(cls, L, p, ty, n):
+    @staticmethod
+    def _b(L, p, ty, n):
         if ty=="I" and n>0:
             return -1
         R = L.base_ring()

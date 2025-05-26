@@ -289,8 +289,8 @@ class CalabiYauOperator(object):
             self._types = types
         return self._types
     
-    @classmethod
-    def _monodromy_type(cls, M):
+    @staticmethod
+    def _monodromy_type(M):
         for i in range(1,12*8+1):
             for j in range(1,5):
                 try:

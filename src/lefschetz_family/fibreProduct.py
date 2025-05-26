@@ -384,7 +384,7 @@ class FibreProduct(object):
     
     @property
     def intersection_product(self):
-        return self.monodromy_representation.intersection_product_resolution
+        return -self.monodromy_representation.intersection_product_resolution
     
 
     @property

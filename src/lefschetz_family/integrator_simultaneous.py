@@ -122,12 +122,11 @@ class IntegratorSimultaneous(object):
         return self._integrated_edges
     
     @parallel
+    # @staticmethod
     def _integrate_edge(cls, i, A, denA, R, denR, l, nbits=300):
         """ Returns the numerical transition matrix of L along l, adapted to computations of Voronoi. Accepts l=[]
         """
         logger.info("[%d] Starting integration along edge [%d/%d]"% (os.getpid(), i[0]+1,i[1]))
-        tries = 1
-        bounds_prec=256
         begin = time.time()
         eps = Z(2)**(-Z(nbits))
         ctx = Context(assume_analytic=True)

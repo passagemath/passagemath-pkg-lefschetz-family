@@ -230,8 +230,8 @@ class Fibration(object):
             derivatives += [self._derivative(derivatives[-1], self.P)] 
         return self.family._coordinates(derivatives, self.basepoint)
 
-    @classmethod
-    def _derivative(self, A, P): 
+    @staticmethod
+    def _derivative(A, P): 
         """computes the numerator of the derivative of A/P^k"""
         field = P.parent().fraction_field()
         return field(A).derivative() - A*P.derivative()         
