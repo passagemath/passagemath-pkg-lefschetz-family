@@ -380,7 +380,7 @@ class Family(object):
         gr = Graph()
 
         # This is slow
-        for pt_, reg in vd.regions().items():
+        for pt_, reg in vd.regions(sort=True).items():
             pt = tuple(pt_)
             pt = pt[0] + I*pt[1]
             ptc = CDF(pt)
