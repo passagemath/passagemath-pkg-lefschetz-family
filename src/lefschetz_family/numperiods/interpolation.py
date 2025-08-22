@@ -109,12 +109,12 @@ class EvaluationInterpolation:
         A = self.spt[0]
         B = self.interpolate(values)
         try:
-            numer, denom = B.rational_reconstruct(A)
+            numer, denom = B.rational_reconstruction(A)
             if numer.degree() + denom.degree() + 1 < len(values):
                 return numer, denom
             else:
                 return None
-        except:                 # rational_reconstruct fails with an exception.
+        except:                 # rational_reconstruction fails with an exception.
             return None
 
     def _rational_interpolate_qq(self, values):
