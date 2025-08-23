@@ -45,7 +45,7 @@ logger = logging.getLogger(__name__)
 
 
 class Fibration(object):
-    def __init__(self, P, basepoint=None, fibration=None, fibre=None, cyclic_form = None, **kwds):
+    def __init__(self, P, basepoint=None, fibration=None, fibre=None, cyclic_form=None, family=None, **kwds):
         """P, a homogeneous polynomial defining a family of hypersurfaces.
         """
         
@@ -54,7 +54,15 @@ class Fibration(object):
         self._P = P
         self._fibration = fibration
         
-        _, denom = Family(self.P, path=[-1, 0]).gaussmanin()
+        if family!=None:
+            assert family.pol == self.P, "family is not for correct polynomial"
+            # if basepoint!=None:
+            #     assert family.basepoint == basepoint, "family is not centered at basepoint"
+            self._family = family
+        else:
+            self._family = Family(self.P, basepoint=basepoint)
+
+        _, denom = self._family.gaussmanin()
         self._critical_values = denom.roots(QQbar, multiplicities=False)
 
         if cyclic_form!= None: 
@@ -63,7 +71,7 @@ class Fibration(object):
             self._cyclic_form = cyclic_form
             self._cyclic_picard_fuchs_equation = L
         
-        self._family = Family(self.P, basepoint=basepoint)
+        
 
         if fibre!=None:
             assert basepoint!=None, "Cannot specify fibre without specifying basepoint"
@@ -151,11 +159,12 @@ class Fibration(object):
             Mtot = prod(list(reversed(Ms)))
             if Mtot != 1:
                 self._critical_values = self.critical_values + ["infinity"]
-                transition_matrix_infinity = prod(list(reversed(self.cyclic_transition_matrices))).inverse()
+                transition_matrix_infinity = prod([M.inverse() for M in self.cyclic_transition_matrices])
                 self._cyclic_transition_matrices += [transition_matrix_infinity]
                 Ms += [(Mtot.inverse()).change_ring(ZZ)]
                 
-                self._paths += [-sum(self.paths)]
+                pathinfinity = -sum(self.paths)
+                self._paths += [pathinfinity]
             
             self._monodromy_matrices = Ms
         return self._monodromy_matrices
@@ -255,10 +264,7 @@ class Fibration(object):
     @property
     def paths(self):
         if not hasattr(self,'_paths'):
-            paths = []
-            for path in self.fundamental_group.pointed_loops:
-                paths += [[self.fundamental_group.vertices[v] for v in path]]
-            self._paths= paths
+            self._paths= self.fundamental_group.pointed_loops_vertices
         return self._paths
 
     @property

@@ -402,11 +402,16 @@ def fundamental_matrices(sys, den, aux, auxden, path, eps, vec=None, ctx=dctx):
     # Il peut arriver qu'on se retrouve avec un opérateur singulier en 0
     # même si au départ le système ne l'était pas...
     path = path.bypass_singularities()
+    logger.info("bypassed singularities")
     # path.check_singularity()
     path = path.subdivide(1)  # TODO support 2-point mode
+    logger.info("subdivided")
     path = path.simplify_points_add_detours(ctx)
+    logger.info("simplify points add detours")
     path.check_singularity()
+    logger.info("checking singularities")
     path.check_convergence()
+    logger.info("checking convergence")
     logger.info("done, time=%ss, path = %s", time.time() - t0, path)
 
     tmat_path = block_matrix([[1, MatrixSpace(Val, aux.nrows(), aux.ncols()).zero()],

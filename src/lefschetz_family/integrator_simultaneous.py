@@ -39,11 +39,12 @@ logger = logging.getLogger(__name__)
 
 
 class IntegratorSimultaneous(object):
-    def __init__(self, path_structure, rat_coefs, gaussmanin, nbits):
+    def __init__(self, path_structure, rat_coefs, gaussmanin, cyclic_vector=None, nbits=800):
         self._rat_coefs = rat_coefs
         self._gaussmanin = gaussmanin
         self.nbits = nbits
         self.voronoi = path_structure
+        self.cyclic_vector = cyclic_vector
 
     @property
     def gaussmanin(self):
@@ -97,7 +98,8 @@ class IntegratorSimultaneous(object):
             N = len(edges)
             A, denA = self._gaussmanin
             R, denR = self._rat_coefs
-            integration_result = self._integrate_edge([([i,N],A, denA, R, denR,[e[0], e[1]], self.nbits) for i, e in list(enumerate(edges))])
+            vec = self.cyclic_vector if hasattr(self, "cyclic_vector") else None
+            integration_result = self._integrate_edge([([i,N],A, denA, R, denR,[e[0], e[1]], vec, self.nbits) for i, e in list(enumerate(edges))])
             integrated_edges_temp= [None]*N
 
             for [inp, _], ntm in integration_result:
@@ -123,19 +125,21 @@ class IntegratorSimultaneous(object):
     
     @parallel
     # @staticmethod
-    def _integrate_edge(cls, i, A, denA, R, denR, l, nbits=300):
+    def _integrate_edge(cls, i, A, denA, R, denR, l, vec, nbits=300):
         """ Returns the numerical transition matrix of L along l, adapted to computations of Voronoi. Accepts l=[]
         """
         logger.info("[%d] Starting integration along edge [%d/%d]"% (os.getpid(), i[0]+1,i[1]))
         begin = time.time()
         eps = Z(2)**(-Z(nbits))
         ctx = Context(assume_analytic=True)
-        ntm = fundamental_matrices(A, denA, R, denR, l, eps, ctx=ctx) if l!= [] else identity_matrix(A.nrows() + R.nrows()) 
-        ntmi = ntm**-1 
+        ntm = fundamental_matrices(A, denA, R, denR, l, eps, vec=vec, ctx=ctx) if l!= [] else identity_matrix(A.nrows() + R.nrows()) 
 
         end = time.time()
         duration = end-begin
         duration_str = time.strftime("%H:%M:%S",time.gmtime(duration))
-        logger.info("[%d] Finished integration along edge [%d/%d] in %s"% (os.getpid(), i[0]+1,i[1], duration_str))
+        prec = str(max([c.rad() for c in  ntm.dense_coefficient_list()]))
+        prec = prec[:5] + "..." + prec[-5:] if len(prec)>10 else prec
+        logger.info("[%d] Finished integration along edge [%d/%d] in %s, recovered precision %s"% (os.getpid(), i[0]+1,i[1], duration_str, prec))
+        ntmi = ntm**-1
 
         return ntm

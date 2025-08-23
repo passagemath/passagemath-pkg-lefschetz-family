@@ -582,8 +582,8 @@ class EllipticSurface(object):
             return (R(m**4).degree()-2)/4 - 1
         if ty=="IV*":
             return (R(m**3).degree()-1)/3 - 1
-        
-    def integrate_forms(self, forms):
+
+    def integrate_forms_on_thimbles(self, forms):
         transition_matrices = self.transition_matrices_of_forms(forms)
         if "infinity" in self.critical_values:
             transition_matrix_infinity = 1
@@ -602,6 +602,12 @@ class EllipticSurface(object):
 
         return matrix(integrated_thimbles).transpose()
 
+    def integrate_forms(self, forms):
+        primary_periods = self.integrate_forms_on_thimbles(forms) * matrix(self.extensions).transpose()
+        periods_tot = block_matrix([[primary_periods, zero_matrix(primary_periods.nrows(), len(flatten(self.components_of_singular_fibres))+2)]])
+        periods = periods_tot * matrix(self.primary_lattice).inverse()
+        return periods
+
 
     def transition_matrices_of_forms(self, forms):
         rat_coefs = self.family.coordinates(forms)
@@ -612,7 +618,7 @@ class EllipticSurface(object):
     def _compute_transition_matrices_simultaneous(self, rat_coefs):
         gaussmanin = self.family.gaussmanin()
         begin = time.time()
-        integrator = IntegratorSimultaneous(self.fundamental_group, rat_coefs, gaussmanin, self.ctx.nbits)
+        integrator = IntegratorSimultaneous(self.fundamental_group, rat_coefs, gaussmanin, nbits=self.ctx.nbits)
         transition_matrices = integrator.transition_matrices
         if hasattr(self, '_transition_matrices_holomorphic'):
             Rholo = len(self.holomorphic_forms)

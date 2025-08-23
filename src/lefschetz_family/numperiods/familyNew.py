@@ -85,7 +85,7 @@ class Family(object):
     def modulo(self, prime):
         return Family(FiniteField(prime).one() * self.pol, denom=FiniteField(prime).one()*self.denom, shift=self.shift)
 
-    def _gaussmanin(self, pt):
+    def __gaussmanin(self, pt):
         logger.debug("Evaluating cohomology at a point %s" % str(pt))
         try:
             co = self.cohomologyAt(pt)
@@ -111,11 +111,11 @@ class Family(object):
         u*mat/denom)*basis, where u' is the coefficient-wise derivative.
 
         """
-        
-
-        logger.info("Computing Gauss-Manin connection")
-        fr = interpolation.FunctionReconstruction(self.upolring, self._gaussmanin)
-        return fr.recons(denomapart=True)
+        if not hasattr(self, "_gaussmanin"):
+            logger.info("Computing Gauss-Manin connection")
+            fr = interpolation.FunctionReconstruction(self.upolring, self.__gaussmanin)
+            self._gaussmanin = fr.recons(denomapart=True)
+        return self._gaussmanin
 
 	
     def _coordinates(self, ws, pt):

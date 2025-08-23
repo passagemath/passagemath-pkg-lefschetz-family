@@ -587,7 +587,7 @@ class Hypersurface(object):
 
         logger.info("[%d] Computing numerical transition matrices for %d integrals (%d edges total)."% (self.dim, rat_coefs[0].nrows(), len(self.fundamental_group.edges)))
         begin = time.time()
-        integrator = IntegratorSimultaneous(self.fundamental_group, rat_coefs, gaussmanin, self.ctx.nbits)
+        integrator = IntegratorSimultaneous(self.fundamental_group, rat_coefs, gaussmanin, nbits=self.ctx.nbits)
         transition_matrices = integrator.transition_matrices
         if hasattr(self, '_transition_matrices_holomorphic'):
             Rholo = len(self.holomorphic_forms)
