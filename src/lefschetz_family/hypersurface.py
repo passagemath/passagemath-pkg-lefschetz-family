@@ -278,7 +278,7 @@ class Hypersurface(object):
             roots_with_multiplicity = Qt(ideal.groebner_basis()[0]).roots(AlgebraicField())
             if not self.ctx.debug and not self.ctx.singular:
                 for e in roots_with_multiplicity:
-                    assert e[1]==1, "double critical values, fibration is not Lefschetz"
+                    assert e[1]==1, "Double critical values, fibration is not Lefschetz. Try changing `fibration` (or running again if `fibration` was not set)."
             self._critical_values=[e[0] for e in roots_with_multiplicity]
         return self._critical_values
     

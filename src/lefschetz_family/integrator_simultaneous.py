@@ -104,7 +104,8 @@ class IntegratorSimultaneous(object):
 
             for [inp, _], ntm in integration_result:
                 if ntm == 'NO DATA': # why is this not a result of @parallel?
-                    logger.warning("failed to integrate operator")
+                    raise Exception("Failed to integrate operator. Try increasing `nbits`.")
+                    # logger.warning("failed to integrate operator")
                 integrated_edges_temp[inp[0][0]] = ntm # there should be a cleaner way to do this
 
             integrated_edges = [None]*len(self.voronoi.edges)
