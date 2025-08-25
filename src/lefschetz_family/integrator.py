@@ -23,6 +23,7 @@ from ore_algebra import *
 from sage.matrix.special import identity_matrix
 from sage.parallel.decorate import parallel
 from ore_algebra.analytic.differential_operator import DifferentialOperator
+from ore_algebra.analytic.path import IC
 
 from sage.rings.integer_ring import Z
 
@@ -41,6 +42,7 @@ class Integrator(object):
         begin = time.time()
         self._operator = DifferentialOperator(operator)
         self.operator._singularities()
+        self.operator._singularities(IC)
         end=time.time()
         duration = end-begin
         duration_str = time.strftime("%H:%M:%S",time.gmtime(duration))
