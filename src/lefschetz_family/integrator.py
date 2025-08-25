@@ -37,8 +37,14 @@ logger = logging.getLogger(__name__)
 
 class Integrator(object):
     def __init__(self, path_structure, operator, nbits):
+        logger.info("Initialising operator of order %d and degree %d for integration"%(operator.order(), operator.degree()))
+        begin = time.time()
         self._operator = DifferentialOperator(operator)
         self.operator._singularities()
+        end=time.time()
+        duration = end-begin
+        duration_str = time.strftime("%H:%M:%S",time.gmtime(duration))
+        logger.info("Operator initialised in %s"%(duration_str))
         self.nbits = nbits
         self.voronoi = path_structure
 
@@ -93,7 +99,8 @@ class Integrator(object):
 
             for [inp, _], ntm in integration_result:
                 if ntm == 'NO DATA': # why is this not a result of @parallel?
-                    logger.warning("failed to integrate operator")
+                    raise Exception("Failed to integrate operator. Try increasing `nbits`.")
+                    # logger.warning("failed to integrate operator")
                 integrated_edges_temp[inp[0][0]] = ntm # there should be a cleaner way to do this
 
             integrated_edges = [None]*len(self.voronoi.edges)
@@ -123,11 +130,15 @@ class Integrator(object):
         eps = Z(2)**(-Z(nbits))
         
         ntm = L.numerical_transition_matrix(l, eps=eps, assume_analytic=True, bounds_prec=bounds_prec) if l!= [] else identity_matrix(L.order()) 
-        ntmi = ntm**-1
+        logger.info("[%d] Finished integration along edge [%d/%d]"% (os.getpid(), i[0]+1,i[1]))
 
         end = time.time()
         duration = end-begin
         duration_str = time.strftime("%H:%M:%S",time.gmtime(duration))
-        logger.info("[%d] Finished integration along edge [%d/%d] in %s"% (os.getpid(), i[0]+1,i[1], duration_str))
+        prec = str(max([c.rad() for c in  ntm.dense_coefficient_list()]))
+        prec = prec[:5] + "..." + prec[-5:] if len(prec)>10 else prec
+        logger.info("[%d] Finished integration along edge [%d/%d] in %s, recovered precision %s"% (os.getpid(), i[0]+1,i[1], duration_str, prec))
+
+        ntmi = ntm**-1
 
         return ntm

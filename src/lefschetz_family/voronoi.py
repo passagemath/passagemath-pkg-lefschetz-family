@@ -294,8 +294,9 @@ class FundamentalGroupVoronoi(object):
             self._voronoi_diagram = vd
             self._rootapprox = rootapprox
 
-            polygons_temp = [] # first we collect all polygons and translate the centers in rational coordinates
-            for pt, reg in vd.regions(sort=True).items():
+            polygons_temp = [] # first we collect all poly
+            
+            for pt, reg in vd.regions(sort=False).items():
                 center = Util.select_closest(rootapprox, self.rationalize(self.point_to_complex_number(pt.affine())))
                 
                 polygons_temp += [[center, reg]]

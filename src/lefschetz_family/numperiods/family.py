@@ -89,7 +89,7 @@ class Family(object):
     def modulo(self, prime):
         return Family(FiniteField(prime).one() * self.pol, denom=FiniteField(prime).one()*self.denom, shift=self.shift)
 
-    def _gaussmanin(self, pt):
+    def __gaussmanin(self, pt):
         logger.debug("Evaluating cohomology at a point %s" % str(pt))
         try:
             co = self.cohomologyAt(pt)
@@ -116,10 +116,11 @@ class Family(object):
 
         """
         
-
-        logger.info("Computing Gauss-Manin connection")
-        fr = interpolation.FunctionReconstruction(self.upolring, self._gaussmanin)
-        return fr.recons(denomapart=True)
+        if not hasattr(self, "_gaussmanin"):
+            logger.info("Computing Gauss-Manin connection")
+            fr = interpolation.FunctionReconstruction(self.upolring, self.__gaussmanin)
+            self._gaussmanin = fr.recons(denomapart=True)
+        return self._gaussmanin
 
 	
     def _coordinates(self, ws, pt):
@@ -145,7 +146,7 @@ class Family(object):
         return fr.recons(denomapart=True)
     
     @cached_method
-    def picard_fuchs_equation(self, vec=None, form=None):
+    def picard_fuchs_equation(self, vec=None, form=None, degmax=-1):
         """vec is a constant-coefficient vector representing an element omega of
         H^n(P^n - V(pol)) in the basis self.basis.
 
@@ -175,6 +176,8 @@ class Family(object):
             while cyclicspace_at_r.rank() == cyclicspace_at_r.nrows():
                 logger.info("Looking for equation of order %d." % (k+1))
                 k = k+1
+                assert k!=degmax, "reached upper bound on degree, aborting"
+
                 vec = denom*vec.derivative(var) + vec*mat - (k-1)*denom.derivative(var)*vec
                 cyclicspace = denom*cyclicspace
                 cyclicspace = cyclicspace.stack(vec)
@@ -380,7 +383,7 @@ class Family(object):
         gr = Graph()
 
         # This is slow
-        for pt_, reg in vd.regions(sort=True).items():
+        for pt_, reg in vd.regions(sort=False).items():
             pt = tuple(pt_)
             pt = pt[0] + I*pt[1]
             ptc = CDF(pt)

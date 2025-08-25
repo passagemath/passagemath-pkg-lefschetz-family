@@ -308,6 +308,21 @@ class DoubleCover(object):
                 for M in Ms:
                     assert (M-1).rank()==1, "If M is a monodromy matrix around a single critical point, M-1 should have rank 1"
             
+            if self.dim == 1:
+                Mtot = 1
+                for M in Ms:
+                    Mtot = M * Mtot
+                if Mtot != 1:
+                    self._critical_values = self.critical_values+["infinity"]
+                    transition_matrix_infinity = 1
+                    for M in self.transition_matrices:
+                        transition_matrix_infinity = M*transition_matrix_infinity
+                    self._transition_matrices += [transition_matrix_infinity**(-1)]
+                    Ms += [(Mtot.inverse()).change_ring(ZZ)]
+                    
+                    pathinfinity = -sum(self.paths)
+                    self._paths += [pathinfinity]
+            
             self._monodromy_matrices = Ms
         return self._monodromy_matrices
     
@@ -582,10 +597,10 @@ class DoubleCover(object):
         if self.dim ==1:
             dmax = max([w.degree() for w in ws])
             t = PolynomialRing(QQ,'t').gen(0)
-            denom = self.P(t+1, 1)**ZZ((dmax-1)/(2*self.shift))
+            denom = self.P(t+1, 1)**ZZ((dmax-self.shift+2)/(2*self.shift))
             rat_coefs = []
             for w in ws:
-                rat_coefs += [[1/ZZ(1+(w.degree()-1)/(2*self.shift)) * self.P(t+1,1)**ZZ((dmax - w.degree())/(2*self.shift)) * w(t+1,1)]]
+                rat_coefs += [[1/ZZ(1+(w.degree()-self.shift+2)/(2*self.shift)) * self.P(t+1,1)**ZZ((dmax - w.degree())/(2*self.shift)) * w(t+1,1)]]
             return matrix(rat_coefs), denom
         return self.family.coordinates([self._restrict_form(w) for w in ws])
 
@@ -600,7 +615,7 @@ class DoubleCover(object):
 
         logger.info("[%d] Computing numerical transition matrices for %d integrals (%d edges total)."% (self.dim, rat_coefs[0].nrows(), len(self.fundamental_group.edges)))
         begin = time.time()
-        integrator = IntegratorSimultaneous(self.fundamental_group, rat_coefs, gaussmanin, self.ctx.nbits)
+        integrator = IntegratorSimultaneous(self.fundamental_group, rat_coefs, gaussmanin, nbits=self.ctx.nbits)
         transition_matrices = integrator.transition_matrices
         if hasattr(self, '_transition_matrices_holomorphic'):
             Rholo = len(self.holomorphic_forms)
@@ -651,10 +666,10 @@ class DoubleCover(object):
             P = self.P(t+1, 1) 
             
             # this is ugly, should have generic GD reduction implemented in this trivial case
-            if w.degree() == 1:
+            if w.degree() == self.shift-2:
                 r = t.parent()(w(t+1, 1))
                 denomr = self.family.dopring.base_ring()(1)
-            elif w.degree() == 7:
+            elif w.degree() == 3*self.shift-2:
                 r = t.parent()(w(t+1, 1))
                 denomr = 2*P
             return r*denomr*2*P*Dt - (2*P*(r.derivative()*denomr - r*denomr.derivative()) - r*denomr*P.derivative())
@@ -755,9 +770,9 @@ class DoubleCover(object):
             for k in range(s-2):
                 t = self.family.dopring.base_ring().gens()[0]
                 derivatives += [self._derivative(derivatives[-1], self.P(t+1, 1))]
-            if w.degree() == 1: # ad hoc
+            if w.degree() == self.shift-2: # ad hoc
                 return matrix([QQ(w(t=self.basepoint, x1=1)) for w in derivatives]).transpose() 
-            if w.degree() == 7: # ad hoc
+            if w.degree() == 3*self.shift-2: # ad hoc
                 return matrix([QQ(w(t=self.basepoint, x1=1))/QQ(2*self.P(self.basepoint+1, 1)) for w in derivatives]).transpose()
         for k in range(s-1):
             derivatives += [self._derivative(derivatives[-1], RtoS(self.P)/denom**self.degree)] 
