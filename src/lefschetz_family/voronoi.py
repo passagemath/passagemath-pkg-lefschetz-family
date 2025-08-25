@@ -333,8 +333,8 @@ class FundamentalGroupVoronoi(object):
                 G = Graph(edges)
                 G2 = Graph(newedges)
                 while G2.connected_components_number()>1:
-                    v1 = G2.connected_components()[0][0]
-                    v2 = G2.connected_components()[1][0]
+                    v1 = G2.connected_components(sort=False)[0][0]
+                    v2 = G2.connected_components(sort=False)[1][0]
                     sp = G.shortest_path(v1, v2)
                     edges = [sp[i:i+2] for i in range(len(sp)-1)]
                     for e in edges:
