@@ -132,7 +132,6 @@ class Integrator(object):
         eps = Z(2)**(-Z(nbits))
         
         ntm = L.numerical_transition_matrix(l, eps=eps, assume_analytic=True, bounds_prec=bounds_prec) if l!= [] else identity_matrix(L.order()) 
-        logger.info("[%d] Finished integration along edge [%d/%d]"% (os.getpid(), i[0]+1,i[1]))
 
         end = time.time()
         duration = end-begin

@@ -714,15 +714,39 @@ class Hypersurface(object):
             return [V(alpha)*A(alpha) for alpha in alphas]
         return self._residue_form(A*U/(k-1)+(A*V).derivative()/(k-1)**2, P, k-1, alphas)
     
+    # def derivatives_values_at_basepoint_old(self, i):
+    #     RtoS = self._RtoS()
+    #     s=len(self.fibre.cohomology)
+    #     w = self.cohomology[i]
+    #     wt = self._restrict_form(w)
+    #     derivatives = [RtoS(0), wt]
+    #     for k in range(s-1):
+    #         derivatives += [self._derivative(derivatives[-1], RtoS(self.P))] 
+    #     return self.family._coordinates(derivatives, self.basepoint)
+    
     def derivatives_values_at_basepoint(self, i):
         RtoS = self._RtoS()
         s=len(self.fibre.cohomology)
         w = self.cohomology[i]
-        wt = self._restrict_form(w)
-        derivatives = [RtoS(0), wt]
+
+        wt, denom2 = self.family.coordinates([self._restrict_form(w)])
+        wt = wt[0]
+
+        GM, denom = self.family.gaussmanin()
+        Dt = self.family.dopring.gen(0)
+        t = self.family.upolring.gen(0)
+
+        derivatives = [wt]
         for k in range(s-1):
-            derivatives += [self._derivative(derivatives[-1], RtoS(self.P))] 
-        return self.family._coordinates(derivatives, self.basepoint)
+            derivatives += [denom*derivatives[-1].derivative(t) +  derivatives[-1]*GM]
+        derivatives_at_basepoint2 = [w(self.basepoint) for w in derivatives]        
+        matders = []
+        for i in range(s):
+            matders += [[c(self.basepoint) for c in ((denom * Dt)**i*denom2).coefficients(sparse=False)]+[0]*(s-1-i)]
+        matders = matrix(matders)
+
+        derivatives_at_basepoint = matders.inverse() * matrix(derivatives_at_basepoint2).change_ring(QQ)
+        return zero_matrix(1,derivatives_at_basepoint.ncols()).stack(derivatives_at_basepoint, subdivide=False)
 
     @staticmethod
     def _derivative(A, P): 
