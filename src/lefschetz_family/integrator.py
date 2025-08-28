@@ -173,7 +173,10 @@ class Integrator(object):
         duration = end-begin
         duration_str = time.strftime("%H:%M:%S",time.gmtime(duration))
         prec = str(max([c.rad() for c in  ntm.dense_coefficient_list()]))
-        prec = prec[:5] + "..." + prec[-5:] if len(prec)>10 else prec
+        if len(prec)>10:
+            cutoff_start = 5 if "." not in prec else prec.index(".") + 2
+            cutoff_end = prec.index("e") if "e" in prec else -5
+            prec = prec[:cutoff_start] + "..." + prec[cutoff_end:]
         logger.info("[%d] Finished integration along fragment [%d/%d] in %s, recovered precision %s"% (os.getpid(), i[0]+1,i[1], duration_str, prec))
         
         ntmi = ntm**-1

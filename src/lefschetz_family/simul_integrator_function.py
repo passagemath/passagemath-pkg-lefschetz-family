@@ -362,6 +362,56 @@ class PostIntObserver:
         for source in self.sources:
             source.close_input()
 
+def _process_path(sys, den, aux, auxden, path, eps, vec=None, ctx=dctx):
+    z = den.parent().gen()
+    logger.info("uncoupling...")
+    t0 = time.time()
+    dop, transf = uncouple(sys, den, vec)
+    logger.info("done uncoupling, degree=%s, time=%ss",
+                dop.degree(), time.time() - t0)
+    dop = DifferentialOperator(dop)
+    logger.info("computing transformation...")
+    t0 = time.time()
+    # wasteful
+    itnum, itden = clear_denominators(transf.inverse().list())
+    itnum = matrix(transf.nrows(), transf.ncols(), itnum)
+    # compute these while we are (presumably) working over QQ
+    # XXX pas sûr que ça soit vraiment ce qu'on veut
+    # (ni finalement que ça n'ait une importance maintenant qu'on fait le shift
+    # numériquement)
+    aux1 = aux*itnum
+    auxden1 = auxden*itden
+    logger.info("done, time=%s s", time.time() - t0)
+    dop2 = DifferentialOperator(auxden1*dop)
+    # print(len(dop._singularities()), len(dop2._singularities()))
+    path = Path(path, dop2)
+    # path = Path(path, dop)
+    logger.info("path = %ss", path)
+    eps = RBF(eps)
+    # FIXME prec currently needs to be >= sums_prec (as chosen by HSM) or we
+    # are wasting precision
+    prec0 = prec_from_eps(eps)
+    prec = 6*(prec0 + 2*dop.order())//5 + 100
+    Val = ComplexBallField(prec)
+    diag = diagonal_matrix(ZZ(i).factorial() for i in range(sys.nrows()))
+
+    logger.info("computing singularities, subdividing path...")
+    t0 = time.time()
+    # Il peut arriver qu'on se retrouve avec un opérateur singulier en 0
+    # même si au départ le système ne l'était pas...
+    path = path.bypass_singularities()
+    logger.info("bypassed singularities")
+    # path.check_singularity()
+    path = path.subdivide(1)  # TODO support 2-point mode
+    logger.info("subdivided")
+    path = path.simplify_points_add_detours(ctx)
+    logger.info("simplify points add detours")
+    path.check_singularity()
+    logger.info("checking singularities")
+    path.check_convergence()
+    logger.info("checking convergence")
+    logger.info("done, time=%ss, path = %s", time.time() - t0, path)
+    return path
 
 def fundamental_matrices(sys, den, aux, auxden, path, eps, vec=None, ctx=dctx):
 

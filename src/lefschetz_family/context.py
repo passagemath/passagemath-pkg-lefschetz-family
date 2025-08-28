@@ -18,6 +18,7 @@
 
 from sage.rings.complex_arb import ComplexBallField
 from sage.rings.complex_mpfr import ComplexField
+from sage.rings.infinity import Infinity
 
 class Context(object):
 
@@ -29,7 +30,7 @@ class Context(object):
             nbits=200,
             long_fibration=True,
             depth=0,
-            simultaneous_integration=False
+            simultaneous_integration=True
         ):
         r"""
         Lefschetz Family integration context
@@ -78,6 +79,7 @@ class Context(object):
         self.CBF = ComplexBallField(4*nbits)
         self.CF = ComplexField(4*nbits)
         self.depth = depth
-        self.cutoff_simultaneous_integration = 2
+        
+        self.cutoff_simultaneous_integration = 2 if self.simultaneous_integration else Infinity
 
 dctx = Context() # default context

@@ -26,8 +26,9 @@ from ore_algebra.analytic.differential_operator import DifferentialOperator
 from ore_algebra.analytic.context import Context
 
 from sage.rings.integer_ring import Z
+from sage.misc.flatten import flatten
 
-from .simul_integrator_function import fundamental_matrices
+from .simul_integrator_function import _process_path, fundamental_matrices
 
 from .util import Util
 
@@ -82,48 +83,132 @@ class IntegratorSimultaneous(object):
                     complex_conjugates[i] = self.voronoi.vertices.index(self.voronoi.vertices[i].conjugate())
                     complex_conjugates[complex_conjugates[i]] = i
         return complex_conjugates
+    
+    def integrate_edges(self, edges):
+        A, denA = self._gaussmanin
+        R, denR = self._rat_coefs
+        vec = self.cyclic_vector if hasattr(self, "cyclic_vector") else None
+        
+        N = len(edges)
+        logger.info("Fragmenting %d edges to integrate"% (N))
+        begin = time.time()
+        _fragmented_edges = self.fragment_path([([i,N], A, denA, R, denR, e, vec, self.nbits) for i, e in list(enumerate(edges))])
+        fragmented_edges = [None]*len(edges)
+        for [inp, _], fragments in _fragmented_edges:
+            if fragments == 'NO DATA':
+                raise Exception("Failed to fragmentation of edge [%d/%d]."%(inp[0][0], inp[0][1]))
+            fragmented_edges[inp[0][0]] = fragments
+        end = time.time()
+        duration = end-begin
+        duration_str = time.strftime("%H:%M:%S",time.gmtime(duration))
+        logger.info("Fragmented edges in %s, starting integration"% (duration_str))
+        
+        begin = time.time()
+        fragmented_edges_flat = flatten(fragmented_edges, max_level=1)
+        N = len(fragmented_edges_flat)
 
+        integration_result = self._integrate_edge([([i,N], A, denA, R, denR, e, vec, self.nbits) for i, e in list(enumerate(fragmented_edges_flat))])
+
+        integration_result_sorted = [None] * N
+        for [inp, _], ntm in integration_result:
+            if ntm == 'NO DATA':
+                raise Exception("Failed to integrate fragment [%d/%d] of operator. Try increasing ``nbits``."%(inp[0][0], inp[0][1]))
+            integration_result_sorted[inp[0][0]] = ntm
+        end = time.time()
+        duration = end-begin
+        duration_str = time.strftime("%H:%M:%S",time.gmtime(duration))
+
+        logger.info("Integrated fragments in %s"% (duration_str))
+
+        integrated_edges = []
+        j=0
+        for fragmented_edge in fragmented_edges:
+            integrated_edges += [1]
+            for i in range(len(fragmented_edge)):
+                integrated_edges[-1] = integration_result_sorted[j] * integrated_edges[-1]
+                j+=1
+        return integrated_edges
+    
     @property
     def integrated_edges(self):
         if not hasattr(self, "_integrated_edges"):
             complex_conjugates = self.find_complex_conjugates()
             index_of_edges_to_integrate = []
-            edges=[]
+            edges_to_integrate=[]
             for i, e in enumerate(self.voronoi.edges):
-                if [e[1], e[0]] not in edges and [complex_conjugates[e[0]], complex_conjugates[e[1]]] not in edges and [complex_conjugates[e[1]], complex_conjugates[e[0]]] not in edges:
+                if [e[1], e[0]] not in edges_to_integrate and [complex_conjugates[e[0]], complex_conjugates[e[1]]] not in edges_to_integrate and [complex_conjugates[e[1]], complex_conjugates[e[0]]] not in edges_to_integrate:
                     index_of_edges_to_integrate+=[i]
-                    edges+=[e]
+                    edges_to_integrate+=[e]
 
-            edges = [[self.voronoi.vertices[e[0]], self.voronoi.vertices[e[1]]] for e in edges]
-            N = len(edges)
-            A, denA = self._gaussmanin
-            R, denR = self._rat_coefs
-            vec = self.cyclic_vector if hasattr(self, "cyclic_vector") else None
-            integration_result = self._integrate_edge([([i,N],A, denA, R, denR,[e[0], e[1]], vec, self.nbits) for i, e in list(enumerate(edges))])
-            integrated_edges_temp= [None]*N
-
-            for [inp, _], ntm in integration_result:
-                if ntm == 'NO DATA': # why is this not a result of @parallel?
-                    raise Exception("Failed to integrate operator. Try increasing `nbits`.")
-                    # logger.warning("failed to integrate operator")
-                integrated_edges_temp[inp[0][0]] = ntm # there should be a cleaner way to do this
+            edges_to_integrate = [[self.voronoi.vertices[e[0]], self.voronoi.vertices[e[1]]] for e in edges_to_integrate]
+            N = len(edges_to_integrate)
+            
+            integration_result = self.integrate_edges(edges_to_integrate)
 
             integrated_edges = [None]*len(self.voronoi.edges)
             for index, i in enumerate(index_of_edges_to_integrate):
-                integrated_edges[i] = integrated_edges_temp[index]
+                integrated_edges[i] = integration_result[index]
                 e = self.voronoi.edges[i]
                 if [complex_conjugates[e[0]], complex_conjugates[e[1]]] == e:
                     continue
                 if [complex_conjugates[e[0]], complex_conjugates[e[1]]] in self.voronoi.edges:
                     j = self.voronoi.edges.index([complex_conjugates[e[0]], complex_conjugates[e[1]]])
-                    integrated_edges[j] = integrated_edges_temp[index].conjugate()
+                    integrated_edges[j] = integration_result[index].conjugate()
                 if [complex_conjugates[e[1]], complex_conjugates[e[0]]] in self.voronoi.edges:
                     j = self.voronoi.edges.index([complex_conjugates[e[1]], complex_conjugates[e[0]]])
-                    integrated_edges[j] = integrated_edges_temp[index].inverse().conjugate()
+                    integrated_edges[j] = integration_result[index].inverse().conjugate()
 
             self._integrated_edges = integrated_edges
         return self._integrated_edges
     
+    @parallel
+    def fragment_path(cls, indices, A, denA, R, denR, edge, vec, nbits=300):
+        eps = Z(2)**(-Z(nbits))
+        ctx = Context(assume_analytic=True, eps=eps)
+
+        logger.info("[%d] Fragmenting edge [%d/%d]"% (os.getpid(), indices[0]+1,indices[1]))
+        begin = time.time()
+        fragmented_path = []
+        path = _process_path(A, denA, R, denR, edge, eps, vec=vec, ctx=ctx)
+        steps = list(path.steps())
+        decomp = []
+        i = 0
+        while i < len(steps):
+            if (ctx.two_point_mode
+                    and steps[i].reversed and i + 1 < len(steps)
+                    and not steps[i+1].reversed):
+                np = 2
+            else:
+                np = 1
+            decomp += [steps[i:i+np]]
+            i += np
+        for d in decomp:
+            r = []
+            for v in d:
+                a,b = v
+                if v.reversed:
+                    if r==[]:
+                        r = [b.value,a.value]
+                    else:
+                        assert r[-1] == b.value
+                        r += [a.value]
+                else:
+                    if r==[]:
+                        r = [a.value,b.value]
+                    else:
+                        assert r[-1] ==a.value
+                        r += [b.value]
+            fragmented_path += [r]
+        
+        end = time.time()
+        duration = end-begin
+        duration_str = time.strftime("%H:%M:%S",time.gmtime(duration))
+
+        logger.info("[%d] Finished fragmentation of edge [%d/%d] in %s, split into %d fragments"% (os.getpid(), indices[0]+1,indices[1], duration_str, len(fragmented_path)))
+        
+        return fragmented_path
+    
+
     @parallel
     # @staticmethod
     def _integrate_edge(cls, i, A, denA, R, denR, l, vec, nbits=300):
@@ -139,7 +224,10 @@ class IntegratorSimultaneous(object):
         duration = end-begin
         duration_str = time.strftime("%H:%M:%S",time.gmtime(duration))
         prec = str(max([c.rad() for c in  ntm.dense_coefficient_list()]))
-        prec = prec[:5] + "..." + prec[-5:] if len(prec)>10 else prec
+        if len(prec)>10:
+            cutoff_start = 5 if "." not in prec else prec.index(".") + 2
+            cutoff_end = prec.index("e") if "e" in prec else -5
+            prec = prec[:cutoff_start] + "..." + prec[cutoff_end:]
         logger.info("[%d] Finished integration along edge [%d/%d] in %s, recovered precision %s"% (os.getpid(), i[0]+1,i[1], duration_str, prec))
         ntmi = ntm**-1
 
