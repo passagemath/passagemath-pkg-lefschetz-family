@@ -184,8 +184,8 @@ class DoubleCover(object):
     def holomorphic_forms(self):
         """The holomorphic cohomology classes."""
         if not hasattr(self, "_holomorphic_forms"):
-            mindeg = min([m.degree() for m in self.cohomology])
-            self._holomorphic_forms = [m for m in self.cohomology if m.degree()==mindeg]
+            mindeg = min([m.degree() for m in self.cohomology_internal])
+            self._holomorphic_forms = [m for m in self.cohomology_internal if m.degree()==mindeg]
         return self._holomorphic_forms
 
 
@@ -207,7 +207,7 @@ class DoubleCover(object):
         return self._dim
 
     @property
-    def cohomology(self):
+    def cohomology_internal(self):
         if not hasattr(self,'_cohomology'):
             assert self.smooth,"Cannot compute cohomology of singular double covers (yet)."
             self._cohomology = Cohomology(self.P, shift=self.shift).basis()
@@ -288,7 +288,7 @@ class DoubleCover(object):
 
             n = len(self.fibre.homology) 
             
-            cohomology_fibre_to_family = self.family._coordinates([self.family.pol.parent()(w) for w in self.fibre.cohomology], self.basepoint)
+            cohomology_fibre_to_family = self.family._coordinates([self.family.pol.parent()(w) for w in self.fibre.cohomology_internal], self.basepoint)
             initial_conditions = cohomology_fibre_to_family.inverse()
 
             cohomology_monodromies = [initial_conditions.inverse() * M * initial_conditions for M in transition_matrices]
@@ -535,20 +535,20 @@ class DoubleCover(object):
     @property
     def transition_matrices(self):
         if not hasattr(self, '_transition_matrices'):
-            if hasattr(self, '_transition_matrices_holomorphic') and len(self.holomorphic_forms) == len(self.cohomology):
+            if hasattr(self, '_transition_matrices_holomorphic') and len(self.holomorphic_forms) == len(self.cohomology_internal):
                 self._transition_matrices = self.transition_matrices_holomorphic
                 return self._transition_matrices
 
             if hasattr(self, '_transition_matrices_holomorphic'):
-                rat_coefs = self._get_coordinates([w for w in self.cohomology if w not in self.holomorphic_forms])
+                rat_coefs = self._get_coordinates([w for w in self.cohomology_internal if w not in self.holomorphic_forms])
             else:
-                rat_coefs = self._get_coordinates(self.cohomology)
+                rat_coefs = self._get_coordinates(self.cohomology_internal)
 
             logger.info("[%d] Computing transition matrices of all forms (%d rational vector(s))."% (self.dim, rat_coefs[0].nrows()))
             if rat_coefs[0].nrows() > self.ctx.cutoff_simultaneous_integration:
                 transition_matrices = self._compute_transition_matrices_simultaneous(rat_coefs)
             else:
-                indices = [i for i in range(len(self.cohomology))]
+                indices = [i for i in range(len(self.cohomology_internal))]
                 transition_matrices = self._compute_transition_matrices_sequential(rat_coefs, indices)
             self._transition_matrices = transition_matrices
         return self._transition_matrices
@@ -558,8 +558,8 @@ class DoubleCover(object):
         if not hasattr(self, '_transition_matrices_holomorphic'):
             if hasattr(self, '_transition_matrices') or self.ctx.simultaneous_integration:
                 r = self.fibre.period_matrix.nrows()
-                R = len(self.cohomology)
-                indices = [self.cohomology.index(w) for w in self.holomorphic_forms]
+                R = len(self.cohomology_internal)
+                indices = [self.cohomology_internal.index(w) for w in self.holomorphic_forms]
                 indices += [R+i for i in range(r)]
                 transition_matrices = [M.matrix_from_rows_and_columns(indices, indices) for M in self.transition_matrices]
             else:
@@ -578,7 +578,7 @@ class DoubleCover(object):
         if not hasattr(self, '_transition_matrices_monodromy'):
             if hasattr(self, '_transition_matrices') or self.ctx.simultaneous_integration:
                 r = self.fibre.period_matrix.nrows()
-                R = len(self.cohomology)
+                R = len(self.cohomology_internal)
                 transition_matrices = [M.submatrix(R,R) for M in self.transition_matrices]
             elif hasattr(self, '_transition_matrices_holomorphic'):
                 r = self.fibre.period_matrix.nrows()
@@ -586,7 +586,7 @@ class DoubleCover(object):
                 transition_matrices = [M.submatrix(R,R) for M in self.transition_matrices_holomorphic]
             else:
                 indices = [0]
-                rat_coefs = self._get_coordinates([self.cohomology[0]])
+                rat_coefs = self._get_coordinates([self.cohomology_internal[0]])
                 logger.info("[%d] Computing transition matrices for monodromy (%d rational vector(s))."% (self.dim, rat_coefs[0].nrows()))
                 transition_matrices = self._compute_transition_matrices_sequential(rat_coefs, indices)
                 transition_matrices = [M.submatrix(1,1) for M in transition_matrices]
@@ -619,8 +619,8 @@ class DoubleCover(object):
         transition_matrices = integrator.transition_matrices
         if hasattr(self, '_transition_matrices_holomorphic'):
             Rholo = len(self.holomorphic_forms)
-            R = len(self.cohomology) - Rholo
-            r = len(self.fibre.cohomology)
+            R = len(self.cohomology_internal) - Rholo
+            r = len(self.fibre.cohomology_internal)
             intold = [M.submatrix(0,Rholo,Rholo,r) for M in self.transition_matrices_holomorphic]
             intnew = [M.submatrix(0,R,R,r) for M in transition_matrices]
             GM = [M.submatrix(R,R) for M in transition_matrices]
@@ -660,7 +660,7 @@ class DoubleCover(object):
 
     def picard_fuchs_equation(self, v):
         if self.dim == 1:
-            w = self.cohomology[0]
+            w = self.cohomology_internal[0]
             Dt = self.family.dopring.gens()[0]
             t = self.family.dopring.base_ring().gens()[0]
             P = self.P(t+1, 1) 
@@ -695,10 +695,10 @@ class DoubleCover(object):
         if not hasattr(self, '_integrated_thimbles'):
             s=len(self.fibre.homology)
             transition_matrices = self.transition_matrices
-            R=len(self.cohomology)
+            R=len(self.cohomology_internal)
             permuting_cycles = self.permuting_cycles
 
-            cohomology_fibre_to_family = self.family._coordinates([self.family.pol.parent()(w) for w in self.fibre.cohomology], self.basepoint)
+            cohomology_fibre_to_family = self.family._coordinates([self.family.pol.parent()(w) for w in self.fibre.cohomology_internal], self.basepoint)
             initial_conditions = cohomology_fibre_to_family.inverse()
             
             pM = self.fibre.period_matrix
@@ -720,7 +720,7 @@ class DoubleCover(object):
             R=len(self.holomorphic_forms)
             permuting_cycles = self.permuting_cycles
 
-            cohomology_fibre_to_family = self.family._coordinates([self.family.pol.parent()(w) for w in self.fibre.cohomology], self.basepoint)
+            cohomology_fibre_to_family = self.family._coordinates([self.family.pol.parent()(w) for w in self.fibre.cohomology_internal], self.basepoint)
             initial_conditions = cohomology_fibre_to_family.inverse()
             
             pM = self.fibre.period_matrix
@@ -738,14 +738,14 @@ class DoubleCover(object):
 
     def derivatives_coordinates(self, i):
         if not hasattr(self, '_coordinatesQ'):
-            self._coordinatesQ = [False for i in range(len(self.cohomology))]
+            self._coordinatesQ = [False for i in range(len(self.cohomology_internal))]
         if not hasattr(self, '_coordinates'):
-            self._coordinates = [None for i in range(len(self.cohomology))]
+            self._coordinates = [None for i in range(len(self.cohomology_internal))]
 
         if not self._coordinatesQ[i]:
             s=len(self.fibre.homology)
             denom, RtoS = self._RtoS()
-            w = self.cohomology[i]
+            w = self.cohomology_internal[i]
             wt = self._restrict_form(w)
             derivatives = [RtoS(0), wt]
             for k in range(s-1 if self.dim%2==0 else s-2):
@@ -761,9 +761,9 @@ class DoubleCover(object):
 
     def derivatives_values_at_basepoint(self, i):
         denom, RtoS = self._RtoS()
-        s=len(self.fibre.cohomology)
+        s=len(self.fibre.cohomology_internal)
 
-        w = self.cohomology[i]
+        w = self.cohomology_internal[i]
         wt = self._restrict_form(w)
         derivatives = [wt.parent()(0), wt]
         if self.dim==1:

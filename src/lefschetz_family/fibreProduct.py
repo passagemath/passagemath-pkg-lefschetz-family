@@ -275,7 +275,7 @@ class FibreProduct(object):
         return self._monodromy_representation
 
     @property
-    def cohomology(self):
+    def cohomology_internal(self):
         """a cohomology class is represented by `(w1, w2, denom)` where `w1` is a form of `self.S1`, `w2` is a form of `self.S2` and `denom` is a rational function of the parameter."""
         if not hasattr(self,"_cohomology"):
             S = self.S1.P.parent()
@@ -303,7 +303,7 @@ class FibreProduct(object):
     def picard_fuchs_equations(self):
         if not hasattr(self,"_picard_fuchs_operators"):
             picard_fuchs_equations = []
-            for w1, w2, denom in self.cohomology:
+            for w1, w2, denom in self.cohomology_internal:
                 L1 = self.S1.family.picard_fuchs_equation(w1)
                 L2 = self.S2.family.picard_fuchs_equation(w2)
                 L = L1.symmetric_product(L2)*denom
@@ -338,7 +338,7 @@ class FibreProduct(object):
 
             _integrated_thimbles_all = []
 
-            for transition_matrices, w in zip(self.transition_matrices, self.cohomology):
+            for transition_matrices, w in zip(self.transition_matrices, self.cohomology_internal):
                 w1, w2, denom = w
 
                 numerator1 = (w1[0]*self.S1.P + w1[1]*self.S1.family.pol.parent()(self.S1.family.coho1.basis()[1]))*self.correction/denom
@@ -376,7 +376,7 @@ class FibreProduct(object):
     @property
     def period_matrix(self):
         if not hasattr(self, '_period_matrix'):
-            periods_tot = block_matrix([[self.primary_periods, zero_matrix(len(self.cohomology), len(flatten(self.components_of_singular_fibres)))]])
+            periods_tot = block_matrix([[self.primary_periods, zero_matrix(len(self.cohomology_internal), len(flatten(self.components_of_singular_fibres)))]])
             
             res = self.primary_lattice.solve_right(matrix([self.monodromy_representation.proj(v) for v in self.homology]).transpose())
             self._period_matrix = periods_tot * res

@@ -170,7 +170,7 @@ class EllipticSurface(object):
 
             integration_correction = diagonal_matrix([1/ZZ(factorial(k)) for k in range(n+1)])
             derivatives_at_basepoint = self.derivatives_values_at_basepoint(w)
-            cohomology_fibre_to_family = self.family._coordinates([self.family.pol.parent()(w) for w in self.fibre.cohomology], self.basepoint)
+            cohomology_fibre_to_family = self.family._coordinates([self.family.pol.parent()(w) for w in self.fibre.cohomology_internal], self.basepoint)
 
             initial_conditions = integration_correction * derivatives_at_basepoint * cohomology_fibre_to_family.inverse()
             initial_conditions = initial_conditions.submatrix(1,0)
@@ -363,7 +363,7 @@ class EllipticSurface(object):
             _integrated_thimbles_all=[]
             for transition_matrices, w in zip(self.transition_matrices, self.holomorphic_forms):
                 derivatives_at_basepoint = self.derivatives_values_at_basepoint(w)
-                cohomology_fibre_to_family = self.family._coordinates([self.family.pol.parent()(w) for w in self.fibre.cohomology], self.basepoint)
+                cohomology_fibre_to_family = self.family._coordinates([self.family.pol.parent()(w) for w in self.fibre.cohomology_internal], self.basepoint)
                 
                 initial_conditions = integration_correction * derivatives_at_basepoint * cohomology_fibre_to_family.inverse() * pM
                 initial_conditions = initial_conditions.submatrix(0,0,transition_matrices[0].ncols())
@@ -623,7 +623,7 @@ class EllipticSurface(object):
         if hasattr(self, '_transition_matrices_holomorphic'):
             Rholo = len(self.holomorphic_forms)
             R = len(self.cohomology) - Rholo
-            r = len(self.fibre.cohomology)
+            r = len(self.fibre.cohomology_internal)
             intold = [M.submatrix(0,Rholo,Rholo,r) for M in self.transition_matrices_holomorphic]
             intnew = [M.submatrix(0,R,R,r) for M in transition_matrices]
             GM = [M.submatrix(R,R) for M in transition_matrices]

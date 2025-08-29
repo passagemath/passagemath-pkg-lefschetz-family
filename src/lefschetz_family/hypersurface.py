@@ -164,7 +164,7 @@ class Hypersurface(object):
                 R = self.P.parent()
                 affineR = PolynomialRing(QQbar, 'X')
                 affineProjection = R.hom([affineR.gens()[0],1], affineR)
-                period_matrix = matrix([self._residue_form(affineProjection(b), affineProjection(self.P), (b.degree()+len(R.gens()))//self.P.degree(), self.extensions) for b in self.cohomology]).change_ring(self.ctx.CBF)
+                period_matrix = matrix([self._residue_form(affineProjection(b), affineProjection(self.P), (b.degree()+len(R.gens()))//self.P.degree(), self.extensions) for b in self.cohomology_internal]).change_ring(self.ctx.CBF)
                 period_matrix = block_matrix([[period_matrix],[matrix([[1]*self.degree])]])
                 self._period_matrix=period_matrix
             elif self.dim%2 ==1:
@@ -204,8 +204,8 @@ class Hypersurface(object):
     def holomorphic_forms(self):
         """The holomorphic cohomology classes."""
         if not hasattr(self, "_holomorphic_forms"):
-            mindeg = min([m.degree() for m in self.cohomology])
-            self._holomorphic_forms = [m for m in self.cohomology if m.degree()==mindeg]
+            mindeg = min([m.degree() for m in self.cohomology_internal])
+            self._holomorphic_forms = [m for m in self.cohomology_internal if m.degree()==mindeg]
         return self._holomorphic_forms
 
 
@@ -227,11 +227,14 @@ class Hypersurface(object):
         return self._dim
 
     @property
-    def cohomology(self):
+    def cohomology_internal(self):
         if not hasattr(self,'_cohomology'):
             self._cohomology = Cohomology(self.P).basis()
         return self._cohomology
     
+    @property
+    def cohomology(self):
+        return [w * factorial((w.degree()+self.dim+2)//self.P.degree() -1) for w in self.cohomology_internal] 
     
     @property
     def family(self):
@@ -291,7 +294,7 @@ class Hypersurface(object):
 
             n = len(self.fibre.homology) 
             
-            cohomology_fibre_to_family = self.family._coordinates([self.family.pol.parent()(w) for w in self.fibre.cohomology], self.basepoint)
+            cohomology_fibre_to_family = self.family._coordinates([self.family.pol.parent()(w) for w in self.fibre.cohomology_internal], self.basepoint)
             initial_conditions = cohomology_fibre_to_family.inverse()
 
             cohomology_monodromies = [initial_conditions.inverse() * M * initial_conditions for M in transition_matrices]
@@ -518,20 +521,20 @@ class Hypersurface(object):
     @property
     def transition_matrices(self):
         if not hasattr(self, '_transition_matrices'):
-            if hasattr(self, '_transition_matrices_holomorphic') and len(self.holomorphic_forms) == len(self.cohomology):
+            if hasattr(self, '_transition_matrices_holomorphic') and len(self.holomorphic_forms) == len(self.cohomology_internal):
                 self._transition_matrices = self.transition_matrices_holomorphic
                 return self._transition_matrices
 
             if hasattr(self, '_transition_matrices_holomorphic'):
-                rat_coefs = self.family.coordinates([self._restrict_form(w) for w in self.cohomology if w not in self.holomorphic_forms])
+                rat_coefs = self.family.coordinates([self._restrict_form(w) for w in self.cohomology_internal if w not in self.holomorphic_forms])
             else:
-                rat_coefs = self.family.coordinates([self._restrict_form(w) for w in self.cohomology])
+                rat_coefs = self.family.coordinates([self._restrict_form(w) for w in self.cohomology_internal])
 
             logger.info("[%d] Computing transition matrices of all forms (%d rational vector(s))."% (self.dim, rat_coefs[0].nrows()))
             if rat_coefs[0].nrows() > self.ctx.cutoff_simultaneous_integration:
                 transition_matrices = self._compute_transition_matrices_simultaneous(rat_coefs)
             else:
-                indices = [i for i in range(len(self.cohomology))]
+                indices = [i for i in range(len(self.cohomology_internal))]
                 transition_matrices = self._compute_transition_matrices_sequential(rat_coefs, indices)
             self._transition_matrices = transition_matrices
         return self._transition_matrices
@@ -541,9 +544,9 @@ class Hypersurface(object):
         if not hasattr(self, '_transition_matrices_holomorphic'):
             if hasattr(self, '_transition_matrices') or self.ctx.simultaneous_integration:
                 r = self.fibre.period_matrix.nrows()
-                r = len(self.fibre.cohomology)
-                R = len(self.cohomology)
-                indices = [self.cohomology.index(w) for w in self.holomorphic_forms]
+                r = len(self.fibre.cohomology_internal)
+                R = len(self.cohomology_internal)
+                indices = [self.cohomology_internal.index(w) for w in self.holomorphic_forms]
                 indices += [R+i for i in range(r)]
                 transition_matrices = [M.matrix_from_rows_and_columns(indices, indices) for M in self.transition_matrices]
             else:
@@ -562,7 +565,7 @@ class Hypersurface(object):
         if not hasattr(self, '_transition_matrices_monodromy'):
             if hasattr(self, '_transition_matrices') or self.ctx.simultaneous_integration:
                 r = self.fibre.period_matrix.nrows()
-                R = len(self.cohomology)
+                R = len(self.cohomology_internal)
                 transition_matrices = [M.submatrix(R,R) for M in self.transition_matrices]
             elif hasattr(self, '_transition_matrices_holomorphic'):
                 r = self.fibre.period_matrix.nrows()
@@ -570,7 +573,7 @@ class Hypersurface(object):
                 transition_matrices = [M.submatrix(R,R) for M in self.transition_matrices_holomorphic]
             else:
                 indices = [0]
-                rat_coefs = self.family.coordinates([self._restrict_form(self.cohomology[0])])
+                rat_coefs = self.family.coordinates([self._restrict_form(self.cohomology_internal[0])])
                 logger.info("[%d] Computing transition matrices for monodromy (%d rational vector(s))."% (self.dim, rat_coefs[0].nrows()))
                 transition_matrices = self._compute_transition_matrices_sequential(rat_coefs, indices)
                 transition_matrices = [M.submatrix(1,1) for M in transition_matrices]
@@ -591,8 +594,8 @@ class Hypersurface(object):
         transition_matrices = integrator.transition_matrices
         if hasattr(self, '_transition_matrices_holomorphic'):
             Rholo = len(self.holomorphic_forms)
-            R = len(self.cohomology) - Rholo
-            r = len(self.fibre.cohomology)
+            R = len(self.cohomology_internal) - Rholo
+            r = len(self.fibre.cohomology_internal)
             intold = [M.submatrix(0,Rholo,Rholo,r) for M in self.transition_matrices_holomorphic]
             intnew = [M.submatrix(0,R,R,r) for M in transition_matrices]
             GM = [M.submatrix(R,R) for M in transition_matrices]
@@ -652,10 +655,10 @@ class Hypersurface(object):
         if not hasattr(self, '_integrated_thimbles'):
             s=len(self.fibre.homology)
             transition_matrices = self.transition_matrices
-            R=len(self.cohomology)
+            R=len(self.cohomology_internal)
             permuting_cycles = self.permuting_cycles
 
-            cohomology_fibre_to_family = self.family._coordinates([self.family.pol.parent()(w) for w in self.fibre.cohomology], self.basepoint)
+            cohomology_fibre_to_family = self.family._coordinates([self.family.pol.parent()(w) for w in self.fibre.cohomology_internal], self.basepoint)
             initial_conditions = cohomology_fibre_to_family.inverse()
             
             pM = self.fibre.period_matrix
@@ -677,7 +680,7 @@ class Hypersurface(object):
             R=len(self.holomorphic_forms)
             permuting_cycles = self.permuting_cycles
 
-            cohomology_fibre_to_family = self.family._coordinates([self.family.pol.parent()(w) for w in self.fibre.cohomology], self.basepoint)
+            cohomology_fibre_to_family = self.family._coordinates([self.family.pol.parent()(w) for w in self.fibre.cohomology_internal], self.basepoint)
             initial_conditions = cohomology_fibre_to_family.inverse()
             
             pM = self.fibre.period_matrix
@@ -697,7 +700,7 @@ class Hypersurface(object):
         if not self._coordinatesQ[i]:
             s=len(self.fibre.homology)
             RtoS = self._RtoS()
-            w = self.cohomology[i]
+            w = self.cohomology_internal[i]
             wt = self._restrict_form(w)
             derivatives = [RtoS(0), wt]
             for k in range(s-1 if self.dim%2==0 else s-2):
@@ -726,8 +729,8 @@ class Hypersurface(object):
     
     def derivatives_values_at_basepoint(self, i):
         RtoS = self._RtoS()
-        s=len(self.fibre.cohomology)
-        w = self.cohomology[i]
+        s=len(self.fibre.cohomology_internal)
+        w = self.cohomology_internal[i]
 
         wt, denom2 = self.family.coordinates([self._restrict_form(w)])
         wt = wt[0]
