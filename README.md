@@ -22,6 +22,7 @@ Here is a runtime benchmark for various examples, with an input precision of 100
 | Cubic surface     	| 40 seconds         	| 340 digits                            |
 | Quartic surface   	| 1 hour        	    | 300 digits                            |
 | Cubic threefold   	| 15 minutes        	    | 300 digits                            |
+| Cubic fourfold   	| 20 hours        	    | 300 digits                            |
 | Rational elliptic surface | 10 seconds        	    | 300 digits                            |
 | Elliptic K3 surface   	| 30 seconds*        	    | 300 digits                            |
 | Degree 2 K3 surface   	| 5 minutes        	    | 300 digits                            |

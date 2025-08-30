@@ -168,7 +168,7 @@ class Fibration(object):
             Mtot = prod(list(reversed(Ms)))
             if Mtot != 1:
                 self._critical_values = self.critical_values + ["infinity"]
-                transition_matrix_infinity = prod([M.inverse() for M in self.cyclic_transition_matrices])
+                transition_matrix_infinity = [prod([M.inverse() for M in Ms]) for Ms in self.cyclic_transition_matrices]
                 self._cyclic_transition_matrices += [transition_matrix_infinity]
                 Ms += [(Mtot.inverse()).change_ring(ZZ)]
                 
@@ -242,7 +242,7 @@ class Fibration(object):
 
     def derivatives_values_at_basepoint(self, w, s):
         # s=len(self.fibre.cohomology_internal)
-
+        w = w.change_ring(self.family.upolring)
         GM, denom = self.family.gaussmanin()
         Dt = self.family.dopring.gen(0)
         t = self.family.upolring.gen(0)

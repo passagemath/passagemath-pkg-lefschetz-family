@@ -64,7 +64,7 @@ logger = logging.getLogger(__name__)
 
 
 class Hypersurface(object):
-    def __init__(self, P, basepoint=None, fibration=None, compute_fundamental_group=True, **kwds):
+    def __init__(self, P, basepoint=None, fibration=None, **kwds):
         """P, a homogeneous polynomial defining a smooth hypersurface X in P^{n+1}.
 
         This class aims at computing an effective basis of the homology group H_n(X), 
@@ -234,7 +234,7 @@ class Hypersurface(object):
     
     @property
     def cohomology(self):
-        return [w * factorial((w.degree()+self.dim+2)//self.P.degree() -1) for w in self.cohomology_internal] 
+        return [w * factorial((w.degree()+self.dim+2)//self.P.degree() -2) for w in self.cohomology_internal] 
     
     @property
     def family(self):
@@ -811,7 +811,10 @@ class Hypersurface(object):
     @property
     def hyperplane_class(self):
         assert self.dim %2 ==0, "no hyperplane class in odd dimensions"
-        return matrix(self.homology).solve_left(self.fibre_class + sum(self.exceptional_divisors)) # todo in higher dimensions (>=4) we want the orthogonal projection of self.fibre_class
+        CB = matrix([self.fibre_class] + self.exceptional_divisors)
+        IP = CB * self.intersection_product_modification * matrix(self.exceptional_divisors).transpose()
+        hyperplane_class = matrix(self.homology).solve_left(IP.left_kernel_matrix() * CB).row(0)
+        return hyperplane_class.change_ring(ZZ)
     
     @property
     def fibre_class(self):
