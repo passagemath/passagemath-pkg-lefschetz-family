@@ -98,6 +98,7 @@ class Integrator(object):
         end = time.time()
         duration = end-begin
         duration_str = time.strftime("%H:%M:%S",time.gmtime(duration))
+        self._fragmented_edges = fragmented_edges
         logger.info("Fragmented edges in %s, starting integration"% (duration_str))
         
         begin = time.time()
@@ -137,9 +138,12 @@ class Integrator(object):
                     edges_to_integrate+=[e]
 
             edges_to_integrate = [[self.voronoi.vertices[e[0]], self.voronoi.vertices[e[1]]] for e in edges_to_integrate]
+            self._edges_to_integrate = edges_to_integrate # debugging, to delete later
             N = len(edges_to_integrate)
             
             integration_result = self.integrate_edges(edges_to_integrate)
+
+            self._integration_result = integration_result # debugging, to delete later
 
             integrated_edges = [None]*len(self.voronoi.edges)
             for index, i in enumerate(index_of_edges_to_integrate):
@@ -225,4 +229,9 @@ class Integrator(object):
 
         logger.info("[%d] Finished fragmentation of edge [%d/%d] in %s, split into %d fragments"% (os.getpid(), indices[0]+1,indices[1], duration_str, len(fragmented_path)))
         
+        if fragmented_path[0][0] != e[0]:
+            fragmented_path = [[e[0], fragmented_path[0][0]]] + fragmented_path
+        if fragmented_path[-1][-1] != e[-1]:
+            fragmented_path = fragmented_path + [[fragmented_path[-1][-1], e[-1]]]
+
         return fragmented_path
