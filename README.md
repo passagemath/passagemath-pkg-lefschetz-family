@@ -4,10 +4,11 @@
 ## Description
 This Sage package provides a means of efficiently computing periods of complex projective hypersurfaces and elliptic surfaces over $\mathbb P^1$ with certified rigorous precision bounds.
 It implements the methods described in 
-- [Effective homology and periods of complex projective hypersurfaces](https://doi.org/10.1090/mcom/3947) ([arxiv:2306.05263](https://arxiv.org/abs/2306.05263)).
+- [Effective homology and periods of complex projective hypersurfaces](https://doi.org/10.1090/mcom/3947) ([arxiv:2306.05263](https://doi.org/10.48550/arXiv.2509.06785)).
 - [A semi-numerical algorithm for the homology lattice and periods of complex elliptic surfaces over the projective line](https://doi.org/10.1016/j.jsc.2024.102357) ([arxiv:2306.05263](https://arxiv.org/abs/2401.05131)).
-- [Periods of fibre products of elliptic surfaces and the Gamma conjecture](https://arxiv.org/abs/2505.07685) ([arxiv:2306.05263](https://arxiv.org/abs/2505.07685)).
+- [Periods of fibre products of elliptic surfaces and the Gamma conjecture](https://doi.org/10.48550/arXiv.2505.07685) ([arxiv:2306.05263](https://doi.org/10.48550/arXiv.2505.07685)).
 - [Periods in algebraic geometry : computations and application to Feynman integrals](https://theses.hal.science/tel-04823423) ([hal:tel-04823423](https://theses.hal.science/tel-04823423)).
+- [Galois groups of symmetric cubic surfaces](https://doi.org/10.48550/arXiv.2509.06785) ([arxiv:2509.06785](https://doi.org/10.48550/arXiv.2509.06785)).
 
 Please cite accordingly.
 
@@ -55,9 +56,11 @@ Sage 9.0 and above is recommended. Furthermore, this package has the following d
 
 
 
-## Usage
+## Documentations of classes
 
 ### Hypersurface
+
+This class allows to compute periods of hypersurfaces.
 
 The first step is to define the polynomial $P$ defining the projective hypersurface $X=V(P)$. For instance, the following gives the Fermat elliptic curve:
 ```python
@@ -172,6 +175,8 @@ Miscellaneous properties:
 The computation of the exceptional divisors can be costly, and is not always necessary. For example, the Picard rank of a quartic surface can be recovered with `holomorphic_period_matrix_modification` alone.
 
 ### EllipticSurface
+
+This class allows to compute periods and related quantities of elliptic surfaces.
 
 #### Usage
 
@@ -296,6 +301,8 @@ Miscellaneous properties:
 
 ### DoubleCover
 
+This class allows to compute the periods of double covers of projective space.
+
 #### Usage
 
 The defining equation for the double cover should be given as a homogeneous polynomial of even degree. Such a polynomial $P$ represents the double cover $X = V(w^2-P)$.
@@ -354,6 +361,8 @@ Miscellaneous properties:
 
 ### FibreProduct
 
+This class allows to compute the periods of fibre products of elliptic surfaces.
+
 The first step is to define the elliptic surfaces $S_1$ and $S_2$ defining the fibre product $X=S_1\times_{\mathbb P^1}S_2$ using `EllipticSurface`. It is necessary to give the two elliptic surfaces the same basepoint. The following constructs the example $A\times_{1}c$ of [Periods of fibre products of elliptic surfaces and the Gamma conjecture](https://arxiv.org/abs/2505.07685), Section 6:
 ```python
 from lefschetz_family import EllipticSurface
@@ -403,8 +412,6 @@ The object `FibreProduct` can be called with several options:
 - `method` (`"voronoi"` by default/`"delaunay"`/`"delaunay_dual"`): the method used for computing a basis of homotopy. `voronoi` uses integration along paths in the voronoi graph of the critical points; `delaunay` uses integration along paths along the delaunay triangulation of the critical points; `delaunay_dual` paths are along the segments connecting the barycenter of a triangle of the Delaunay triangulation to the middle of one of its edges. In practice, `delaunay` is more efficient for low dimension and low order varieties (such as degree 3 curves and surfaces, and degree 4 curves). This gain in performance is however hindered in higher dimensions because of the algebraic complexity of the critical points (which are defined as roots of high order polynomials, with very large integer coefficients). <b>`"delaunay"` method is not working for now</b>
 
 #### Properties
-
-
 The object `Hypersurface` has several properties.
 Fibration related properties, in positive dimension:
 - `critical_values`: the list critical values  of that map.
@@ -436,6 +443,57 @@ Miscellaneous properties:
 - `dim`: the dimension of $X$.
 - `degree`: the degree of $X$.
 - `ctx`: the options of $X$, see related section above.
+
+
+### Fibration
+
+This class allows to compute the monodromy representation of one parameter families of generically smooth projective hypersurfaces.
+
+The first step is to define the polynomial $P$ defining the projective hypersurface $X=V(P)$. For instance, the following gives the Fermat elliptic curve:
+```python
+R.<X,Y,Z> = PolynomialRing(QQ)
+S.<t> = PolynomialRing(R)
+P = X**4+Y**4+Z**4 + t*X*Y*Z**2
+```
+Then the following creates an object representing the fibration:
+```python
+from lefschetz_family import Fibration
+X = Fibration(P)
+```
+The monodromy representation of the family defined by P is obtained by:
+```python
+X.monodromy_matrices
+```
+
+The module automatically uses available cores for computing numerical integrations and braids of roots. For this, the sage session needs to be made aware of the available cores. This can be done by adding the following line of code before launching the computation (replace `10` by the number of cores you want to use).
+```python
+os.environ["SAGE_NUM_THREADS"] = '10'
+```
+
+
+#### Options
+The object `Fibration` can be called with several options:
+- `nbits` (positive integer, `400` by default): the number of bits of precision used as input for the computations. If a computation fails to recover the 
+- `basepoint` (rational number): which point to use as a basepoint.
+- `fibre` (`Hypersurface` object, see above): if the periods of the fiber have already been computed, passing this argument avoids recomputing them. This can only be set if `basepoint` is also set.
+- `family` (`Family` object): similarly to `fibre`, one can pass down a `Family` object to avoid redundant computations of Picard-Fuchs equations.
+- `cyclic_forms` (list of vectors defined over `self.family.upolring`): a list of cohomology classes of `self.family` that will be used to compute the monodromy. This family has to generate the full cohomology (as a $D$-module).
+- `fibration` (list of vectors defined over the rationals): the fibration to pass down to the fibre for computing its periods, see `Hypersurface` above.
+
+#### Properties
+The object `Fibration` has several properties.
+Fibration related properties:
+- `critical_values`: the list critical values  of that map.
+- `basepoint`: the basepoint of the fibration (i.e. a non critical value).
+- `fundamental_group`: the class computing representants of the fundamental group of $\mathbb P^1$ punctured at the critical values.
+- `paths`: the list of simple loops around each point of `critical_values`. When this is called, the ordering of `critical_values` changes so that the composition of these loops is the loop around infinity.
+- `family`: the one parameter family corresponding to the fibration.
+- `fibre`: the fibre above the basepoint.
+
+Miscellaneous properties:
+- `P`: the defining equation of $X$.
+- `ctx`: the options of $X$, see related section above.
+
 
 ## Contact
 For any question, bug or remark, please contact [eric.pichon@mis.mpg.de](mailto:eric.pichon@mis.mpg.de).
