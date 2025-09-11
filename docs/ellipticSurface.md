@@ -85,7 +85,7 @@ Fibration related properties, in positive dimension:
 <!-- - `fibration`: the two linear maps defining the map $X\dashrightarrow \mathbb P^1$. -->
 - `critical_values`: the list critical values  of that map.
 - `basepoint`: the basepoint of the fibration (i.e. a non critical value).
-- `fibre`: the fibre above the basepoint as a `LefschetzFamily` object.
+- `fibre`: the fibre above the basepoint as a `Hypersurface` object.
 - `paths`: the list of simple loops around each point of `critical_points`. When this is called, the ordering of `critical_points` changes so that the composition of these loops is the loop around infinity.
 - `family`: the one parameter family corresponding to the fibration.
 
