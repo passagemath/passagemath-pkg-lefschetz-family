@@ -18,14 +18,16 @@ This package is a successor to the [numperiods](https://gitlab.inria.fr/lairez/n
 
 In a terminal, run
 ```
-sage -pip install git+https://github.com/mkauers/ore_algebra.git
+sage -pip install --no-build-isolation git+https://github.com/mkauers/ore_algebra.git
 sage -pip install lefschetz-family
 ```
 or
 ```
-sage -pip install --user git+https://github.com/mkauers/ore_algebra.git
+sage -pip install --no-build-isolation --user git+https://github.com/mkauers/ore_algebra.git
 sage -pip install --user lefschetz-family
 ```
+
+Note the crucial option `--no-build-isolation`. The `ore_algebra` package contains extension modules; the option instructs `pip` to build these modules against the existing Sage installation.
 
 Alternatively, install the `ore_alegbra` package (available at [https://github.com/mkauers/ore_algebra](https://github.com/mkauers/ore_algebra)), then download this repository and add the path to the main folder to your `sys.path`.
 
