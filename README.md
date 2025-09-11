@@ -4,9 +4,9 @@
 ## Description
 This Sage package provides a means of efficiently computing periods of complex projective hypersurfaces and elliptic surfaces over $\mathbb P^1$ with certified rigorous precision bounds.
 It implements the methods described in 
-- [Effective homology and periods of complex projective hypersurfaces](https://doi.org/10.1090/mcom/3947) ([arxiv:2306.05263](https://doi.org/10.48550/arXiv.2509.06785)).
-- [A semi-numerical algorithm for the homology lattice and periods of complex elliptic surfaces over the projective line](https://doi.org/10.1016/j.jsc.2024.102357) ([arxiv:2306.05263](https://arxiv.org/abs/2401.05131)).
-- [Periods of fibre products of elliptic surfaces and the Gamma conjecture](https://doi.org/10.48550/arXiv.2505.07685) ([arxiv:2306.05263](https://doi.org/10.48550/arXiv.2505.07685)).
+- [Effective homology and periods of complex projective hypersurfaces](https://doi.org/10.1090/mcom/3947) ([arxiv:2306.05263](https://doi.org/10.48550/arXiv.2306.05263)).
+- [A semi-numerical algorithm for the homology lattice and periods of complex elliptic surfaces over the projective line](https://doi.org/10.1016/j.jsc.2024.102357) ([arxiv:2401.05131](https://arxiv.org/abs/2401.05131)).
+- [Periods of fibre products of elliptic surfaces and the Gamma conjecture](https://doi.org/10.48550/arXiv.2505.07685) ([arxiv:2505.07685](https://doi.org/10.48550/arXiv.2505.07685)).
 - [Periods in algebraic geometry : computations and application to Feynman integrals](https://theses.hal.science/tel-04823423) ([hal:tel-04823423](https://theses.hal.science/tel-04823423)).
 - [Galois groups of symmetric cubic surfaces](https://doi.org/10.48550/arXiv.2509.06785) ([arxiv:2509.06785](https://doi.org/10.48550/arXiv.2509.06785)).
 
