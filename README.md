@@ -122,6 +122,7 @@ The object `Hypersurface` can be called with several options:
 - `debug` (boolean, `False` by default): whether coherence checks should be done earlier rather than late. We recommend setting to true only if the computation failed in normal mode.
 - `singular` (boolean, `False` by default): whether the variety is singular. If it is (and in particular if the monodromy representation is not of Lefschetz type), the algorithm will try to desingularise the variety from the monodromy representation. This is work in progress.
 - `method` (`"voronoi"` by default/`"delaunay"`/`"delaunay_dual"`): the method used for computing a basis of homotopy. `voronoi` uses integration along paths in the voronoi graph of the critical points; `delaunay` uses integration along paths along the delaunay triangulation of the critical points; `delaunay_dual` paths are along the segments connecting the barycenter of a triangle of the Delaunay triangulation to the middle of one of its edges. In practice, `delaunay` is more efficient for low dimension and low order varieties (such as degree 3 curves and surfaces, and degree 4 curves). This gain in performance is however hindered in higher dimensions because of the algebraic complexity of the critical points (which are defined as roots of high order polynomials, with very large integer coefficients). <b>`"delaunay"` method is not working for now</b>
+- `fibration` (list of vectors of size `self.dim` with rational entries, randomly chosen by default): allows to pass down a choice of hyperplanes that generate the pencil of the fibration.
 
 #### Properties
 
@@ -493,6 +494,33 @@ Fibration related properties:
 Miscellaneous properties:
 - `P`: the defining equation of $X$.
 - `ctx`: the options of $X$, see related section above.
+
+#### Copy-paste ready examples
+
+##### A family of quartic curves
+
+```python
+os.environ["SAGE_NUM_THREADS"] = '10'
+from lefschetz_family import Fibration
+R.<X,Y,Z> = QQ[]
+S.<t> = R[]
+P = X**4 + Y**4 + Z**4 + t*X*Y*Z**2
+fib = Fibration(P, fibration=[vector([2,0,1]), vector([0,1,0])])
+fib.monodromy_matrices
+```
+
+##### Symmetric cubic surfaces
+
+```python
+os.environ["SAGE_NUM_THREADS"] = '10'
+from lefschetz_family import Fibration
+R.<X,Y,Z,W> = QQ[]
+S.<t> = R[]
+P = X**3 + Y**3 + Z**3 + W**3 + t*(X*Y*Z + X*Y*W + X*Z*W + Y*Z*W)
+fibration = [vector([9, 5, 2, 8]), vector([-7, -9, -8, -1]), vector([6, 6, 9, -8])]
+fib = Fibration(P, nbits=800, fibration=fibration)
+MatrixGroup(fib.monodromy_matrices).group_id() # we recover the Klein four-group in a few minutes
+```
 
 
 ## Contact
