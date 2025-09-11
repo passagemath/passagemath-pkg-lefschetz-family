@@ -72,7 +72,7 @@ Then the following creates an object representing the hypersurface:
 from lefschetz_family import Hypersurface
 X = Hypersurface(P)
 ```
-The period matrix of $X$ is the simply given by:
+The period matrix of $X$ is then simply given by:
 ```python
 X.period_matrix
 ```
@@ -378,7 +378,7 @@ Then the following creates an object representing the hypersurface:
 from lefschetz_family import FibreProduct
 X = FibreProduct(S1, S2)
 ```
-The period matrix of $X$ is the simply given by:
+The period matrix of $X$ is then simply given by:
 ```python
 X.period_matrix
 ```
