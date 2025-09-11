@@ -16,9 +16,11 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import sage.all
+try:
+    import sage.all
+except ImportError:
+    import sage.all__sagemath_modules
 
-from sage.plot.plot import list_plot
 
 
 from sage.modules.free_module_element import vector
@@ -75,6 +77,7 @@ class PointedLoop(object):
         return iter(self.path)
 
     def draw(self, basepoint_free=False, **kwds):
+        from sage.plot.plot import list_plot
         if not basepoint_free:
             return list_plot([[c.real(), c.imag()] for c in self.path], True, **kwds)
             

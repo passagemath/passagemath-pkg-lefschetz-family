@@ -21,6 +21,21 @@ dependencies = [
   "delaunay_triangulation",
 ]
 
+[project.optional-dependencies]
+passagemath = [
+  "scipy",
+  "passagemath-combinat",
+  "passagemath-flint",
+  "passagemath-graphs",
+  "passagemath-groups",
+  "passagemath-modules",
+  "passagemath-pari",
+  "passagemath-polyhedra",
+  "passagemath-repl",
+  "passagemath-schemes",
+  "passagemath-symbolics",
+]
+
 [project.urls]
 "Homepage" = "https://github.com/ericpipha/lefschetz-family"
 "Bug Tracker" = "https://github.com/ericpipha/lefschetz-family"
