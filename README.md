@@ -14,7 +14,7 @@ Please cite accordingly.
 
 This package is a successor to the [numperiods](https://gitlab.inria.fr/lairez/numperiods) package by Pierre Lairez. It contains files taken from this package, that have sometimes been slightly modified to accomodate for new usage.
 
-## How to install
+## How to install in an existing Sage installation
 
 In a terminal, run
 ```
@@ -29,13 +29,35 @@ sage -pip install --user lefschetz-family
 
 Alternatively, install the `ore_alegbra` package (available at [https://github.com/mkauers/ore_algebra](https://github.com/mkauers/ore_algebra)), then download this repository and add the path to the main folder to your `sys.path`.
 
-## Requirements
+### Requirements
 Sage 9.0 and above is recommended. Furthermore, this package has the following dependencies:
 
 - [Ore Algebra](https://github.com/mkauers/ore_algebra).
 - The [delaunay-triangulation](https://pypi.org/project/delaunay-triangulation/) package from PyPI.
 
+## Using lefschetz-family in a virtual Python environment (no prior Sage installation required)
 
+Create and activate a virtual environment:
+
+    python3 -m venv venv-lefschetz-family
+    . venv-lefschetz-family/bin/activate
+
+Install the package in the virtual environment:
+
+    pip install "lefschetz-family[passagemath] @ git+https://github.com/ericpipha/lefschetz-family.git" "ore_algebra[passagemath] @ git+https://github.com/mkauers/ore_algebra.git"
+
+This automatically installs the modularized parts of the Sage library that are
+needed by the package. (These modularized distributions are provided by
+https://github.com/passagemath.)
+
+Next, start Sage:
+
+    rehash
+    sage
+
+At the Sage prompt, load a modularized top-level environment:
+
+    sage: from sage.all__sagemath_schemes import *
 
 ## Documentation
 
