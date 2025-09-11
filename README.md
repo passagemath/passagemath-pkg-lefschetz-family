@@ -48,7 +48,7 @@ Sage 9.0 and above is recommended. Furthermore, this package has the following d
 ## Performance benchmarking
 
 Here is a runtime benchmark for various examples, with an input precision of 1000 bits:
-| Hypersurface (generic) 	| Time (on 10 M1 cores) | Recovered precision (decimal digits)  |
+| Variety (generic) 	| Time (on 10 M1 cores) | Recovered precision (decimal digits)  |
 |-------------------	|----------------------	| ----------------------                |
 | Elliptic curve    	| 5 seconds            | 340 digits                            |
 | Quartic curve     	| 90 seconds            	| 340 digits                            |
@@ -58,7 +58,7 @@ Here is a runtime benchmark for various examples, with an input precision of 100
 | Quartic surface   	| 1 hour        	    | 300 digits                            |
 | Cubic threefold   	| 15 minutes        	    | 300 digits                            |
 | Cubic fourfold   	| 20 hours        	    | 300 digits                            |
-| Rational elliptic surface | 10 seconds        	    | 300 digits                            |
+| Rational elliptic surface | 10 seconds        	    | N/A                            |
 | Elliptic K3 surface   	| 30 seconds*        	    | 300 digits                            |
 | Degree 2 K3 surface   	| 5 minutes        	    | 300 digits                            |
 
