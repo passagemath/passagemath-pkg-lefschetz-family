@@ -61,7 +61,7 @@ Sage 9.0 and above is recommended. Furthermore, this package has the following d
 - [Hypersurface](docs/hypersurface.md) for computing periods of hypersurfaces.
 - [EllipticSurface](docs/ellipticSurface.md) for computing  period of elliptic surfaces.
 - [DoubleCover](docs/doubleCover.md) for computing periods of ramified double cover of projective spaces.
-- [FibreProduct](docs/api.md) for computing periods of fibre products of elliptic surfaces.
+- [FibreProduct](docs/fibreProduct.md) for computing periods of fibre products of elliptic surfaces.
 - [Fibration](docs/fibration.md) for computing monodromy representations of families of hypersurfaces.
 
 ## Contact
