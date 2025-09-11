@@ -258,6 +258,7 @@ def homotopy_representation_from_allowable_loop(allowable_loop):
         c = AL[:n]
         done += [AL[n:n+1].conjugate(c)]
         AL = c + AL[n+1:]
+    print(AL)
     AL = - allowable_loop + sum(HomotopyRepresentation(allowable_loop.fibration).loaded_paths)
     for k in range(len(fibration.critical_values)):
         if k in inside_points:
@@ -266,4 +267,5 @@ def homotopy_representation_from_allowable_loop(allowable_loop):
         c = AL[:n]
         done += [AL[n:n+1].conjugate(c)]
         AL = c + AL[n+1:]
+    done[-1] += AL
     return HomotopyRepresentation(fibration, done)
