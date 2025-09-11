@@ -12,25 +12,6 @@ It implements the methods described in
 
 Please cite accordingly.
 
-
-Here is a runtime benchmark for various examples, with an input precision of 1000 bits:
-| Hypersurface (generic) 	| Time (on 10 M1 cores) | Recovered precision (decimal digits)  |
-|-------------------	|----------------------	| ----------------------                |
-| Elliptic curve    	| 5 seconds            | 340 digits                            |
-| Quartic curve     	| 90 seconds            	| 340 digits                            |
-| Quintic curve     	| 5 minutes            	| 340 digits                            |
-| Sextic curve      	| 30 minutes            	| 300 digits                            |
-| Cubic surface     	| 40 seconds         	| 340 digits                            |
-| Quartic surface   	| 1 hour        	    | 300 digits                            |
-| Cubic threefold   	| 15 minutes        	    | 300 digits                            |
-| Cubic fourfold   	| 20 hours        	    | 300 digits                            |
-| Rational elliptic surface | 10 seconds        	    | 300 digits                            |
-| Elliptic K3 surface   	| 30 seconds*        	    | 300 digits                            |
-| Degree 2 K3 surface   	| 5 minutes        	    | 300 digits                            |
-
-
-*for holomorphic periods
-
 This package is a successor to the [numperiods](https://gitlab.inria.fr/lairez/numperiods) package by Pierre Lairez. It contains files taken from this package, that have sometimes been slightly modified to accomodate for new usage.
 
 ## How to install
@@ -63,6 +44,28 @@ Sage 9.0 and above is recommended. Furthermore, this package has the following d
 - [DoubleCover](docs/doubleCover.md) for computing periods of ramified double cover of projective spaces.
 - [FibreProduct](docs/fibreProduct.md) for computing periods of fibre products of elliptic surfaces.
 - [Fibration](docs/fibration.md) for computing monodromy representations of families of hypersurfaces.
+
+## Performance benchmarking
+
+Here is a runtime benchmark for various examples, with an input precision of 1000 bits:
+| Hypersurface (generic) 	| Time (on 10 M1 cores) | Recovered precision (decimal digits)  |
+|-------------------	|----------------------	| ----------------------                |
+| Elliptic curve    	| 5 seconds            | 340 digits                            |
+| Quartic curve     	| 90 seconds            	| 340 digits                            |
+| Quintic curve     	| 5 minutes            	| 340 digits                            |
+| Sextic curve      	| 30 minutes            	| 300 digits                            |
+| Cubic surface     	| 40 seconds         	| 340 digits                            |
+| Quartic surface   	| 1 hour        	    | 300 digits                            |
+| Cubic threefold   	| 15 minutes        	    | 300 digits                            |
+| Cubic fourfold   	| 20 hours        	    | 300 digits                            |
+| Rational elliptic surface | 10 seconds        	    | 300 digits                            |
+| Elliptic K3 surface   	| 30 seconds*        	    | 300 digits                            |
+| Degree 2 K3 surface   	| 5 minutes        	    | 300 digits                            |
+
+
+*for holomorphic periods
+
+
 
 ## Contact
 For any question, bug or remark, please contact [eric.pichon@mis.mpg.de](mailto:eric.pichon@mis.mpg.de).
